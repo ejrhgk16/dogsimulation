@@ -1,5 +1,4 @@
 import { defaultSceneConfig } from './config/sceneConfig';
-import { createDog } from './services/dogService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -16,14 +15,7 @@ canvas.className = 'scene-canvas';
 canvas.setAttribute('aria-label', 'Three.js scene viewport');
 app.appendChild(canvas);
 
-const dog = createDog(
-  'dog-1',
-  'Buddy',
-  defaultSceneConfig.initialDogPosition,
-  defaultSceneConfig.initialDogSpeed
-);
-
-const runtime = createSceneRuntime(canvas, defaultSceneConfig, dog);
+const runtime = createSceneRuntime(canvas, defaultSceneConfig);
 
 let isRunning = false;
 

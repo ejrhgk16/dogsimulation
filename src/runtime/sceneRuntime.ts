@@ -1,6 +1,5 @@
 import {
   AmbientLight,
-  Clock,
   Color,
   DirectionalLight,
   DoubleSide,
@@ -9,10 +8,8 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   Scene,
-  SphereGeometry,
   WebGLRenderer
 } from 'three';
-import type { Dog } from '../types/dog';
 import type { SceneConfig } from '../config/sceneConfig';
 
 export interface SceneRuntime {
@@ -21,11 +18,7 @@ export interface SceneRuntime {
   stop: () => void;
 }
 
-export function createSceneRuntime(
-  canvas: HTMLCanvasElement,
-  config: SceneConfig,
-  dog: Dog
-): SceneRuntime {
+export function createSceneRuntime(canvas: HTMLCanvasElement, config: SceneConfig): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -46,15 +39,8 @@ export function createSceneRuntime(
   );
   ground.rotation.x = -Math.PI / 2;
 
-  const dogMesh = new Mesh(
-    new SphereGeometry(0.55, 32, 24),
-    new MeshStandardMaterial({ color: 0xb67b4a, roughness: 0.8, metalness: 0 })
-  );
-  dogMesh.position.set(dog.position.x, dog.position.y + 0.55, dog.position.z);
+  scene.add(ambientLight, directionalLight, ground);
 
-  scene.add(ambientLight, directionalLight, ground, dogMesh);
-
-  const clock = new Clock();
   let animationFrameId: number | null = null;
 
   const resize = () => {
@@ -67,11 +53,6 @@ export function createSceneRuntime(
   };
 
   const render = () => {
-    const elapsed = clock.getElapsedTime();
-
-    dogMesh.rotation.y = elapsed * 0.9;
-    dogMesh.position.y = dog.position.y + 0.55 + Math.sin(elapsed * 1.6) * 0.08;
-
     renderer.render(scene, camera);
     animationFrameId = window.requestAnimationFrame(render);
   };
@@ -81,7 +62,6 @@ export function createSceneRuntime(
       return;
     }
 
-    clock.start();
     render();
   };
 
@@ -92,7 +72,6 @@ export function createSceneRuntime(
 
     window.cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
-    clock.stop();
   };
 
   resize();
