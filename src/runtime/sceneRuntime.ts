@@ -14,7 +14,6 @@ import {
   WebGLRenderer
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { SceneConfig } from '../config/sceneConfig';
 import type { MapData, ObstacleShape } from '../types/map';
 
 export interface SceneRuntime {
@@ -76,11 +75,7 @@ function createTerrainGeometry(mapData: MapData): BufferGeometry {
   return geometry;
 }
 
-export function createSceneRuntime(
-  canvas: HTMLCanvasElement,
-  _config: SceneConfig,
-  mapData: MapData
-): SceneRuntime {
+export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
 

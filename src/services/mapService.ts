@@ -1,4 +1,4 @@
-import { OBSTACLE_PATTERNS } from '../types/map';
+import { OBSTACLE_PATTERNS } from '../config/mapConfig';
 import type { MapCell, MapData } from '../types/map';
 import type { MapConfig } from '../config/mapConfig';
 

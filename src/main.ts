@@ -11,7 +11,7 @@ canvas.setAttribute('aria-label', 'Three.js scene viewport');
 app.appendChild(canvas);
 
 const mapData = generateMap(defaultSceneConfig.mapConfig);
-const runtime = createSceneRuntime(canvas, defaultSceneConfig, mapData);
+const runtime = createSceneRuntime(canvas, mapData);
 
 window.addEventListener('resize', () => runtime.resize());
 
