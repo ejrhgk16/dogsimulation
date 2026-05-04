@@ -1,0 +1,41 @@
+{
+  "name": "dogsimulation-1",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "harness": "node tools/scripts/execute.mjs",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest",
+    "lint": "eslint . --max-warnings 0 && node tools/linters/check-quality.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "validate:architecture": "node tools/validators/check-architecture.mjs",
+    "validate:docs": "node tools/validators/check-docs.mjs",
+    "validate:tests": "node tools/validators/check-test-harness.mjs",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run validate:architecture && npm run validate:docs && npm run validate:tests && npm run test",
+    "prepare": "node tools/scripts/install-hooks.mjs"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.15.35",
+    "@types/three": "^0.184.0",
+    "@typescript-eslint/eslint-plugin": "^8.30.1",
+    "@typescript-eslint/parser": "^8.30.1",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^10.1.2",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.1",
+    "vitest": "^2.1.1"
+  }
+}
