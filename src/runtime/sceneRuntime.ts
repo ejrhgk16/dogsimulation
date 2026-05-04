@@ -80,7 +80,7 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
   renderer.setPixelRatio(window.devicePixelRatio);
 
   const scene = new Scene();
-  scene.background = new Color(0xf4efe8);
+  scene.background = new Color(0x2a3028);
 
   const camera = new PerspectiveCamera(50, 1, 0.1, 100);
   const mapWidth = mapData.width * mapData.cellSize;
@@ -92,12 +92,12 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
   controls.dampingFactor = 0.1;
   controls.target.set(0, 0, 0);
 
-  const ambientLight = new AmbientLight(0xffffff, 1.8);
-  const directionalLight = new DirectionalLight(0xfff4ea, 2.2);
+  const ambientLight = new AmbientLight(0xffffff, 0.6);
+  const directionalLight = new DirectionalLight(0xfff4ea, 1.2);
   directionalLight.position.set(5, 10, 4);
 
   const terrainGeo = createTerrainGeometry(mapData);
-  const terrainMat = new MeshStandardMaterial({ color: 0xd7e5dc });
+  const terrainMat = new MeshStandardMaterial({ color: 0x4a6b4a });
   const terrainMesh = new Mesh(terrainGeo, terrainMat);
 
   interface ObstaclePos {
@@ -134,7 +134,7 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
       mapData.cellSize * 1.2,
       mapData.cellSize * 0.8
     );
-    const mat = new MeshStandardMaterial({ color: 0x6b5344 });
+    const mat = new MeshStandardMaterial({ color: 0x3d2e1f });
     const mesh = new InstancedMesh(geo, mat, shapedPositions.length);
     const temp = new Object3D();
     shapedPositions.forEach((pos, i) => {
@@ -148,7 +148,7 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
 
   if (singlePositions.length > 0) {
     const boxGeo = new BoxGeometry(mapData.cellSize * 0.8, 0.5, mapData.cellSize * 0.8);
-    const boxMat = new MeshStandardMaterial({ color: 0x8b7355 });
+    const boxMat = new MeshStandardMaterial({ color: 0x5c4a33 });
     const mesh = new InstancedMesh(boxGeo, boxMat, singlePositions.length);
     const temp = new Object3D();
     singlePositions.forEach((pos, i) => {
