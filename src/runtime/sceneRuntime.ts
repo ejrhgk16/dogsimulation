@@ -15,7 +15,7 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneConfig } from '../config/sceneConfig';
-import type { MapData } from '../types/map';
+import type { MapData, ObstacleShape } from '../types/map';
 
 export interface SceneRuntime {
   resize: () => void;
@@ -105,34 +105,65 @@ export function createSceneRuntime(
   const terrainMat = new MeshStandardMaterial({ color: 0xd7e5dc });
   const terrainMesh = new Mesh(terrainGeo, terrainMat);
 
-  const obstaclePositions: { x: number; y: number; z: number }[] = [];
+  interface ObstaclePos {
+    x: number;
+    y: number;
+    z: number;
+    shape: ObstacleShape | undefined;
+  }
+
+  const obstaclePositions: ObstaclePos[] = [];
   for (let row = 0; row < mapData.depth; row++) {
     for (let col = 0; col < mapData.width; col++) {
       const cell = mapData.grid[row][col];
       if (cell.terrain === 'obstacle') {
         const x = col * mapData.cellSize - mapWidth / 2 + mapData.cellSize / 2;
         const z = row * mapData.cellSize - mapDepth / 2 + mapData.cellSize / 2;
-        obstaclePositions.push({ x, y: cell.height / 2, z });
+        const isShaped = cell.shape === 'L' || cell.shape === 'reverse-L';
+        const yOffset = isShaped ? mapData.cellSize * 0.6 : 0.25;
+        obstaclePositions.push({ x, y: yOffset, z, shape: cell.shape });
       }
     }
   }
 
-  let obstacleMesh: InstancedMesh | null = null;
-  if (obstaclePositions.length > 0) {
-    const boxGeo = new BoxGeometry(mapData.cellSize * 0.8, 0.5, mapData.cellSize * 0.8);
-    const boxMat = new MeshStandardMaterial({ color: 0x8b7355 });
-    obstacleMesh = new InstancedMesh(boxGeo, boxMat, obstaclePositions.length);
-    const temp = new Object3D();
-    obstaclePositions.forEach((pos, i) => {
-      temp.position.set(pos.x, pos.y, pos.z);
-      temp.updateMatrix();
-      obstacleMesh!.setMatrixAt(i, temp.matrix);
-    });
-    obstacleMesh.instanceMatrix.needsUpdate = true;
-  }
+  const shapedPositions = obstaclePositions.filter(
+    (p) => p.shape === 'L' || p.shape === 'reverse-L'
+  );
+  const singlePositions = obstaclePositions.filter((p) => p.shape === 'single' || !p.shape);
 
   scene.add(ambientLight, directionalLight, terrainMesh);
-  if (obstacleMesh) scene.add(obstacleMesh);
+
+  if (shapedPositions.length > 0) {
+    const geo = new BoxGeometry(
+      mapData.cellSize * 0.8,
+      mapData.cellSize * 1.2,
+      mapData.cellSize * 0.8
+    );
+    const mat = new MeshStandardMaterial({ color: 0x6b5344 });
+    const mesh = new InstancedMesh(geo, mat, shapedPositions.length);
+    const temp = new Object3D();
+    shapedPositions.forEach((pos, i) => {
+      temp.position.set(pos.x, pos.y, pos.z);
+      temp.updateMatrix();
+      mesh.setMatrixAt(i, temp.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    scene.add(mesh);
+  }
+
+  if (singlePositions.length > 0) {
+    const boxGeo = new BoxGeometry(mapData.cellSize * 0.8, 0.5, mapData.cellSize * 0.8);
+    const boxMat = new MeshStandardMaterial({ color: 0x8b7355 });
+    const mesh = new InstancedMesh(boxGeo, boxMat, singlePositions.length);
+    const temp = new Object3D();
+    singlePositions.forEach((pos, i) => {
+      temp.position.set(pos.x, pos.y, pos.z);
+      temp.updateMatrix();
+      mesh.setMatrixAt(i, temp.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    scene.add(mesh);
+  }
 
   let animationFrameId: number | null = null;
 

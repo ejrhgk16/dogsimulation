@@ -9,7 +9,9 @@ const baseConfig: MapConfig = {
   baseHeight: 0,
   hillHeight: 2,
   obstacleRatio: 0.1,
-  seed: 42
+  seed: 42,
+  zones: { flatRatio: 0 },
+  obstacleShapes: ['single']
 };
 
 describe('generateMap', () => {
@@ -94,5 +96,94 @@ describe('generateMap', () => {
         }
       }
     }
+  });
+
+  it('right flat zone has no hill cells', () => {
+    const map = generateMap({ ...baseConfig, zones: { flatRatio: 0.3 } });
+    const flatStartCol = Math.floor(10 * (1 - 0.3));
+    for (let r = 0; r < map.depth; r++) {
+      for (let c = flatStartCol; c < map.width; c++) {
+        expect(map.grid[r][c].terrain).not.toBe('hill');
+      }
+    }
+  });
+
+  it('L-shape obstacles are placed in groups of 3', () => {
+    const map = generateMap({
+      ...baseConfig,
+      zones: { flatRatio: 0.5 },
+      obstacleShapes: ['L'],
+      obstacleRatio: 0.5
+    });
+    let lCount = 0;
+    for (const row of map.grid) {
+      for (const cell of row) {
+        if (cell.shape === 'L') lCount++;
+      }
+    }
+    expect(lCount).toBeGreaterThanOrEqual(3);
+    expect(lCount % 3).toBe(0);
+  });
+
+  it('reverse-L obstacles are placed in groups of 3', () => {
+    const map = generateMap({
+      ...baseConfig,
+      zones: { flatRatio: 0.5 },
+      obstacleShapes: ['reverse-L'],
+      obstacleRatio: 0.5
+    });
+    let rlCount = 0;
+    for (const row of map.grid) {
+      for (const cell of row) {
+        if (cell.shape === 'reverse-L') rlCount++;
+      }
+    }
+    expect(rlCount).toBeGreaterThanOrEqual(3);
+    expect(rlCount % 3).toBe(0);
+  });
+
+  it('obstacles are concentrated in flat zone when flatRatio > 0', () => {
+    const map = generateMap({
+      ...baseConfig,
+      zones: { flatRatio: 0.5 },
+      obstacleShapes: ['single'],
+      obstacleRatio: 0.1
+    });
+    const flatStartCol = Math.floor(10 * 0.5);
+    let flatObs = 0;
+    let leftObs = 0;
+    for (let r = 0; r < map.depth; r++) {
+      for (let c = 0; c < flatStartCol; c++) {
+        if (map.grid[r][c].terrain === 'obstacle') leftObs++;
+      }
+      for (let c = flatStartCol; c < map.width; c++) {
+        if (map.grid[r][c].terrain === 'obstacle') flatObs++;
+      }
+    }
+    expect(leftObs).toBe(0);
+    expect(flatObs).toBeGreaterThan(0);
+  });
+
+  it('flatRatio 0 makes entire grid mixed terrain', () => {
+    const map = generateMap({ ...baseConfig, zones: { flatRatio: 0 } });
+    let hillCount = 0;
+    for (const row of map.grid) {
+      for (const cell of row) {
+        if (cell.terrain === 'hill') hillCount++;
+      }
+    }
+    expect(hillCount).toBeGreaterThan(0);
+  });
+
+  it('obstacle count with default config stays below 15%', () => {
+    const map = generateMap({ ...baseConfig, obstacleRatio: 0.1 });
+    let count = 0;
+    const total = map.width * map.depth;
+    for (const row of map.grid) {
+      for (const cell of row) {
+        if (cell.terrain === 'obstacle') count++;
+      }
+    }
+    expect(count).toBeLessThanOrEqual(Math.round(total * 0.15));
   });
 });
