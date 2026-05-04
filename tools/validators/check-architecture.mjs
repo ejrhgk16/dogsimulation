@@ -47,7 +47,10 @@ function fileLayer(filePath) {
 function importsFor(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');
   const matches = [...content.matchAll(/from\s+['"](.+?)['"]/g)];
-  return matches.map(m => m[1]).map(p => resolveImport(filePath, p)).filter(Boolean);
+  return matches
+    .map((m) => m[1])
+    .map((p) => resolveImport(filePath, p))
+    .filter(Boolean);
 }
 
 function detectCycles(graph) {
@@ -89,7 +92,9 @@ for (const file of files) {
   for (const ri of resolvedImports) {
     const depLayer = fileLayer(ri);
     if (!allowedImports[layer].has(depLayer)) {
-      failures.push(`${normalizeImport(file)} illegally imports ${normalizeImport(ri)} (${layer} ⇢ ${depLayer})`);
+      failures.push(
+        `${normalizeImport(file)} illegally imports ${normalizeImport(ri)} (${layer} ⇢ ${depLayer})`
+      );
     }
   }
 }

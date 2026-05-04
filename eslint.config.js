@@ -34,7 +34,7 @@ export default [
     }
   },
   {
-    files: ['tools/**/*.mjs', 'eslint.config.js'],
+    files: ['tools/**/*.mjs', 'tests/**/*.mjs', 'eslint.config.js'],
     languageOptions: {
       globals: {
         console: 'readonly',
