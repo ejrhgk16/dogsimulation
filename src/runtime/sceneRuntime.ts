@@ -13,6 +13,7 @@ import {
   Scene,
   WebGLRenderer
 } from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneConfig } from '../config/sceneConfig';
 import type { MapData } from '../types/map';
 
@@ -89,8 +90,12 @@ export function createSceneRuntime(
   const camera = new PerspectiveCamera(50, 1, 0.1, 100);
   const mapWidth = mapData.width * mapData.cellSize;
   const mapDepth = mapData.depth * mapData.cellSize;
-  camera.position.set(mapWidth * 0.4, 7, mapDepth * 0.6);
-  camera.lookAt(0, 0, 0);
+  camera.position.set(mapWidth * 0.4, Math.max(mapWidth, mapDepth) * 0.5, mapDepth * 0.8);
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.1;
+  controls.target.set(0, 0, 0);
 
   const ambientLight = new AmbientLight(0xffffff, 1.8);
   const directionalLight = new DirectionalLight(0xfff4ea, 2.2);
@@ -141,6 +146,7 @@ export function createSceneRuntime(
   };
 
   const render = () => {
+    controls.update();
     renderer.render(scene, camera);
     animationFrameId = window.requestAnimationFrame(render);
   };

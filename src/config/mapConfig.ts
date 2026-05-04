@@ -9,8 +9,8 @@ export interface MapConfig {
 }
 
 export const defaultMapConfig: MapConfig = {
-  width: 20,
-  depth: 20,
+  width: 50,
+  depth: 30,
   cellSize: 1,
   baseHeight: 0,
   hillHeight: 2,
