@@ -27,7 +27,7 @@ console.log(`\n=== finishing plan: ${branch} ===\n`);
 
 try {
   console.log('=== formatting ===');
-  runWithOutput('npx prettier --write .');
+  runWithOutput('npm run format');
 
   runWithOutput('git add -A');
   runWithOutput(`git commit -m "${msg.replace(/"/g, '\\"')}"`);
