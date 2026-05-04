@@ -1,58 +1,19 @@
 import { defaultSceneConfig } from './config/sceneConfig';
+import { generateMap } from './services/mapService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
-
-const statusText = document.querySelector<HTMLElement>('#status-text');
-if (!statusText) throw new Error('Missing #status-text element.');
-
-const startButton = document.querySelector<HTMLButtonElement>('#start-btn');
-if (!startButton) throw new Error('Missing #start-btn element.');
 
 const canvas = document.createElement('canvas');
 canvas.className = 'scene-canvas';
 canvas.setAttribute('aria-label', 'Three.js scene viewport');
 app.appendChild(canvas);
 
-const runtime = createSceneRuntime(canvas, defaultSceneConfig);
-
-let isRunning = false;
-
-const setRunningState = (running: boolean) => {
-  isRunning = running;
-  statusText.textContent = running ? '실행 중' : '대기 중';
-  startButton.textContent = running ? '정지' : '시작';
-};
-
-const start = () => {
-  if (isRunning) {
-    return;
-  }
-
-  runtime.start();
-  setRunningState(true);
-};
-
-const stop = () => {
-  if (!isRunning) {
-    return;
-  }
-
-  runtime.stop();
-  setRunningState(false);
-};
-
-startButton.addEventListener('click', () => {
-  if (isRunning) {
-    stop();
-    return;
-  }
-
-  start();
-});
+const mapData = generateMap(defaultSceneConfig.mapConfig);
+const runtime = createSceneRuntime(canvas, defaultSceneConfig, mapData);
 
 window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
-start();
+runtime.start();

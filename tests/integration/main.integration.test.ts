@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { defaultSceneConfig } from '../../src/config/sceneConfig';
+import { defaultMapConfig } from '../../src/config/mapConfig';
 
 describe('sceneConfig integration', () => {
   it('exports correct default values', () => {
@@ -11,6 +12,12 @@ describe('sceneConfig integration', () => {
     const keys = Object.keys(defaultSceneConfig);
     expect(keys).not.toContain('initialDogPosition');
     expect(keys).not.toContain('initialDogSpeed');
-    expect(keys).toEqual(['gravity', 'groundSize']);
+  });
+
+  it('includes mapConfig with defaults', () => {
+    expect(defaultSceneConfig.mapConfig).toBe(defaultMapConfig);
+    expect(defaultSceneConfig.mapConfig.width).toBe(20);
+    expect(defaultSceneConfig.mapConfig.depth).toBe(20);
+    expect(defaultSceneConfig.mapConfig.cellSize).toBe(1);
   });
 });
