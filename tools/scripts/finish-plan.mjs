@@ -15,13 +15,17 @@ if (branch === 'dev' || branch === 'main') {
   process.exit(1);
 }
 
-const msg = process.argv[2] || process.env.COMMIT_MESSAGE;
-if (!msg) {
-  console.error(
-    'usage: npm run finish-plan -- "commit message"\n   or: set COMMIT_MESSAGE env var'
-  );
-  process.exit(1);
+function generateMessage() {
+  const log = run('git log dev..HEAD --oneline --format="%s"');
+  if (log) {
+    const lines = log.split('\n').filter(Boolean);
+    if (lines.length > 0) return lines[0];
+  }
+  const desc = branch.replace(/^plan-\d+-/, '').replace(/[-_]/g, ' ');
+  return `feat: ${desc}`;
 }
+
+const msg = process.argv[2] || process.env.COMMIT_MESSAGE || generateMessage();
 
 console.log(`\n=== finishing plan: ${branch} ===\n`);
 

@@ -15,11 +15,21 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData, ObstacleShape } from '../types/map';
+import type { ScentWorldState } from '../types/scent';
+import {
+  OWNER_PROFILES,
+  DEFAULT_SCENT_PARAMS,
+  DEFAULT_SCENT_VISUAL_CONFIG
+} from '../config/scentConfig';
+import { trimExpiredTrails } from '../services/scentService';
+import { createScentVisualizer } from './scentVisualizer';
+import type { ScentVisualizer } from './scentVisualizer';
 
 export interface SceneRuntime {
   resize: () => void;
   start: () => void;
   stop: () => void;
+  updateScent: (now: number) => void;
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -75,7 +85,11 @@ function createTerrainGeometry(mapData: MapData): BufferGeometry {
   return geometry;
 }
 
-export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData): SceneRuntime {
+export function createSceneRuntime(
+  canvas: HTMLCanvasElement,
+  mapData: MapData,
+  scentState?: ScentWorldState
+): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -160,6 +174,18 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
     scene.add(mesh);
   }
 
+  // Scent visualizer — created only if scentState is provided
+  let scentVisualizer: ScentVisualizer | null = null;
+  if (scentState) {
+    scentVisualizer = createScentVisualizer(scene, DEFAULT_SCENT_VISUAL_CONFIG, OWNER_PROFILES);
+  }
+
+  const updateScent = (now: number): void => {
+    if (!scentState || !scentVisualizer) return;
+    trimExpiredTrails(scentState, now, DEFAULT_SCENT_PARAMS);
+    scentVisualizer.update(scentState.trailPoints, now);
+  };
+
   let animationFrameId: number | null = null;
 
   const resize = () => {
@@ -173,6 +199,7 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
 
   const render = () => {
     controls.update();
+    updateScent(performance.now());
     renderer.render(scene, camera);
     animationFrameId = window.requestAnimationFrame(render);
   };
@@ -199,6 +226,7 @@ export function createSceneRuntime(canvas: HTMLCanvasElement, mapData: MapData):
   return {
     resize,
     start,
-    stop
+    stop,
+    updateScent
   };
 }
