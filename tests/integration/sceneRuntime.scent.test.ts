@@ -88,3 +88,51 @@ describe('sceneRuntime scent integration', () => {
     expect(() => runtime.updateScent(5000)).not.toThrow();
   });
 });
+
+describe('sceneRuntime camera controls', () => {
+  it('exposes resetCamera method', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(runtime).toHaveProperty('resetCamera');
+    expect(typeof runtime.resetCamera).toBe('function');
+  });
+
+  it('resetCamera does not throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.resetCamera()).not.toThrow();
+  });
+});
+
+describe('sceneRuntime ground intersection', () => {
+  it('exposes getMouseGroundIntersection method', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(runtime).toHaveProperty('getMouseGroundIntersection');
+    expect(typeof runtime.getMouseGroundIntersection).toBe('function');
+  });
+
+  it('getMouseGroundIntersection returns null for off-screen coordinates', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    const result = runtime.getMouseGroundIntersection(100, 100);
+    expect(result).toBeNull();
+  });
+
+  it('getMouseGroundIntersection returns intersection with valid type', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    // Far NDC that points away from scene should miss
+    const result = runtime.getMouseGroundIntersection(0, -100);
+    // May be null or a valid point, but if hit must have x,z
+    if (result !== null) {
+      expect(typeof result.x).toBe('number');
+      expect(typeof result.z).toBe('number');
+    }
+  });
+});

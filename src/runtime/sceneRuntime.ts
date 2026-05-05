@@ -8,9 +8,13 @@ import {
   InstancedMesh,
   Mesh,
   MeshStandardMaterial,
+  MOUSE,
   Object3D,
   PerspectiveCamera,
+  Raycaster,
   Scene,
+  Vector2,
+  Vector3,
   WebGLRenderer
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -33,6 +37,12 @@ export interface SceneRuntime {
   stop: () => void;
   updateScent: (now: number) => void;
   updateOwner: (owner: OwnerState) => void;
+  resetCamera: () => void;
+  getMouseGroundIntersection: (mouseX: number, mouseY: number) => { x: number; z: number } | null;
+  getCameraState: () => {
+    pos: { x: number; y: number; z: number };
+    target: { x: number; y: number; z: number };
+  };
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -103,12 +113,38 @@ export function createSceneRuntime(
   const camera = new PerspectiveCamera(50, 1, 0.1, 100);
   const mapWidth = mapData.width * mapData.cellSize;
   const mapDepth = mapData.depth * mapData.cellSize;
-  camera.position.set(mapWidth * 0.4, Math.max(mapWidth, mapDepth) * 0.5, mapDepth * 0.8);
+  camera.position.set(0, 25, 35);
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.dampingFactor = 0.1;
   controls.target.set(0, 0, 0);
+  controls.mouseButtons = {
+    LEFT: null,
+    MIDDLE: MOUSE.DOLLY,
+    RIGHT: MOUSE.ROTATE
+  };
+  controls.enableZoom = true;
+  controls.zoomSpeed = 1.0;
+
+  const homePosition = new Vector3(0, 25, 35);
+  const homeTarget = new Vector3(0, 0, 0);
+  let isReturningToHome = false;
+
+  let shouldResetOnEnd = false;
+  canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (e.button === 2) shouldResetOnEnd = true;
+  });
+
+  controls.addEventListener('start', () => {
+    isReturningToHome = false;
+  });
+  controls.addEventListener('end', () => {
+    if (shouldResetOnEnd) {
+      isReturningToHome = true;
+      shouldResetOnEnd = false;
+    }
+  });
 
   const ambientLight = new AmbientLight(0xffffff, 0.6);
   const directionalLight = new DirectionalLight(0xfff4ea, 1.2);
@@ -185,7 +221,7 @@ export function createSceneRuntime(
     const color = OWNER_TYPES[owner.ownerType] ?? 0xff9933;
     const mat = new MeshStandardMaterial({ color });
     ownerMesh = new Mesh(geo, mat);
-    ownerMesh.position.set(owner.x, 0.5, owner.y);
+    ownerMesh.position.set(owner.x, owner.height, owner.y);
     scene.add(ownerMesh);
   }
 
@@ -203,9 +239,33 @@ export function createSceneRuntime(
 
   const updateOwner = (o: OwnerState): void => {
     if (ownerMesh) {
-      ownerMesh.position.set(o.x, 0.5, o.y);
+      ownerMesh.position.set(o.x, o.height, o.y);
     }
   };
+
+  const raycaster = new Raycaster();
+
+  const getMouseGroundIntersection = (
+    mouseX: number,
+    mouseY: number
+  ): { x: number; z: number } | null => {
+    raycaster.setFromCamera(new Vector2(mouseX, mouseY), camera);
+    const intersects = raycaster.intersectObject(terrainMesh);
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      return { x: point.x, z: point.z };
+    }
+    return null;
+  };
+
+  const resetCamera = (): void => {
+    isReturningToHome = true;
+  };
+
+  const getCameraState = () => ({
+    pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+    target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
+  });
 
   let animationFrameId: number | null = null;
 
@@ -219,6 +279,15 @@ export function createSceneRuntime(
   };
 
   const render = () => {
+    if (isReturningToHome) {
+      camera.position.lerp(homePosition, 0.03);
+      controls.target.lerp(homeTarget, 0.03);
+      if (camera.position.distanceTo(homePosition) < 0.01) {
+        camera.position.copy(homePosition);
+        controls.target.copy(homeTarget);
+        isReturningToHome = false;
+      }
+    }
     controls.update();
     updateScent(performance.now());
     renderer.render(scene, camera);
@@ -249,6 +318,9 @@ export function createSceneRuntime(
     start,
     stop,
     updateScent,
-    updateOwner
+    updateOwner,
+    resetCamera,
+    getMouseGroundIntersection,
+    getCameraState
   };
 }

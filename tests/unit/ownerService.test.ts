@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createOwner, moveOwner } from '../../src/services/ownerService';
 import type { MapData, MapCell } from '../../src/types/map';
 import type { OwnerState } from '../../src/types/owner';
-import { OWNER_SPEED } from '../../src/config/ownerConfig';
+import { OWNER_SPEED, OWNER_HEIGHT_OFFSET } from '../../src/config/ownerConfig';
 import { HEIGHT_SPEED_FACTOR } from '../../src/config/ownerConfig';
 
 /**
@@ -27,19 +27,29 @@ function createFlatMap(): MapData {
   return { grid, cellSize, width: 2, depth: 2 };
 }
 
-function ownerAt(x: number, y: number): OwnerState {
-  return createOwner('test', 'dog', x, y);
+function ownerAt(x: number, y: number, mapData?: MapData): OwnerState {
+  const map = mapData ?? createFlatMap();
+  return createOwner('test', 'dog', x, y, map);
 }
 
 describe('createOwner', () => {
   it('returns owner with given props and default direction', () => {
-    const o = createOwner('o1', 'cow', 10, 20);
+    const map = createFlatMap();
+    const o = createOwner('o1', 'cow', 10, 20, map);
     expect(o.id).toBe('o1');
     expect(o.ownerType).toBe('cow');
     expect(o.x).toBe(10);
     expect(o.y).toBe(20);
+    expect(o.height).toBeCloseTo(OWNER_HEIGHT_OFFSET);
     expect(o.directionX).toBe(1);
     expect(o.directionY).toBe(0);
+  });
+
+  it('initializes height from terrain height plus offset', () => {
+    const map = createFlatMap();
+    map.grid[0][0] = { ...map.grid[0][0], height: 3 };
+    const o = createOwner('test', 'dog', -5, -5, map);
+    expect(o.height).toBeCloseTo(3 + OWNER_HEIGHT_OFFSET);
   });
 });
 
@@ -140,6 +150,18 @@ describe('moveOwner — obstacle collision', () => {
     expect(owner.y).toBeCloseTo(-5);
   });
 
+  it('slides along x when diagonal cell is obstacle but both axes individually clear', () => {
+    const map = createFlatMap();
+    // grid[1][1] is obstacle, grid[0][1] and grid[1][0] stay flat
+    map.grid[1][1] = { ...map.grid[1][1], terrain: 'obstacle', height: 0 };
+    const owner = ownerAt(-5, -5, map);
+    const dt = 2;
+    moveOwner(owner, new Set(['s', 'd']), dt, map);
+    const len = Math.SQRT1_2;
+    expect(owner.x).toBeCloseTo(-5 + len * OWNER_SPEED * dt);
+    expect(owner.y).toBeCloseTo(-5);
+  });
+
   it('stops when both axes blocked', () => {
     const map = createFlatMap();
     map.grid[0][1] = { ...map.grid[0][1], terrain: 'obstacle', height: 0 };
@@ -204,6 +226,30 @@ describe('moveOwner — height speed adjustment', () => {
     expect(factor).toBe(0.2);
     expect(owner.x).toBeCloseTo(-5 + OWNER_SPEED * 1 * 0.2);
     expect(owner.y).toBeCloseTo(-5);
+  });
+
+  it('updates height after moving to a cell with different elevation', () => {
+    const map = createFlatMap();
+    map.grid[0][0] = { ...map.grid[0][0], height: 0, terrain: 'flat' };
+    map.grid[0][1] = { ...map.grid[0][1], height: 4, terrain: 'hill' };
+    const owner = createOwner('test', 'dog', -1, -5, map);
+    expect(owner.height).toBeCloseTo(OWNER_HEIGHT_OFFSET);
+    moveOwner(owner, new Set(['d']), 2, map);
+    expect(owner.height).toBeCloseTo(4 + OWNER_HEIGHT_OFFSET);
+    expect(owner.x).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reduces speed for downhill movement using absolute height diff', () => {
+    const map = createFlatMap();
+    map.grid[0][0] = { ...map.grid[0][0], height: 2, terrain: 'hill' };
+    map.grid[0][1] = { ...map.grid[0][1], height: 1, terrain: 'flat' };
+    const owner = createOwner('test', 'dog', -5, -5, map);
+    expect(owner.height).toBeCloseTo(2 + OWNER_HEIGHT_OFFSET);
+    moveOwner(owner, new Set(['d']), 2, map);
+    const heightDiff = 1;
+    const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
+    expect(owner.x).toBeCloseTo(-5 + OWNER_SPEED * 2 * factor);
+    expect(owner.height).toBeCloseTo(1 + OWNER_HEIGHT_OFFSET);
   });
 
   it('applies height factor after obstacle sliding', () => {

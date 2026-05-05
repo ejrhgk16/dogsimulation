@@ -1,6 +1,7 @@
 import { OBSTACLE_PATTERNS } from '../config/mapConfig';
 import type { MapCell, MapData } from '../types/map';
 import type { MapConfig } from '../config/mapConfig';
+import { OWNER_HALF_EXTENT } from '../config/ownerConfig';
 
 function seededRandom(seed: number): () => number {
   let s = seed >>> 0;
@@ -143,6 +144,35 @@ export function isObstacleAt(mapData: MapData, x: number, z: number): boolean {
   const cell = getCellAt(mapData, x, z);
   if (cell === null) return true;
   return cell.terrain === 'obstacle';
+}
+
+export function isObstacleInFootprint(
+  mapData: MapData,
+  cx: number,
+  cz: number,
+  halfExtent = OWNER_HALF_EXTENT
+): boolean {
+  const mapWidth = mapData.width * mapData.cellSize;
+  const mapDepth = mapData.depth * mapData.cellSize;
+  const minCol = Math.floor((cx - halfExtent + mapWidth / 2) / mapData.cellSize);
+  const maxCol = Math.floor((cx + halfExtent - 1e-9 + mapWidth / 2) / mapData.cellSize);
+  const minRow = Math.floor((cz - halfExtent + mapDepth / 2) / mapData.cellSize);
+  const maxRow = Math.floor((cz + halfExtent - 1e-9 + mapDepth / 2) / mapData.cellSize);
+
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      if (
+        row < 0 ||
+        row >= mapData.depth ||
+        col < 0 ||
+        col >= mapData.width ||
+        mapData.grid[row][col].terrain === 'obstacle'
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function getHeightAt(mapData: MapData, x: number, z: number): number {
