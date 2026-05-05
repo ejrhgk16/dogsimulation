@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateMap } from '../../src/services/mapService';
+import { generateMap, getCellAt, isObstacleAt, getHeightAt } from '../../src/services/mapService';
 import type { MapConfig } from '../../src/config/mapConfig';
 
 const baseConfig: MapConfig = {
@@ -185,5 +185,69 @@ describe('generateMap', () => {
       }
     }
     expect(count).toBeLessThanOrEqual(Math.round(total * 0.15));
+  });
+});
+
+describe('getCellAt', () => {
+  it('returns cell at world coordinate center', () => {
+    const map = generateMap({ ...baseConfig, width: 10, depth: 10, cellSize: 1 });
+    // world origin maps to center of grid (row=5, col=5)
+    const cell = getCellAt(map, 0, 0);
+    expect(cell).not.toBeNull();
+    expect(cell!.x).toBe(5);
+    expect(cell!.z).toBe(5);
+  });
+
+  it('returns null for out-of-bounds coordinates', () => {
+    const map = generateMap({ ...baseConfig, width: 10, depth: 10, cellSize: 1 });
+    expect(getCellAt(map, 100, 0)).toBeNull();
+    expect(getCellAt(map, 0, 100)).toBeNull();
+    expect(getCellAt(map, -100, 0)).toBeNull();
+    expect(getCellAt(map, 0, -100)).toBeNull();
+  });
+
+  it('returns correct cell for known negative coordinate', () => {
+    const map = generateMap({ ...baseConfig, width: 10, depth: 10, cellSize: 1 });
+    // x=-4.5, z=-4.5 → col=floor((-4.5+5)/1)=0, row=floor((-4.5+5)/1)=0
+    const cell = getCellAt(map, -4.5, -4.5);
+    expect(cell).toBe(map.grid[0][0]);
+  });
+
+  it('returns correct cell for known positive coordinate', () => {
+    const map = generateMap({ ...baseConfig, width: 10, depth: 10, cellSize: 1 });
+    // x=4.5, z=4.5 → col=floor((4.5+5)/1)=9, row=floor((4.5+5)/1)=9
+    const cell = getCellAt(map, 4.5, 4.5);
+    expect(cell).toBe(map.grid[9][9]);
+  });
+});
+
+describe('isObstacleAt', () => {
+  it('returns true for obstacle cell', () => {
+    const map = generateMap({ ...baseConfig, obstacleRatio: 1 });
+    expect(isObstacleAt(map, 0, 0)).toBe(true);
+  });
+
+  it('returns false for non-obstacle cell', () => {
+    const map = generateMap({ ...baseConfig, obstacleRatio: 0 });
+    expect(isObstacleAt(map, 0, 0)).toBe(false);
+  });
+
+  it('returns true for out-of-bounds (wall treatment)', () => {
+    const map = generateMap(baseConfig);
+    expect(isObstacleAt(map, 100, 0)).toBe(true);
+  });
+});
+
+describe('getHeightAt', () => {
+  it('returns cell height at coordinate', () => {
+    const map = generateMap({ ...baseConfig, baseHeight: 5, obstacleRatio: 0, seed: 1 });
+    const cell = getCellAt(map, 0, 0);
+    expect(getHeightAt(map, 0, 0)).toBe(cell!.height);
+  });
+
+  it('returns 0 for out-of-bounds coordinates', () => {
+    const map = generateMap(baseConfig);
+    expect(getHeightAt(map, 100, 0)).toBe(0);
+    expect(getHeightAt(map, 0, 100)).toBe(0);
   });
 });

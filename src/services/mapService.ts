@@ -127,3 +127,26 @@ export function generateMap(config: MapConfig): MapData {
 
   return { grid, cellSize, width, depth };
 }
+
+export function getCellAt(mapData: MapData, x: number, z: number): MapCell | null {
+  const mapWidth = mapData.width * mapData.cellSize;
+  const mapDepth = mapData.depth * mapData.cellSize;
+  const col = Math.floor((x + mapWidth / 2) / mapData.cellSize);
+  const row = Math.floor((z + mapDepth / 2) / mapData.cellSize);
+  if (row < 0 || row >= mapData.depth || col < 0 || col >= mapData.width) {
+    return null;
+  }
+  return mapData.grid[row][col];
+}
+
+export function isObstacleAt(mapData: MapData, x: number, z: number): boolean {
+  const cell = getCellAt(mapData, x, z);
+  if (cell === null) return true;
+  return cell.terrain === 'obstacle';
+}
+
+export function getHeightAt(mapData: MapData, x: number, z: number): number {
+  const cell = getCellAt(mapData, x, z);
+  if (cell === null) return 0;
+  return cell.height;
+}

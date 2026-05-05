@@ -40,13 +40,14 @@ export function createScentVisualizer(
       const height = config.maxHeight * (1 - ratio) + config.minHeight * ratio;
 
       tempObject.position.set(point.x, height, point.y);
-      const scale = config.pointSize * (1 - ratio * 0.5);
+      const scale = config.pointSize * (1 - ratio * 0.85);
       tempObject.scale.set(scale, scale, scale);
       tempObject.updateMatrix();
       mesh.setMatrixAt(i, tempObject.matrix);
 
       const colorHex = config.ownerColorMap[point.ownerType] ?? 0xffffff;
       tempColor.setHex(colorHex);
+      tempColor.multiplyScalar(1 - ratio * 0.6);
       mesh.setColorAt(i, tempColor);
     }
 

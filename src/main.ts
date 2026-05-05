@@ -38,7 +38,7 @@ function animate() {
   const dt = (now - lastTime) / 1000;
   lastTime = now;
 
-  moveOwner(owner, keys, dt);
+  moveOwner(owner, keys, dt, mapData);
 
   const profile = getOwnerProfile(owner.ownerType);
   emitTrailPoint(

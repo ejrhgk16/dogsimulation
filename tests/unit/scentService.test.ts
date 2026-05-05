@@ -227,7 +227,7 @@ describe('sampleScentAt', () => {
   it('skips points with age > maxTrailAge', () => {
     const state = createEmptyState();
     state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0 }));
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 20000, DEFAULT_SCENT_PARAMS);
+    const signal = sampleScentAt(state, { x: 0, y: 0 }, 30000, DEFAULT_SCENT_PARAMS);
     expect(signal).toBe(0);
   });
 

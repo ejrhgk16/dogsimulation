@@ -48,7 +48,7 @@ describe('sceneRuntime scent integration', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // An expired point: t=0, now=20000 → age=20000 > DEFAULT maxTrailAge=10000
+    // An expired point: t=0, now=30000 → age=30000 > DEFAULT maxTrailAge=25000
     scentState.trailPoints.push({
       ownerId: 'test',
       ownerType: 'dog',
@@ -58,7 +58,7 @@ describe('sceneRuntime scent integration', () => {
       baseIntensity: 1.0
     });
     const runtime = createSceneRuntime(canvas, mapData, scentState);
-    runtime.updateScent(20000);
+    runtime.updateScent(30000);
     expect(scentState.trailPoints).toHaveLength(0);
   });
 
@@ -66,7 +66,7 @@ describe('sceneRuntime scent integration', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // Fresh point: t=9000, now=10000 → age=1000 <= maxTrailAge=10000
+    // Fresh point: t=9000, now=10000 → age=1000 <= maxTrailAge=25000
     scentState.trailPoints.push({
       ownerId: 'test',
       ownerType: 'dog',

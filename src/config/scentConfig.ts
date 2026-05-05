@@ -1,8 +1,8 @@
 import type { OwnerScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
 
 export const DEFAULT_SCENT_PARAMS: ScentParams = {
-  maxTrailAge: 10000,
-  tauDecay: 3000,
+  maxTrailAge: 25000,
+  tauDecay: 8000,
   scentSpreadSigma: 2.0
 };
 
@@ -34,9 +34,9 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
 };
 
 export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
-  pointSize: 0.15,
-  minHeight: 0.1,
-  maxHeight: 0.6,
+  pointSize: 0.18,
+  minHeight: 0.05,
+  maxHeight: 0.7,
   ownerColorMap: {
     dog: 0xff9933,
     cow: 0x44aa44,
