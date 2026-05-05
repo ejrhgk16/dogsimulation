@@ -16,11 +16,13 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData, ObstacleShape } from '../types/map';
 import type { ScentWorldState } from '../types/scent';
+import type { OwnerState } from '../types/owner';
 import {
   OWNER_PROFILES,
   DEFAULT_SCENT_PARAMS,
   DEFAULT_SCENT_VISUAL_CONFIG
 } from '../config/scentConfig';
+import { OWNER_TYPES } from '../config/ownerConfig';
 import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
@@ -30,6 +32,7 @@ export interface SceneRuntime {
   start: () => void;
   stop: () => void;
   updateScent: (now: number) => void;
+  updateOwner: (owner: OwnerState) => void;
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -88,7 +91,8 @@ function createTerrainGeometry(mapData: MapData): BufferGeometry {
 export function createSceneRuntime(
   canvas: HTMLCanvasElement,
   mapData: MapData,
-  scentState?: ScentWorldState
+  scentState?: ScentWorldState,
+  owner?: OwnerState
 ): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -174,6 +178,17 @@ export function createSceneRuntime(
     scene.add(mesh);
   }
 
+  // Owner box mesh
+  let ownerMesh: Mesh | null = null;
+  if (owner) {
+    const geo = new BoxGeometry(1, 1, 1);
+    const color = OWNER_TYPES[owner.ownerType] ?? 0xff9933;
+    const mat = new MeshStandardMaterial({ color });
+    ownerMesh = new Mesh(geo, mat);
+    ownerMesh.position.set(owner.x, 0.5, owner.y);
+    scene.add(ownerMesh);
+  }
+
   // Scent visualizer — created only if scentState is provided
   let scentVisualizer: ScentVisualizer | null = null;
   if (scentState) {
@@ -184,6 +199,12 @@ export function createSceneRuntime(
     if (!scentState || !scentVisualizer) return;
     trimExpiredTrails(scentState, now, DEFAULT_SCENT_PARAMS);
     scentVisualizer.update(scentState.trailPoints, now);
+  };
+
+  const updateOwner = (o: OwnerState): void => {
+    if (ownerMesh) {
+      ownerMesh.position.set(o.x, 0.5, o.y);
+    }
   };
 
   let animationFrameId: number | null = null;
@@ -227,6 +248,7 @@ export function createSceneRuntime(
     resize,
     start,
     stop,
-    updateScent
+    updateScent,
+    updateOwner
   };
 }

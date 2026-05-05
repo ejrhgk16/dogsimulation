@@ -1,17 +1,19 @@
 import type { ScentWorldState, ScentPoint, OwnerScentProfile, ScentParams } from '../types/scent';
 
-/**
- * Attempt to emit a scent trail point for an owner.
- * - Looks up or creates an EmitAccumulator for the owner
- * - Accumulates distance traveled since last emission
- * - Emits a ScentPoint when distance threshold is met and probability passes
- */
+function randomGaussian(): number {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
 export function emitTrailPoint(
   state: ScentWorldState,
   ownerId: string,
   ownerType: string,
   ownerX: number,
   ownerY: number,
+  directionX: number,
+  directionY: number,
   now: number,
   profile: OwnerScentProfile
 ): void {
@@ -42,11 +44,22 @@ export function emitTrailPoint(
     return;
   }
 
+  let px = ownerX;
+  let py = ownerY;
+
+  if (directionX !== 0 || directionY !== 0) {
+    const perpX = -directionY;
+    const perpY = directionX;
+    const offset = randomGaussian() * profile.lateralSpreadSigma;
+    px = ownerX + perpX * offset;
+    py = ownerY + perpY * offset;
+  }
+
   const point: ScentPoint = {
     ownerId,
     ownerType,
-    x: ownerX,
-    y: ownerY,
+    x: px,
+    y: py,
     t: now,
     baseIntensity: profile.baseIntensity
   };

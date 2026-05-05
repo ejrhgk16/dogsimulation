@@ -28,6 +28,7 @@ export interface OwnerScentProfile extends ScentParams {
   baseIntensity: number;
   emitSpacing: number;
   emitProbability: number;
+  lateralSpreadSigma: number;
 }
 
 export interface ScentVisualConfig {

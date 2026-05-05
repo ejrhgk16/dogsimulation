@@ -74,7 +74,7 @@ export function buildNextAction(s) {
   if (!task) return { kind: 'done', message: `${s.planDir} 모든 task 완료.` };
   return {
     kind: 'delegate',
-    agent: 'Worker',
+    agent: 'worker',
     taskName: task.name,
     prompt: [
       `docs/plans/${s.planDir}/index.json 에서 이전 task 완료 요약을 확인한 후,`,

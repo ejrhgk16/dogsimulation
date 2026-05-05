@@ -26,11 +26,12 @@ describe('emitTrailPoint', () => {
 
   it('creates accumulator and does not emit on first call (no prior position)', () => {
     const state = createEmptyState();
-    emitTrailPoint(state, 'owner-1', 'dog', 10, 20, 100, {
+    emitTrailPoint(state, 'owner-1', 'dog', 10, 20, 0, 0, 100, {
       ownerType: 'dog',
       baseIntensity: 1.0,
       emitSpacing: 0.5,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     });
     expect(state.trailPoints).toHaveLength(0);
@@ -48,10 +49,11 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 5.0,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 1, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 1, 0, 0, 0, 101, profile);
     expect(state.trailPoints).toHaveLength(0);
     expect(state.emitters.get('o1')!.distanceSinceLast).toBeCloseTo(1);
   });
@@ -63,10 +65,11 @@ describe('emitTrailPoint', () => {
       baseIntensity: 2.0,
       emitSpacing: 3.0,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 4, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 4, 0, 0, 0, 101, profile);
     expect(state.trailPoints).toHaveLength(1);
     expect(state.trailPoints[0].x).toBe(4);
     expect(state.trailPoints[0].y).toBe(0);
@@ -83,10 +86,11 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 3.0,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 4, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 4, 0, 0, 0, 101, profile);
     expect(state.emitters.get('o1')!.distanceSinceLast).toBe(0);
   });
 
@@ -97,10 +101,11 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 3.0,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 4, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 4, 0, 0, 0, 101, profile);
     const acc = state.emitters.get('o1')!;
     expect(acc.lastX).toBe(4);
     expect(acc.lastY).toBe(0);
@@ -114,10 +119,11 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 1.0,
       emitProbability: 0.3,
+      lateralSpreadSigma: 1.0,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 5, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 5, 0, 0, 0, 101, profile);
     expect(state.trailPoints).toHaveLength(0);
     expect(state.emitters.get('o1')!.distanceSinceLast).toBe(0);
   });
@@ -130,10 +136,11 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 1.0,
       emitProbability: 0.5,
+      lateralSpreadSigma: 1.0,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 5, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 5, 0, 0, 0, 101, profile);
     expect(state.trailPoints).toHaveLength(1);
   });
 
@@ -144,19 +151,20 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 5.0,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     };
     // Acc created at (0,0). distanceSinceLast=0
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
     // dist from (0,0)->(2,0)=2, acc=2 < 5, lastX/lastY still (0,0)
-    emitTrailPoint(state, 'o1', 'dog', 2, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 2, 0, 0, 0, 101, profile);
     expect(state.trailPoints).toHaveLength(0);
     // dist from (0,0)->(4,0)=4, acc=2+4=6 >= 5 → emit at x=4
-    emitTrailPoint(state, 'o1', 'dog', 4, 0, 102, profile);
+    emitTrailPoint(state, 'o1', 'dog', 4, 0, 0, 0, 102, profile);
     expect(state.trailPoints).toHaveLength(1);
     // After emit: lastX=4, lastY=0, acc=0
     // dist from (4,0)->(7,0)=3, acc=3 < 5
-    emitTrailPoint(state, 'o1', 'dog', 7, 0, 103, profile);
+    emitTrailPoint(state, 'o1', 'dog', 7, 0, 0, 0, 103, profile);
     expect(state.trailPoints).toHaveLength(1);
   });
 
@@ -167,12 +175,13 @@ describe('emitTrailPoint', () => {
       baseIntensity: 1.0,
       emitSpacing: 2.0,
       emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
       ...DEFAULT_SCENT_PARAMS
     };
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o2', 'cow', 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 3, 0, 101, profile);
-    emitTrailPoint(state, 'o2', 'cow', 3, 0, 101, profile);
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o2', 'cow', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 3, 0, 0, 0, 101, profile);
+    emitTrailPoint(state, 'o2', 'cow', 3, 0, 0, 0, 101, profile);
     expect(state.trailPoints).toHaveLength(2);
     expect(state.trailPoints[0].ownerId).toBe('o1');
     expect(state.trailPoints[1].ownerId).toBe('o2');

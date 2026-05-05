@@ -1,9 +1,11 @@
 import { defaultSceneConfig } from './config/sceneConfig';
 import { generateMap } from './services/mapService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
-import { getOwnerProfile } from './config/scentConfig';
-import { emitTrailPoint } from './services/scentService';
 import type { ScentWorldState } from './types/scent';
+import type { OwnerState } from './types/owner';
+import { createOwner, moveOwner } from './services/ownerService';
+import { emitTrailPoint } from './services/scentService';
+import { getOwnerProfile } from './config/scentConfig';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -15,46 +17,44 @@ app.appendChild(canvas);
 
 const mapData = generateMap(defaultSceneConfig.mapConfig);
 
-// 임시 테스트용 ScentWorldState (실제 Owner 구현 시 교체)
 const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-const runtime = createSceneRuntime(canvas, mapData, scentState);
+
+const owner: OwnerState = createOwner('owner-1', 'dog', 0, 0);
+
+const keys = new Set<string>();
+window.addEventListener('keydown', (e) => keys.add(e.key));
+window.addEventListener('keyup', (e) => keys.delete(e.key));
+
+const runtime = createSceneRuntime(canvas, mapData, scentState, owner);
 
 window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
 
-// ============================================
-// 임시 테스트용 Owner 움직임 — scent trail 시각화 확인
-// 실제 Owner 구현 시 제거
-// ============================================
-const cowProfile = getOwnerProfile('cow');
-const pigProfile = getOwnerProfile('pig');
-let angle = 0;
-
-setInterval(() => {
-  angle += 0.02;
+let lastTime = performance.now();
+function animate() {
   const now = performance.now();
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
 
-  // Cow: larger circle
+  moveOwner(owner, keys, dt);
+
+  const profile = getOwnerProfile(owner.ownerType);
   emitTrailPoint(
     scentState,
-    'cow-1',
-    'cow',
-    Math.cos(angle) * 8,
-    Math.sin(angle) * 8,
+    owner.id,
+    owner.ownerType,
+    owner.x,
+    owner.y,
+    owner.directionX,
+    owner.directionY,
     now,
-    cowProfile
+    profile
   );
 
-  // Pig: smaller, faster circle
-  emitTrailPoint(
-    scentState,
-    'pig-1',
-    'pig',
-    Math.cos(angle * 1.5) * 4,
-    Math.sin(angle * 1.5) * 4,
-    now,
-    pigProfile
-  );
-}, 50);
+  runtime.updateOwner(owner);
+
+  requestAnimationFrame(animate);
+}
+animate();

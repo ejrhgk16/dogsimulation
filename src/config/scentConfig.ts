@@ -12,21 +12,24 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
     ownerType: 'dog',
     baseIntensity: 1.0,
     emitSpacing: 0.5,
-    emitProbability: 0.8
+    emitProbability: 0.8,
+    lateralSpreadSigma: 0.3
   },
   cow: {
     ...DEFAULT_SCENT_PARAMS,
     ownerType: 'cow',
     baseIntensity: 1.5,
     emitSpacing: 1.0,
-    emitProbability: 0.6
+    emitProbability: 0.6,
+    lateralSpreadSigma: 0.5
   },
   pig: {
     ...DEFAULT_SCENT_PARAMS,
     ownerType: 'pig',
     baseIntensity: 0.8,
     emitSpacing: 0.3,
-    emitProbability: 0.9
+    emitProbability: 0.9,
+    lateralSpreadSigma: 0.2
   }
 };
 
@@ -51,6 +54,7 @@ export function getOwnerProfile(ownerType: string): OwnerScentProfile {
     ownerType,
     baseIntensity: 1.0,
     emitSpacing: 1.0,
-    emitProbability: 0.5
+    emitProbability: 0.5,
+    lateralSpreadSigma: 0.4
   };
 }

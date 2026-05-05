@@ -64,7 +64,7 @@ describe('buildNextAction', () => {
     expect(buildNextAction(s)).toEqual(
       expect.objectContaining({
         kind: 'delegate',
-        agent: 'Worker',
+        agent: 'worker',
         taskName: 'task-2-core'
       })
     );
@@ -110,7 +110,7 @@ describe('runCli', () => {
     const d = mk(),
       m = so();
     expect(runCli(['next', 'plan-1'], { rootDir: d, ...m })).toBe(0);
-    expect(m.out()).toContain('Agent: Worker');
+    expect(m.out()).toContain('Agent: worker');
   });
   it('complete', () => {
     const d = mk(),

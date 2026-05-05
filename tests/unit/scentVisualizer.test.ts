@@ -22,7 +22,8 @@ const mockProfileMap: Record<string, OwnerScentProfile> = {
     scentSpreadSigma: 2.0,
     baseIntensity: 1.0,
     emitSpacing: 0.5,
-    emitProbability: 0.8
+    emitProbability: 0.8,
+    lateralSpreadSigma: 0.3
   }
 };
 
