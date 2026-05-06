@@ -4,7 +4,7 @@ import { createSceneRuntime } from './runtime/sceneRuntime';
 import type { ScentWorldState } from './types/scent';
 import type { OwnerState } from './types/owner';
 import { createOwner, moveOwner } from './services/ownerService';
-import { emitTrailPoint } from './services/scentService';
+import { emitTrailPoint, emitTrailPointOnMove } from './services/scentService';
 import { getOwnerProfile } from './config/scentConfig';
 import { OWNER_HEIGHT_OFFSET } from './config/ownerConfig';
 
@@ -101,8 +101,19 @@ function animate() {
     owner.ownerType,
     owner.x,
     owner.y,
-    owner.directionX,
-    owner.directionY,
+    owner.height,
+    dt * 1000, // dt는 초 단위이므로 ms로 변환
+    now,
+    profile
+  );
+
+  emitTrailPointOnMove(
+    scentState,
+    owner.id,
+    owner.ownerType,
+    owner.x,
+    owner.y,
+    owner.height,
     now,
     profile
   );

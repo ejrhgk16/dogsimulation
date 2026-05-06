@@ -24,6 +24,11 @@
       "dir": "plan-13-per-point-scent-decay",
       "status": "completed",
       "completed_at": "2026-05-06T11:12:06+0900"
+    },
+    {
+      "dir": "plan-14-position-based-scent",
+      "status": "completed",
+      "completed_at": "2026-05-06T12:05:42+0900"
     }
   ]
 }

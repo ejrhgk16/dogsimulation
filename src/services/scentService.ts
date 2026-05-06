@@ -12,62 +12,128 @@ export function emitTrailPoint(
   ownerType: string,
   ownerX: number,
   ownerY: number,
-  directionX: number,
-  directionY: number,
+  ownerHeight: number,
+  dt: number,
   now: number,
   profile: OwnerScentProfile
 ): void {
   let acc = state.emitters.get(ownerId);
   if (!acc) {
     acc = {
+      timeSinceLastEmit: 0,
       distanceSinceLast: 0,
       ownerId,
       ownerType,
       lastX: ownerX,
-      lastY: ownerY
+      lastY: ownerY,
+      lastHeight: ownerHeight
     };
     state.emitters.set(ownerId, acc);
   }
 
-  const dx = ownerX - acc.lastX;
-  const dy = ownerY - acc.lastY;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  acc.distanceSinceLast += dist;
+  acc.timeSinceLastEmit += dt;
 
-  if (acc.distanceSinceLast < profile.emitSpacing) {
+  if (acc.timeSinceLastEmit < profile.emitInterval) {
     return;
   }
 
-  acc.distanceSinceLast = 0;
+  acc.timeSinceLastEmit = 0;
 
   if (Math.random() > profile.emitProbability) {
     return;
   }
 
-  let px = ownerX;
-  let py = ownerY;
-
-  if (directionX !== 0 || directionY !== 0) {
-    const perpX = -directionY;
-    const perpY = directionX;
-    const offset = randomGaussian() * profile.lateralSpreadSigma;
-    px = ownerX + perpX * offset;
-    py = ownerY + perpY * offset;
-  }
+  // 원형 2D 가우시안 확산 (owner 중심, 방향 무관)
+  const angle = Math.random() * 2 * Math.PI;
+  const radius = Math.abs(randomGaussian()) * profile.spreadRadius;
+  const px = ownerX + Math.cos(angle) * radius;
+  const py = ownerY + Math.sin(angle) * radius;
 
   const point: ScentPoint = {
     ownerId,
     ownerType,
     x: px,
     y: py,
+    height: ownerHeight,
     t: now,
     baseIntensity: profile.baseIntensity,
-    tauDecay: profile.tauDecayMin! + Math.random() * (profile.tauDecayMax! - profile.tauDecayMin!)
+    tauDecay: profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)
   };
   state.trailPoints.push(point);
 
   acc.lastX = ownerX;
   acc.lastY = ownerY;
+  acc.lastHeight = ownerHeight;
+}
+
+export function emitTrailPointOnMove(
+  state: ScentWorldState,
+  ownerId: string,
+  ownerType: string,
+  ownerX: number,
+  ownerY: number,
+  ownerHeight: number,
+  now: number,
+  profile: OwnerScentProfile
+): void {
+  let acc = state.emitters.get(ownerId);
+  if (!acc) {
+    acc = {
+      timeSinceLastEmit: 0,
+      distanceSinceLast: 0,
+      ownerId,
+      ownerType,
+      lastX: ownerX,
+      lastY: ownerY,
+      lastHeight: ownerHeight
+    };
+    state.emitters.set(ownerId, acc);
+  }
+
+  // 거리 누적
+  const dx = ownerX - acc.lastX;
+  const dy = ownerY - acc.lastY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  acc.distanceSinceLast += dist;
+
+  // 거리 임계치 미달 시 방출하지 않음
+  if (acc.distanceSinceLast < profile.emitSpacing) {
+    acc.lastX = ownerX;
+    acc.lastY = ownerY;
+    acc.lastHeight = ownerHeight;
+    return;
+  }
+
+  acc.distanceSinceLast = 0;
+
+  if (Math.random() > profile.emitProbability) {
+    acc.lastX = ownerX;
+    acc.lastY = ownerY;
+    acc.lastHeight = ownerHeight;
+    return;
+  }
+
+  // 원형 2D 가우시안 확산 (위치 중심, 방향 무관)
+  const angle = Math.random() * 2 * Math.PI;
+  const radius = Math.abs(randomGaussian()) * profile.spreadRadius;
+  const px = ownerX + Math.cos(angle) * radius;
+  const py = ownerY + Math.sin(angle) * radius;
+
+  const point: ScentPoint = {
+    ownerId,
+    ownerType,
+    x: px,
+    y: py,
+    height: ownerHeight,
+    t: now,
+    baseIntensity: profile.baseIntensity,
+    tauDecay: profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)
+  };
+  state.trailPoints.push(point);
+
+  acc.lastX = ownerX;
+  acc.lastY = ownerY;
+  acc.lastHeight = ownerHeight;
 }
 
 /**

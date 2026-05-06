@@ -18,6 +18,8 @@ import { createSceneRuntime } from '../../src/runtime/sceneRuntime';
 import type { ScentWorldState } from '../../src/types/scent';
 import { generateMap } from '../../src/services/mapService';
 import { defaultSceneConfig } from '../../src/config/sceneConfig';
+import { emitTrailPointOnMove } from '../../src/services/scentService';
+import { getOwnerProfile } from '../../src/config/scentConfig';
 
 describe('sceneRuntime scent integration', () => {
   it('returns updateScent function when no scentState provided', () => {
@@ -54,6 +56,7 @@ describe('sceneRuntime scent integration', () => {
       ownerType: 'dog',
       x: 0,
       y: 0,
+      height: 0,
       t: 0,
       baseIntensity: 1.0
     });
@@ -72,6 +75,7 @@ describe('sceneRuntime scent integration', () => {
       ownerType: 'dog',
       x: 0,
       y: 0,
+      height: 0,
       t: 9000,
       baseIntensity: 1.0
     });
@@ -90,6 +94,7 @@ describe('sceneRuntime scent integration', () => {
       ownerType: 'dog',
       x: 0,
       y: 0,
+      height: 0,
       t: 9000,
       baseIntensity: 1.0,
       tauDecay: 12000
@@ -106,6 +111,17 @@ describe('sceneRuntime scent integration', () => {
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
     const runtime = createSceneRuntime(canvas, mapData, scentState);
     expect(() => runtime.updateScent(5000)).not.toThrow();
+  });
+
+  it('emitTrailPointOnMove is importable and callable', () => {
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    const profile = getOwnerProfile('dog');
+    expect(() =>
+      emitTrailPointOnMove(scentState, 'o1', 'dog', 0, 0, 0, 100, profile)
+    ).not.toThrow();
+    expect(scentState.emitters.has('o1')).toBe(true);
+    // distanceSinceLast initialized to 0
+    expect(scentState.emitters.get('o1')!.distanceSinceLast).toBe(0);
   });
 });
 

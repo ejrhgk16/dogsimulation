@@ -37,8 +37,8 @@ export function createScentVisualizer(
       const decayFactor = Math.exp(-age / tauDecay);
       const ratio = 1 - decayFactor;
 
-      // Height lerp: age 0 = maxHeight, age ≈ maxTrailAge = minHeight
-      const height = config.maxHeight * (1 - ratio) + config.minHeight * ratio;
+      // Height lerp: age 0 = point.height, age ≈ maxTrailAge = minHeight
+      const height = point.height * (1 - ratio) + config.minHeight * ratio;
 
       tempObject.position.set(point.x, height, point.y);
       const scale = config.pointSize * (1 - ratio * 0.85);

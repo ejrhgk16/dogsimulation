@@ -5,7 +5,8 @@ export const DEFAULT_SCENT_PARAMS: ScentParams = {
   tauDecay: 8000,
   scentSpreadSigma: 2.0,
   tauDecayMin: 6000,
-  tauDecayMax: 10000
+  tauDecayMax: 10000,
+  emitSpacing: 1.0
 };
 
 export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
@@ -13,9 +14,10 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
     ...DEFAULT_SCENT_PARAMS,
     ownerType: 'dog',
     baseIntensity: 1.0,
-    emitSpacing: 0.5,
+    emitInterval: 200,
     emitProbability: 0.8,
-    lateralSpreadSigma: 0.3,
+    spreadRadius: 0.75,
+    emitSpacing: 0.5,
     tauDecayMin: 6000,
     tauDecayMax: 10000
   },
@@ -23,9 +25,10 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
     ...DEFAULT_SCENT_PARAMS,
     ownerType: 'cow',
     baseIntensity: 1.5,
-    emitSpacing: 1.0,
+    emitInterval: 300,
     emitProbability: 0.6,
-    lateralSpreadSigma: 0.5,
+    spreadRadius: 2.0,
+    emitSpacing: 1.0,
     tauDecayMin: 8000,
     tauDecayMax: 14000
   },
@@ -33,9 +36,10 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
     ...DEFAULT_SCENT_PARAMS,
     ownerType: 'pig',
     baseIntensity: 0.8,
-    emitSpacing: 0.3,
+    emitInterval: 150,
     emitProbability: 0.9,
-    lateralSpreadSigma: 0.2,
+    spreadRadius: 1.2,
+    emitSpacing: 0.3,
     tauDecayMin: 4000,
     tauDecayMax: 8000
   }
@@ -44,7 +48,6 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
 export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
   pointSize: 0.18,
   minHeight: 0.05,
-  maxHeight: 0.7,
   ownerColorMap: {
     dog: 0xff9933,
     cow: 0x44aa44,
@@ -61,9 +64,10 @@ export function getOwnerProfile(ownerType: string): OwnerScentProfile {
     ...DEFAULT_SCENT_PARAMS,
     ownerType,
     baseIntensity: 1.0,
-    emitSpacing: 1.0,
+    emitInterval: 250,
     emitProbability: 0.5,
-    lateralSpreadSigma: 0.4,
+    spreadRadius: 0.75,
+    emitSpacing: DEFAULT_SCENT_PARAMS.emitSpacing,
     tauDecayMin: DEFAULT_SCENT_PARAMS.tauDecayMin,
     tauDecayMax: DEFAULT_SCENT_PARAMS.tauDecayMax
   };
