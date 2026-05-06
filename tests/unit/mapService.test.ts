@@ -239,15 +239,88 @@ describe('isObstacleAt', () => {
 });
 
 describe('getHeightAt', () => {
-  it('returns cell height at coordinate', () => {
-    const map = generateMap({ ...baseConfig, baseHeight: 5, obstacleRatio: 0, seed: 1 });
-    const cell = getCellAt(map, 0, 0);
-    expect(getHeightAt(map, 0, 0)).toBe(cell!.height);
+  it('flat terrain returns baseHeight everywhere', () => {
+    const map = generateMap({ ...baseConfig, baseHeight: 5, hillHeight: 0, obstacleRatio: 0 });
+    // At various positions, interpolation should give baseHeight
+    expect(getHeightAt(map, 0, 0)).toBe(5);
+    expect(getHeightAt(map, -3.2, 1.7)).toBe(5);
+    expect(getHeightAt(map, 4.5, -4.5)).toBe(5);
   });
 
   it('returns 0 for out-of-bounds coordinates', () => {
     const map = generateMap(baseConfig);
     expect(getHeightAt(map, 100, 0)).toBe(0);
     expect(getHeightAt(map, 0, 100)).toBe(0);
+  });
+
+  it('interpolation at vertex equals average of adjacent cell heights', () => {
+    const map = generateMap({
+      ...baseConfig,
+      width: 3,
+      depth: 3,
+      cellSize: 2,
+      baseHeight: 0,
+      hillHeight: 0,
+      obstacleRatio: 0
+    });
+    // Set known heights for 4 cells around vertex (1,1)
+    map.grid[0][0].height = 10;
+    map.grid[0][1].height = 20;
+    map.grid[1][0].height = 30;
+    map.grid[1][1].height = 40;
+    // Vertex (1,1) world: x = 1*2 - 3 = -1, z = 1*2 - 3 = -1
+    // Vertex height = (10+20+30+40)/4 = 25
+    expect(getHeightAt(map, -1, -1)).toBe(25);
+    // Corner vertex (0,0) world: x = -3, z = -3
+    // Only adjacent cell: grid[0][0].height = 10
+    expect(getHeightAt(map, -3, -3)).toBe(10);
+  });
+
+  it('interpolation at cell center is close to cell height on varied terrain', () => {
+    const map = generateMap({
+      ...baseConfig,
+      width: 3,
+      depth: 3,
+      cellSize: 2,
+      baseHeight: 10,
+      hillHeight: 0,
+      obstacleRatio: 0
+    });
+    // Set controlled heights
+    map.grid[0][0].height = 10;
+    map.grid[0][1].height = 12;
+    map.grid[1][0].height = 14;
+    map.grid[1][1].height = 16;
+    // Cell (0,0) center: gx=0.5, gz=0.5
+    // world: x = 0.5*2 - 3 = -2, z = 0.5*2 - 3 = -2
+    // The bilinear interpolation at this point should be close to grid[0][0].height = 10
+    const h = getHeightAt(map, -2, -2);
+    // Vertex heights: v(0,0)=10, v(0,1)=(10+12)/2=11, v(1,0)=(10+14)/2=12, v(1,1)=(10+12+14+16)/4=13
+    // top = lerp(10, 11, 0.5) = 10.5
+    // bottom = lerp(12, 13, 0.5) = 12.5
+    // h = lerp(10.5, 12.5, 0.5) = 11.5
+    expect(h).toBe(11.5);
+  });
+
+  it('interpolation is continuous at cell boundaries', () => {
+    const map = generateMap({
+      ...baseConfig,
+      width: 3,
+      depth: 3,
+      cellSize: 2,
+      baseHeight: 0,
+      hillHeight: 5,
+      obstacleRatio: 0,
+      seed: 42
+    });
+    const mapWidth = map.width * map.cellSize;
+    const mapDepth = map.depth * map.cellSize;
+    // Boundary between cell (0,0) and cell (0,1): gx = 1
+    const z = 0.5 * map.cellSize - mapDepth / 2; // gz = 0.5 (center between rows)
+    const boundaryX = 1 * map.cellSize - mapWidth / 2;
+    const left = getHeightAt(map, boundaryX - 1e-8, z);
+    const right = getHeightAt(map, boundaryX + 1e-8, z);
+    // Values should match to high precision (floating point difference < 1e-7)
+    expect(Math.abs(left - right)).toBeLessThan(1e-7);
   });
 });

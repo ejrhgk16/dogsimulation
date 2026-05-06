@@ -175,8 +175,49 @@ export function isObstacleInFootprint(
   return false;
 }
 
+function getVertexHeight(mapData: MapData, vRow: number, vCol: number): number {
+  const { grid, width, depth } = mapData;
+  let h = 0;
+  let count = 0;
+  if (vRow > 0 && vCol > 0) {
+    h += grid[vRow - 1][vCol - 1].height;
+    count++;
+  }
+  if (vRow > 0 && vCol < width) {
+    h += grid[vRow - 1][vCol].height;
+    count++;
+  }
+  if (vRow < depth && vCol > 0) {
+    h += grid[vRow][vCol - 1].height;
+    count++;
+  }
+  if (vRow < depth && vCol < width) {
+    h += grid[vRow][vCol].height;
+    count++;
+  }
+  return count > 0 ? h / count : 0;
+}
+
 export function getHeightAt(mapData: MapData, x: number, z: number): number {
-  const cell = getCellAt(mapData, x, z);
-  if (cell === null) return 0;
-  return cell.height;
+  const mapWidth = mapData.width * mapData.cellSize;
+  const mapDepth = mapData.depth * mapData.cellSize;
+
+  const gx = (x + mapWidth / 2) / mapData.cellSize;
+  const gz = (z + mapDepth / 2) / mapData.cellSize;
+
+  if (gx < 0 || gx >= mapData.width || gz < 0 || gz >= mapData.depth) return 0;
+
+  const gCol = Math.floor(gx);
+  const gRow = Math.floor(gz);
+  const fx = gx - gCol;
+  const fz = gz - gRow;
+
+  const h00 = getVertexHeight(mapData, gRow, gCol);
+  const h10 = getVertexHeight(mapData, gRow, gCol + 1);
+  const h01 = getVertexHeight(mapData, gRow + 1, gCol);
+  const h11 = getVertexHeight(mapData, gRow + 1, gCol + 1);
+
+  const top = h00 + (h10 - h00) * fx;
+  const bottom = h01 + (h11 - h01) * fx;
+  return top + (bottom - top) * fz;
 }

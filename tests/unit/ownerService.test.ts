@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createOwner, moveOwner } from '../../src/services/ownerService';
+import { getHeightAt } from '../../src/services/mapService';
 import type { MapData, MapCell } from '../../src/types/map';
 import type { OwnerState } from '../../src/types/owner';
 import { OWNER_SPEED, OWNER_HEIGHT_OFFSET } from '../../src/config/ownerConfig';
@@ -47,7 +48,11 @@ describe('createOwner', () => {
 
   it('initializes height from terrain height plus offset', () => {
     const map = createFlatMap();
+    // Set all 4 cells to same height so bilinear interpolation is uniform
     map.grid[0][0] = { ...map.grid[0][0], height: 3 };
+    map.grid[0][1] = { ...map.grid[0][1], height: 3 };
+    map.grid[1][0] = { ...map.grid[1][0], height: 3 };
+    map.grid[1][1] = { ...map.grid[1][1], height: 3 };
     const o = createOwner('test', 'dog', -5, -5, map);
     expect(o.height).toBeCloseTo(3 + OWNER_HEIGHT_OFFSET);
   });
@@ -206,11 +211,13 @@ describe('moveOwner — height speed adjustment', () => {
 
   it('reduces speed when moving to a higher cell', () => {
     const map = createFlatMap();
-    // grid[0][1] has height=2, not obstacle
-    map.grid[0][1] = { ...map.grid[0][1], height: 2, terrain: 'hill' };
+    // All cells flat except grid[0][1] at height 8 → produces clear height diff
+    map.grid[0][1] = { ...map.grid[0][1], height: 8, terrain: 'hill' };
     const owner = ownerAt(-5, -5);
     moveOwner(owner, new Set(['d']), 1, map);
-    const heightDiff = 2;
+    const startH = getHeightAt(map, -5, -5);
+    const targetH = getHeightAt(map, 0, -5);
+    const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
     expect(owner.x).toBeCloseTo(-5 + OWNER_SPEED * 1 * factor);
     expect(owner.y).toBeCloseTo(-5);
@@ -218,10 +225,13 @@ describe('moveOwner — height speed adjustment', () => {
 
   it('caps speed reduction at 0.2 for very large height diff', () => {
     const map = createFlatMap();
-    map.grid[0][1] = { ...map.grid[0][1], height: 10, terrain: 'hill' };
+    // Large height ensures factor reaches the 0.2 cap
+    map.grid[0][1] = { ...map.grid[0][1], height: 100, terrain: 'hill' };
     const owner = ownerAt(-5, -5);
     moveOwner(owner, new Set(['d']), 1, map);
-    const heightDiff = 10;
+    const startH = getHeightAt(map, -5, -5);
+    const targetH = getHeightAt(map, 0, -5);
+    const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
     expect(factor).toBe(0.2);
     expect(owner.x).toBeCloseTo(-5 + OWNER_SPEED * 1 * 0.2);
@@ -230,12 +240,15 @@ describe('moveOwner — height speed adjustment', () => {
 
   it('updates height after moving to a cell with different elevation', () => {
     const map = createFlatMap();
+    // Set all cells around start to height 0 so that getHeightAt(-1,-5) ≈ 0
     map.grid[0][0] = { ...map.grid[0][0], height: 0, terrain: 'flat' };
     map.grid[0][1] = { ...map.grid[0][1], height: 4, terrain: 'hill' };
+    const startH = getHeightAt(map, -1, -5);
     const owner = createOwner('test', 'dog', -1, -5, map);
-    expect(owner.height).toBeCloseTo(OWNER_HEIGHT_OFFSET);
+    expect(owner.height).toBeCloseTo(startH + OWNER_HEIGHT_OFFSET);
     moveOwner(owner, new Set(['d']), 2, map);
-    expect(owner.height).toBeCloseTo(4 + OWNER_HEIGHT_OFFSET);
+    const targetH = getHeightAt(map, owner.x, owner.y);
+    expect(owner.height).toBeCloseTo(targetH + OWNER_HEIGHT_OFFSET);
     expect(owner.x).toBeGreaterThanOrEqual(0);
   });
 
@@ -244,12 +257,18 @@ describe('moveOwner — height speed adjustment', () => {
     map.grid[0][0] = { ...map.grid[0][0], height: 2, terrain: 'hill' };
     map.grid[0][1] = { ...map.grid[0][1], height: 1, terrain: 'flat' };
     const owner = createOwner('test', 'dog', -5, -5, map);
-    expect(owner.height).toBeCloseTo(2 + OWNER_HEIGHT_OFFSET);
-    moveOwner(owner, new Set(['d']), 2, map);
-    const heightDiff = 1;
+    const startH = getHeightAt(map, -5, -5);
+    expect(owner.height).toBeCloseTo(startH + OWNER_HEIGHT_OFFSET);
+    // Compute expected before move (moveOwner uses target position without height factor for heightDiff)
+    const targetX = -5 + OWNER_SPEED * 2; // speed = OWNER_SPEED * dt = 5 * 2 = 10, dx=1
+    const targetY = -5; // dy=0
+    const targetH = getHeightAt(map, targetX, targetY);
+    const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
+    moveOwner(owner, new Set(['d']), 2, map);
     expect(owner.x).toBeCloseTo(-5 + OWNER_SPEED * 2 * factor);
-    expect(owner.height).toBeCloseTo(1 + OWNER_HEIGHT_OFFSET);
+    expect(owner.y).toBeCloseTo(-5);
+    expect(owner.height).toBeCloseTo(getHeightAt(map, owner.x, owner.y) + OWNER_HEIGHT_OFFSET);
   });
 
   it('applies height factor after obstacle sliding', () => {
@@ -262,7 +281,9 @@ describe('moveOwner — height speed adjustment', () => {
     const dt = 2;
     moveOwner(owner, new Set(['s', 'd']), dt, map);
     const len = Math.SQRT1_2;
-    const heightDiff = 3;
+    const startH = getHeightAt(map, -5, -5);
+    const targetH = getHeightAt(map, -5, -5 + len * OWNER_SPEED * dt);
+    const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
     // Only y movement, reduced by height factor
     expect(owner.x).toBeCloseTo(-5);
