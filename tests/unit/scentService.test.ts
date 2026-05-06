@@ -15,6 +15,7 @@ function makeScentPoint(overrides: Partial<ScentPoint> = {}): ScentPoint {
     y: 0,
     t: 0,
     baseIntensity: 1.0,
+    tauDecay: 8000,
     ...overrides
   };
 }
@@ -168,6 +169,23 @@ describe('emitTrailPoint', () => {
     expect(state.trailPoints).toHaveLength(1);
   });
 
+  it('assigns tauDecay within profile range', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const state = createEmptyState();
+    const profile = {
+      ownerType: 'dog',
+      baseIntensity: 1.0,
+      emitSpacing: 1.0,
+      emitProbability: 1.0,
+      lateralSpreadSigma: 0.3,
+      ...DEFAULT_SCENT_PARAMS
+    };
+    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'o1', 'dog', 5, 0, 0, 0, 101, profile);
+    // Math.random()=0.5 => 6000 + 0.5*(10000-6000) = 8000
+    expect(state.trailPoints[0].tauDecay).toBeCloseTo(8000, 5);
+  });
+
   it('handles multiple emitters independently', () => {
     const state = createEmptyState();
     const profile = {
@@ -204,12 +222,29 @@ describe('sampleScentAt', () => {
 
   it('applies time decay correctly', () => {
     const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0 }));
+    state.trailPoints.push(
+      makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 3000 })
+    );
     const signal = sampleScentAt(state, { x: 0, y: 0 }, 3000, {
       maxTrailAge: 10000,
       tauDecay: 3000,
       scentSpreadSigma: 2.0
     });
+    expect(signal).toBeCloseTo(Math.exp(-1), 3);
+  });
+
+  it('uses per-point tauDecay over global params', () => {
+    const state = createEmptyState();
+    // point.tauDecay=5000, params.tauDecay=10000
+    state.trailPoints.push(
+      makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 5000 })
+    );
+    const signal = sampleScentAt(state, { x: 0, y: 0 }, 5000, {
+      maxTrailAge: 25000,
+      tauDecay: 10000,
+      scentSpreadSigma: 2.0
+    });
+    // With tauDecay=5000: exp(-5000/5000) = exp(-1)
     expect(signal).toBeCloseTo(Math.exp(-1), 3);
   });
 
@@ -283,7 +318,9 @@ describe('sampleScentAt', () => {
 
   it('combines time and spatial decay correctly', () => {
     const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 3, y: 4, t: 0, baseIntensity: 2.0 }));
+    state.trailPoints.push(
+      makeScentPoint({ x: 3, y: 4, t: 0, baseIntensity: 2.0, tauDecay: 3000 })
+    );
     const expected = 2.0 * Math.exp(-3000 / 3000) * Math.exp(-25 / (2 * 2 * 2));
     const signal = sampleScentAt(state, { x: 0, y: 0 }, 3000, {
       maxTrailAge: 10000,

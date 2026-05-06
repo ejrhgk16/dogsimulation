@@ -61,7 +61,8 @@ export function emitTrailPoint(
     x: px,
     y: py,
     t: now,
-    baseIntensity: profile.baseIntensity
+    baseIntensity: profile.baseIntensity,
+    tauDecay: profile.tauDecayMin! + Math.random() * (profile.tauDecayMax! - profile.tauDecayMin!)
   };
   state.trailPoints.push(point);
 
@@ -99,7 +100,8 @@ export function sampleScentAt(
     const dy = position.y - point.y;
     const distSq = dx * dx + dy * dy;
 
-    const intensity = point.baseIntensity * Math.exp(-age / params.tauDecay);
+    const decay = point.tauDecay ?? params.tauDecay;
+    const intensity = point.baseIntensity * Math.exp(-age / decay);
     const sigmaSq = params.scentSpreadSigma * params.scentSpreadSigma;
     totalSignal += intensity * Math.exp(-distSq / (2 * sigmaSq));
   }

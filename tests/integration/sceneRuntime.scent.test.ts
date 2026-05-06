@@ -80,6 +80,26 @@ describe('sceneRuntime scent integration', () => {
     expect(scentState.trailPoints).toHaveLength(1);
   });
 
+  it('keeps point with per-point tauDecay after updateScent', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    // Point with explicit tauDecay: age=1000 <= maxTrailAge=25000
+    scentState.trailPoints.push({
+      ownerId: 'test',
+      ownerType: 'dog',
+      x: 0,
+      y: 0,
+      t: 9000,
+      baseIntensity: 1.0,
+      tauDecay: 12000
+    });
+    const runtime = createSceneRuntime(canvas, mapData, scentState);
+    runtime.updateScent(10000);
+    expect(scentState.trailPoints).toHaveLength(1);
+    expect(scentState.trailPoints[0].tauDecay).toBe(12000);
+  });
+
   it('handles empty trailPoints in updateScent', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);

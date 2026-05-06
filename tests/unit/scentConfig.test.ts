@@ -11,6 +11,8 @@ describe('DEFAULT_SCENT_PARAMS', () => {
     expect(DEFAULT_SCENT_PARAMS.maxTrailAge).toBe(25000);
     expect(DEFAULT_SCENT_PARAMS.tauDecay).toBe(8000);
     expect(DEFAULT_SCENT_PARAMS.scentSpreadSigma).toBe(2.0);
+    expect(DEFAULT_SCENT_PARAMS.tauDecayMin).toBe(6000);
+    expect(DEFAULT_SCENT_PARAMS.tauDecayMax).toBe(10000);
   });
 });
 
@@ -24,6 +26,8 @@ describe('OWNER_PROFILES', () => {
     expect(dog.maxTrailAge).toBe(25000);
     expect(dog.tauDecay).toBe(8000);
     expect(dog.scentSpreadSigma).toBe(2.0);
+    expect(dog.tauDecayMin).toBe(6000);
+    expect(dog.tauDecayMax).toBe(10000);
   });
 
   it('has cow profile with correct values', () => {
@@ -35,6 +39,8 @@ describe('OWNER_PROFILES', () => {
     expect(cow.maxTrailAge).toBe(25000);
     expect(cow.tauDecay).toBe(8000);
     expect(cow.scentSpreadSigma).toBe(2.0);
+    expect(cow.tauDecayMin).toBe(8000);
+    expect(cow.tauDecayMax).toBe(14000);
   });
 
   it('has pig profile with correct values', () => {
@@ -46,6 +52,8 @@ describe('OWNER_PROFILES', () => {
     expect(pig.maxTrailAge).toBe(25000);
     expect(pig.tauDecay).toBe(8000);
     expect(pig.scentSpreadSigma).toBe(2.0);
+    expect(pig.tauDecayMin).toBe(4000);
+    expect(pig.tauDecayMax).toBe(8000);
   });
 });
 
@@ -91,5 +99,7 @@ describe('getOwnerProfile', () => {
     expect(profile.maxTrailAge).toBe(DEFAULT_SCENT_PARAMS.maxTrailAge);
     expect(profile.tauDecay).toBe(DEFAULT_SCENT_PARAMS.tauDecay);
     expect(profile.scentSpreadSigma).toBe(DEFAULT_SCENT_PARAMS.scentSpreadSigma);
+    expect(profile.tauDecayMin).toBe(DEFAULT_SCENT_PARAMS.tauDecayMin);
+    expect(profile.tauDecayMax).toBe(DEFAULT_SCENT_PARAMS.tauDecayMax);
   });
 });

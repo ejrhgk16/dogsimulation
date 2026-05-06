@@ -33,8 +33,9 @@ export function createScentVisualizer(
       const point = trailPoints[i];
       const age = now - point.t;
       const profile = profileMap[point.ownerType];
-      const maxTrailAge = profile?.maxTrailAge ?? 10000;
-      const ratio = Math.max(0, Math.min(1, age / maxTrailAge));
+      const tauDecay = point.tauDecay ?? profile?.tauDecay ?? 10000;
+      const decayFactor = Math.exp(-age / tauDecay);
+      const ratio = 1 - decayFactor;
 
       // Height lerp: age 0 = maxHeight, age ≈ maxTrailAge = minHeight
       const height = config.maxHeight * (1 - ratio) + config.minHeight * ratio;

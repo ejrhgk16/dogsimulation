@@ -7,6 +7,7 @@ export interface ScentPoint {
   y: number;
   t: number;
   baseIntensity: number;
+  tauDecay?: number;
 }
 
 export interface EmitAccumulator {
@@ -21,6 +22,8 @@ export interface ScentParams {
   maxTrailAge: number;
   tauDecay: number;
   scentSpreadSigma: number;
+  tauDecayMin?: number;
+  tauDecayMax?: number;
 }
 
 export interface OwnerScentProfile extends ScentParams {

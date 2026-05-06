@@ -47,7 +47,7 @@ describe('createScentVisualizer', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0 }
+      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 8000 }
     ];
     expect(() => visualizer.update(points, 500)).not.toThrow();
   });
@@ -71,7 +71,7 @@ describe('createScentVisualizer', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 1, y: 2, t: 0, baseIntensity: 1.0 }
+      { ownerId: 'dog-1', ownerType: 'dog', x: 1, y: 2, t: 0, baseIntensity: 1.0, tauDecay: 8000 }
     ];
     expect(() => {
       visualizer.update(points, 100);
@@ -88,7 +88,15 @@ describe('createScentVisualizer', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'unknown-1', ownerType: 'unknown', x: 0, y: 0, t: 0, baseIntensity: 1.0 }
+      {
+        ownerId: 'unknown-1',
+        ownerType: 'unknown',
+        x: 0,
+        y: 0,
+        t: 0,
+        baseIntensity: 1.0,
+        tauDecay: 8000
+      }
     ];
     expect(() => visualizer.update(points, 100)).not.toThrow();
   });
@@ -98,48 +106,59 @@ describe('createScentVisualizer', () => {
     return scene.children[scene.children.length - 1] as any;
   }
 
-  it('reduces scale to 15% of pointSize for fully aged point (ratio=1)', () => {
+  it('reduces scale based on exponential decay at age=25000 (tauDecay=8000)', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0 }
+      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 8000 }
     ];
-    // age = 25000 - 0 = 25000, ratio = 1.0
+    // age = 25000, tauDecay = 8000 (from point, matches profile)
+    // decayFactor = exp(-25000/8000) ≈ 0.04394, ratio = 0.95606
     visualizer.update(points, 25000);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     // element [0] in 4x4 column-major matrix = m11 = scaleX
     const scaleX = matrix[0];
-    // 0.18 * (1 - 1.0 * 0.85) = 0.18 * 0.15 = 0.027
-    const expectedScale = mockConfig.pointSize * (1 - 1.0 * 0.85);
+    // 0.18 * (1 - 0.95606 * 0.85) ≈ 0.0337
+    const expectedScale = mockConfig.pointSize * (1 - 0.95606 * 0.85);
     expect(scaleX).toBeCloseTo(expectedScale, 4);
   });
 
-  it('reduces color brightness to 40% for fully aged point (ratio=1)', () => {
+  it('reduces color brightness based on exponential decay at age=25000 (tauDecay=8000)', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0 }
+      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 8000 }
     ];
-    // age = 25000, ratio = 1.0
+    // age = 25000, tauDecay = 8000 (from point)
+    // decayFactor ≈ 0.04394, ratio ≈ 0.95606
+    // brightness multiplier = 1 - 0.95606 * 0.6 ≈ 0.42636
     visualizer.update(points, 25000);
     const mesh = getMesh(scene);
     expect(mesh.instanceColor).toBeDefined();
     // Dog color 0xff9933 in linear space → r≈1.0, g≈0.3185, b≈0.0331
-    // After multiplyScalar(0.4): r≈0.4, g≈0.1274, b≈0.0132
+    // After multiplyScalar(0.42636): r≈0.426, g≈0.136, b≈0.014
     const r = mesh.instanceColor.getX(0);
     const g = mesh.instanceColor.getY(0);
     const b = mesh.instanceColor.getZ(0);
-    expect(r).toBeCloseTo(0.4, 2);
-    expect(g).toBeCloseTo(0.127, 2);
-    expect(b).toBeCloseTo(0.013, 2);
+    expect(r).toBeCloseTo(0.426, 2);
+    expect(g).toBeCloseTo(0.136, 2);
+    expect(b).toBeCloseTo(0.014, 2);
   });
 
   it('keeps full scale for fresh point (ratio=0)', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 25000, baseIntensity: 1.0 }
+      {
+        ownerId: 'dog-1',
+        ownerType: 'dog',
+        x: 0,
+        y: 0,
+        t: 25000,
+        baseIntensity: 1.0,
+        tauDecay: 8000
+      }
     ];
     // age = 25000 - 25000 = 0, ratio = 0.0
     visualizer.update(points, 25000);
@@ -154,7 +173,15 @@ describe('createScentVisualizer', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 25000, baseIntensity: 1.0 }
+      {
+        ownerId: 'dog-1',
+        ownerType: 'dog',
+        x: 0,
+        y: 0,
+        t: 25000,
+        baseIntensity: 1.0,
+        tauDecay: 8000
+      }
     ];
     // age = 0, ratio = 0.0, no multiplyScalar applied
     visualizer.update(points, 25000);
@@ -169,19 +196,40 @@ describe('createScentVisualizer', () => {
     expect(b).toBeCloseTo(0.033, 2);
   });
 
-  it('linearly interpolates brightness between ratio 0 and 1', () => {
+  it('interpolates brightness based on exponential decay at age=12500 (tauDecay=8000)', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
-      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0 }
+      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 8000 }
     ];
-    // age = 12500, ratio = 0.5
-    // brightness multiplier = 1 - 0.5 * 0.6 = 0.7
+    // age = 12500, tauDecay = 8000 (from point)
+    // decayFactor = exp(-12500/8000) ≈ 0.2096, ratio ≈ 0.7904
+    // brightness multiplier = 1 - 0.7904 * 0.6 ≈ 0.5258
     visualizer.update(points, 12500);
     const mesh = getMesh(scene);
-    // Dog color 0xff9933 → r=1.0 * 0.7 = 0.7
+    // Dog color 0xff9933 → r=1.0 * 0.5258 ≈ 0.526
     const r = mesh.instanceColor.getX(0);
-    expect(r).toBeCloseTo(0.7, 2);
+    expect(r).toBeCloseTo(0.526, 2);
+  });
+
+  it('uses per-point tauDecay over profile tauDecay for scale', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    // Point with tauDecay=16000 (double profile's 8000)
+    const points: ScentPoint[] = [
+      { ownerId: 'dog-1', ownerType: 'dog', x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 16000 }
+    ];
+    // age = 25000, tauDecay = 16000 (per-point)
+    // decayFactor = exp(-25000/16000) ≈ 0.2096, ratio ≈ 0.7904
+    visualizer.update(points, 25000);
+    const mesh = getMesh(scene);
+    const matrix = mesh.instanceMatrix.array;
+    const scaleX = matrix[0];
+    // With tauDecay=16000: scale = 0.18 * (1 - 0.7904 * 0.85) ≈ 0.05907
+    const decayFactor = Math.exp(-25000 / 16000);
+    const ratio = 1 - decayFactor;
+    const expectedScale = mockConfig.pointSize * (1 - ratio * 0.85);
+    expect(scaleX).toBeCloseTo(expectedScale, 5);
   });
 
   it('handles more points than MAX_INSTANCES', () => {
@@ -193,7 +241,8 @@ describe('createScentVisualizer', () => {
       x: i,
       y: i,
       t: 0,
-      baseIntensity: 1.0
+      baseIntensity: 1.0,
+      tauDecay: 8000
     }));
     expect(() => visualizer.update(points, 100)).not.toThrow();
   });
