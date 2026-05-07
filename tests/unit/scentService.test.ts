@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ScentWorldState, ScentPoint } from '../../src/types/scent';
-import { DEFAULT_SCENT_PARAMS, getOwnerProfile } from '../../src/config/scentConfig';
+import { DEFAULT_SCENT_PARAMS, getAnimalProfile } from '../../src/config/scentConfig';
 import {
   emitTrailPoint,
   emitTrailPointOnMove,
@@ -14,8 +14,8 @@ function createEmptyState(): ScentWorldState {
 
 function makeScentPoint(overrides: Partial<ScentPoint> = {}): ScentPoint {
   return {
-    ownerId: 'test-owner',
-    ownerType: 'dog',
+    animalId: 'test-animal',
+    animalType: 'dog',
     x: 0,
     y: 0,
     height: 0,
@@ -27,7 +27,7 @@ function makeScentPoint(overrides: Partial<ScentPoint> = {}): ScentPoint {
 }
 
 function makeDogProfile() {
-  return getOwnerProfile('dog');
+  return getAnimalProfile('dog');
 }
 
 describe('emitTrailPoint', () => {
@@ -37,10 +37,10 @@ describe('emitTrailPoint', () => {
 
   it('creates accumulator and does not emit on first call (dt < emitInterval)', () => {
     const state = createEmptyState();
-    emitTrailPoint(state, 'owner-1', 'dog', 10, 20, 1.5, 50, 100, makeDogProfile());
+    emitTrailPoint(state, 'animal-1', 'dog', 10, 20, 1.5, 50, 100, makeDogProfile());
     expect(state.trailPoints).toHaveLength(0);
-    expect(state.emitters.has('owner-1')).toBe(true);
-    const acc = state.emitters.get('owner-1')!;
+    expect(state.emitters.has('animal-1')).toBe(true);
+    const acc = state.emitters.get('animal-1')!;
     expect(acc.lastX).toBe(10);
     expect(acc.lastY).toBe(20);
     expect(acc.lastHeight).toBe(1.5);
@@ -50,41 +50,41 @@ describe('emitTrailPoint', () => {
   it('does not emit when accumulated dt < emitInterval', () => {
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitInterval = 200
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 100, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 1, 0, 0, 50, 200, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 100, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 1, 0, 0, 50, 200, profile);
     expect(state.trailPoints).toHaveLength(0);
-    expect(state.emitters.get('o1')!.timeSinceLastEmit).toBe(150);
+    expect(state.emitters.get('a1')!.timeSinceLastEmit).toBe(150);
   });
 
   it('emits when accumulated dt >= emitInterval', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitInterval = 200
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     expect(state.trailPoints).toHaveLength(1);
     expect(state.trailPoints[0].t).toBe(350);
     expect(state.trailPoints[0].baseIntensity).toBe(1.0);
-    expect(state.trailPoints[0].ownerId).toBe('o1');
-    expect(state.trailPoints[0].ownerType).toBe('dog');
+    expect(state.trailPoints[0].animalId).toBe('a1');
+    expect(state.trailPoints[0].animalType).toBe('dog');
   });
 
   it('resets timeSinceLastEmit to 0 after emitting', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
-    expect(state.emitters.get('o1')!.timeSinceLastEmit).toBe(0);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
+    expect(state.emitters.get('a1')!.timeSinceLastEmit).toBe(0);
   });
 
   it('updates lastX/lastY/lastHeight after emitting', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 4, 5, 1.2, 250, 350, profile);
-    const acc = state.emitters.get('o1')!;
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 4, 5, 1.2, 250, 350, profile);
+    const acc = state.emitters.get('a1')!;
     expect(acc.lastX).toBe(4);
     expect(acc.lastY).toBe(5);
     expect(acc.lastHeight).toBe(1.2);
@@ -94,11 +94,11 @@ describe('emitTrailPoint', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    // Owner stays at (10, 20), dt accumulates over frames
-    emitTrailPoint(state, 'o1', 'dog', 10, 20, 1.0, 100, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 10, 20, 1.0, 150, 250, profile);
+    // Animal stays at (10, 20), dt accumulates over frames
+    emitTrailPoint(state, 'a1', 'dog', 10, 20, 1.0, 100, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 10, 20, 1.0, 150, 250, profile);
     expect(state.trailPoints).toHaveLength(1);
-    // Point is spread by gaussian around owner position
+    // Point is spread by gaussian around animal position
     const dx = state.trailPoints[0].x - 10;
     const dy = state.trailPoints[0].y - 20;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -110,18 +110,18 @@ describe('emitTrailPoint', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.9);
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitProbability = 0.8
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     expect(state.trailPoints).toHaveLength(0);
-    expect(state.emitters.get('o1')!.timeSinceLastEmit).toBe(0);
+    expect(state.emitters.get('a1')!.timeSinceLastEmit).toBe(0);
   });
 
   it('emits when Math.random() <= emitProbability', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.2);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     expect(state.trailPoints).toHaveLength(1);
   });
 
@@ -130,34 +130,34 @@ describe('emitTrailPoint', () => {
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitInterval = 200
     // dt=50 → acc=50 < 200
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 50, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 50, 100, profile);
     expect(state.trailPoints).toHaveLength(0);
     // dt=100 → acc=150 < 200
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 100, 200, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 100, 200, profile);
     expect(state.trailPoints).toHaveLength(0);
     // dt=100 → acc=250 >= 200 → emit
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 100, 300, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 100, 300, profile);
     expect(state.trailPoints).toHaveLength(1);
     // After emit: acc=0 → dt=50 → acc=50 < 200
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 50, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 50, 350, profile);
     expect(state.trailPoints).toHaveLength(1);
   });
 
-  it('stores ownerHeight in ScentPoint.height', () => {
+  it('stores animalHeight in ScentPoint.height', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 2.5, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 2.5, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 2.5, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 2.5, 250, 350, profile);
     expect(state.trailPoints[0].height).toBe(2.5);
   });
 
-  it('spreads points in circular pattern around owner', () => {
+  it('spreads points in circular pattern around animal', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile(); // spreadRadius = 0.75
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     const pt = state.trailPoints[0];
     const dist = Math.sqrt(pt.x * pt.x + pt.y * pt.y);
     // Point should not be at exact center; spread applied
@@ -170,8 +170,8 @@ describe('emitTrailPoint', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const state = createEmptyState();
     const profile = makeDogProfile(); // tauDecayMin=6000, tauDecayMax=10000
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     // Math.random()=0.5 => 6000 + 0.5*(10000-6000) = 8000
     expect(state.trailPoints[0].tauDecay).toBeCloseTo(8000, 5);
   });
@@ -180,13 +180,13 @@ describe('emitTrailPoint', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o2', 'cow', 0, 0, 0, 0, 100, profile);
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
-    emitTrailPoint(state, 'o2', 'cow', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a2', 'cow', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a2', 'cow', 0, 0, 0, 250, 350, profile);
     expect(state.trailPoints).toHaveLength(2);
-    expect(state.trailPoints[0].ownerId).toBe('o1');
-    expect(state.trailPoints[1].ownerId).toBe('o2');
+    expect(state.trailPoints[0].animalId).toBe('a1');
+    expect(state.trailPoints[1].animalId).toBe('a2');
   });
 });
 
@@ -197,10 +197,10 @@ describe('emitTrailPointOnMove', () => {
 
   it('creates accumulator with distanceSinceLast=0 on first call', () => {
     const state = createEmptyState();
-    emitTrailPointOnMove(state, 'owner-1', 'dog', 10, 20, 1.5, 100, makeDogProfile());
+    emitTrailPointOnMove(state, 'animal-1', 'dog', 10, 20, 1.5, 100, makeDogProfile());
     expect(state.trailPoints).toHaveLength(0);
-    expect(state.emitters.has('owner-1')).toBe(true);
-    const acc = state.emitters.get('owner-1')!;
+    expect(state.emitters.has('animal-1')).toBe(true);
+    const acc = state.emitters.get('animal-1')!;
     expect(acc.distanceSinceLast).toBe(0);
     expect(acc.lastX).toBe(10);
     expect(acc.lastY).toBe(20);
@@ -212,29 +212,29 @@ describe('emitTrailPointOnMove', () => {
   it('does not emit when moving distance < emitSpacing', () => {
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitSpacing = 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
     // Move 0.3 units, below threshold
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.3, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.3, 0, 0, 200, profile);
     expect(state.trailPoints).toHaveLength(0);
-    expect(state.emitters.get('o1')!.distanceSinceLast).toBeCloseTo(0.3, 5);
+    expect(state.emitters.get('a1')!.distanceSinceLast).toBeCloseTo(0.3, 5);
   });
 
   it('accumulates distance over multiple moves before emitting', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitSpacing = 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
     // Move 0.2 → acc=0.2 < 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.2, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.2, 0, 0, 200, profile);
     expect(state.trailPoints).toHaveLength(0);
     // Move 0.2 → acc=0.4 < 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.4, 0, 0, 300, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.4, 0, 0, 300, profile);
     expect(state.trailPoints).toHaveLength(0);
     // Move 0.2 → acc=0.6 >= 0.5 → emit
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 400, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 400, profile);
     expect(state.trailPoints).toHaveLength(1);
     // After emit: acc=0 → next 0.2 < 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.8, 0, 0, 500, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.8, 0, 0, 500, profile);
     expect(state.trailPoints).toHaveLength(1);
   });
 
@@ -242,18 +242,18 @@ describe('emitTrailPointOnMove', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitSpacing = 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 200, profile);
-    expect(state.emitters.get('o1')!.distanceSinceLast).toBe(0);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    expect(state.emitters.get('a1')!.distanceSinceLast).toBe(0);
   });
 
   it('updates lastX/lastY/lastHeight after emitting', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 4, 5, 1.2, 200, profile);
-    const acc = state.emitters.get('o1')!;
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 4, 5, 1.2, 200, profile);
+    const acc = state.emitters.get('a1')!;
     expect(acc.lastX).toBe(4);
     expect(acc.lastY).toBe(5);
     expect(acc.lastHeight).toBe(1.2);
@@ -262,10 +262,10 @@ describe('emitTrailPointOnMove', () => {
   it('updates lastX/lastY/lastHeight even when not emitting', () => {
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitSpacing = 0.5
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
     // Move 0.2 → dist=0.2 < 0.5, no emit
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.2, 0, 2.0, 200, profile);
-    const acc = state.emitters.get('o1')!;
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.2, 0, 2.0, 200, profile);
+    const acc = state.emitters.get('a1')!;
     expect(acc.lastX).toBe(0.2);
     expect(acc.lastY).toBe(0);
     expect(acc.lastHeight).toBe(2.0);
@@ -276,27 +276,27 @@ describe('emitTrailPointOnMove', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.9);
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitProbability = 0.8
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
     expect(state.trailPoints).toHaveLength(0);
-    expect(state.emitters.get('o1')!.distanceSinceLast).toBe(0);
+    expect(state.emitters.get('a1')!.distanceSinceLast).toBe(0);
   });
 
-  it('stores ownerHeight in ScentPoint.height', () => {
+  it('stores animalHeight in ScentPoint.height', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 2.5, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 2.5, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 2.5, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 2.5, 200, profile);
     expect(state.trailPoints[0].height).toBe(2.5);
   });
 
-  it('spreads points in circular pattern around owner', () => {
+  it('spreads points in circular pattern around animal', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile(); // spreadRadius = 0.75
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
     const pt = state.trailPoints[0];
     const dist = Math.sqrt(pt.x * pt.x + pt.y * pt.y);
     expect(dist).toBeGreaterThan(0);
@@ -308,11 +308,11 @@ describe('emitTrailPointOnMove', () => {
     const state = createEmptyState();
     const profile = makeDogProfile();
     // Set up timeSinceLastEmit via emitTrailPoint
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 150, 100, profile);
-    expect(state.emitters.get('o1')!.timeSinceLastEmit).toBe(150);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 150, 100, profile);
+    expect(state.emitters.get('a1')!.timeSinceLastEmit).toBe(150);
     // emitTrailPointOnMove should not reset timeSinceLastEmit
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 200, profile);
-    expect(state.emitters.get('o1')!.timeSinceLastEmit).toBe(150);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    expect(state.emitters.get('a1')!.timeSinceLastEmit).toBe(150);
   });
 
   it('does not affect distanceSinceLast when emitTrailPoint is called', () => {
@@ -320,15 +320,15 @@ describe('emitTrailPointOnMove', () => {
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitSpacing = 0.5
     // Set up distanceSinceLast via emitTrailPointOnMove (small moves, below emitSpacing)
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.1, 0, 0, 200, profile);
-    expect(state.emitters.get('o1')!.distanceSinceLast).toBeCloseTo(0.1, 5);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.1, 0, 0, 200, profile);
+    expect(state.emitters.get('a1')!.distanceSinceLast).toBeCloseTo(0.1, 5);
     // emitTrailPoint should not reset distanceSinceLast
-    emitTrailPoint(state, 'o1', 'dog', 0.1, 0, 0, 50, 250, profile);
-    expect(state.emitters.get('o1')!.distanceSinceLast).toBeCloseTo(0.1, 5);
+    emitTrailPoint(state, 'a1', 'dog', 0.1, 0, 0, 50, 250, profile);
+    expect(state.emitters.get('a1')!.distanceSinceLast).toBeCloseTo(0.1, 5);
     // emitTrailPointOnMove still accumulates distanceSinceLast after emitTrailPoint call
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.2, 0, 0, 300, profile);
-    expect(state.emitters.get('o1')!.distanceSinceLast).toBeCloseTo(0.2, 5);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.2, 0, 0, 300, profile);
+    expect(state.emitters.get('a1')!.distanceSinceLast).toBeCloseTo(0.2, 5);
   });
 
   it('produces dual emission when both functions are called in same frame', () => {
@@ -336,13 +336,13 @@ describe('emitTrailPointOnMove', () => {
     const state = createEmptyState();
     const profile = makeDogProfile(); // emitInterval=200, emitSpacing=0.5
     // Initialize both counters at position (0,0)
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
     expect(state.trailPoints).toHaveLength(0);
     // First emitTrailPoint at (0,0) with dt=250 >= 200 → emits via time
-    emitTrailPoint(state, 'o1', 'dog', 0, 0, 0, 250, 350, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     // Then emitTrailPointOnMove from (0,0) to (0.6,0) → dist=0.6 >= 0.5 → emits via distance
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 350, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 350, profile);
     // Both should emit → 2 points
     expect(state.trailPoints).toHaveLength(2);
   });
@@ -351,21 +351,21 @@ describe('emitTrailPointOnMove', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const state = createEmptyState();
     const profile = makeDogProfile();
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o2', 'cow', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 200, profile);
-    emitTrailPointOnMove(state, 'o2', 'cow', 0.6, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a2', 'cow', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a2', 'cow', 0.6, 0, 0, 200, profile);
     expect(state.trailPoints).toHaveLength(2);
-    expect(state.trailPoints[0].ownerId).toBe('o1');
-    expect(state.trailPoints[1].ownerId).toBe('o2');
+    expect(state.trailPoints[0].animalId).toBe('a1');
+    expect(state.trailPoints[1].animalId).toBe('a2');
   });
 
   it('uses per-profile tauDecayMin/Max for point tauDecay', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const state = createEmptyState();
     const profile = makeDogProfile(); // tauDecayMin=6000, tauDecayMax=10000
-    emitTrailPointOnMove(state, 'o1', 'dog', 0, 0, 0, 100, profile);
-    emitTrailPointOnMove(state, 'o1', 'dog', 0.6, 0, 0, 200, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
     expect(state.trailPoints[0].tauDecay).toBeCloseTo(8000, 5);
   });
 });
@@ -446,12 +446,12 @@ describe('sampleScentAt', () => {
     expect(signal).toBe(0);
   });
 
-  it('filters by ownerType when specified', () => {
+  it('filters by animalType when specified', () => {
     const state = createEmptyState();
     state.trailPoints.push(
       makeScentPoint({
-        ownerId: 'd1',
-        ownerType: 'dog',
+        animalId: 'd1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         t: 100,
@@ -460,8 +460,8 @@ describe('sampleScentAt', () => {
     );
     state.trailPoints.push(
       makeScentPoint({
-        ownerId: 'c1',
-        ownerType: 'cow',
+        animalId: 'c1',
+        animalType: 'cow',
         x: 0,
         y: 0,
         t: 100,
@@ -480,10 +480,10 @@ describe('sampleScentAt', () => {
     expect(signal).toBeCloseTo(3.0);
   });
 
-  it('returns 0 when ownerType filter matches nothing', () => {
+  it('returns 0 when animalType filter matches nothing', () => {
     const state = createEmptyState();
     state.trailPoints.push(
-      makeScentPoint({ ownerType: 'dog', x: 0, y: 0, t: 100, baseIntensity: 1.0 })
+      makeScentPoint({ animalType: 'dog', x: 0, y: 0, t: 100, baseIntensity: 1.0 })
     );
     const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS, 'cow');
     expect(signal).toBe(0);
@@ -506,13 +506,13 @@ describe('sampleScentAt', () => {
     expect(signal).toBeCloseTo(expected, 5);
   });
 
-  it('does not filter by ownerType when ownerType is undefined', () => {
+  it('does not filter by animalType when animalType is undefined', () => {
     const state = createEmptyState();
     state.trailPoints.push(
-      makeScentPoint({ ownerType: 'dog', x: 0, y: 0, t: 100, baseIntensity: 1.0 })
+      makeScentPoint({ animalType: 'dog', x: 0, y: 0, t: 100, baseIntensity: 1.0 })
     );
     state.trailPoints.push(
-      makeScentPoint({ ownerType: 'cow', x: 0, y: 0, t: 100, baseIntensity: 2.0 })
+      makeScentPoint({ animalType: 'cow', x: 0, y: 0, t: 100, baseIntensity: 2.0 })
     );
     const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS);
     expect(signal).toBeCloseTo(3.0);

@@ -20,13 +20,13 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData, ObstacleShape } from '../types/map';
 import type { ScentWorldState } from '../types/scent';
-import type { OwnerState } from '../types/owner';
+import type { AnimalState } from '../types/animal';
 import {
-  OWNER_PROFILES,
+  ANIMAL_PROFILES,
   DEFAULT_SCENT_PARAMS,
   DEFAULT_SCENT_VISUAL_CONFIG
 } from '../config/scentConfig';
-import { OWNER_TYPES } from '../config/ownerConfig';
+import { ANIMAL_TYPES } from '../config/animalConfig';
 import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
@@ -36,13 +36,10 @@ export interface SceneRuntime {
   start: () => void;
   stop: () => void;
   updateScent: (now: number) => void;
-  updateOwner: (owner: OwnerState) => void;
+  updateAnimal: (animal: AnimalState) => void;
   resetCamera: () => void;
   getMouseGroundIntersection: (mouseX: number, mouseY: number) => { x: number; z: number } | null;
-  getCameraState: () => {
-    pos: { x: number; y: number; z: number };
-    target: { x: number; y: number; z: number };
-  };
+  setScentVisible: (visible: boolean) => void;
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -102,7 +99,7 @@ export function createSceneRuntime(
   canvas: HTMLCanvasElement,
   mapData: MapData,
   scentState?: ScentWorldState,
-  owner?: OwnerState
+  animal?: AnimalState
 ): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -214,21 +211,21 @@ export function createSceneRuntime(
     scene.add(mesh);
   }
 
-  // Owner box mesh
-  let ownerMesh: Mesh | null = null;
-  if (owner) {
+  // Animal box mesh
+  let animalMesh: Mesh | null = null;
+  if (animal) {
     const geo = new BoxGeometry(1, 1, 1);
-    const color = OWNER_TYPES[owner.ownerType] ?? 0xff9933;
+    const color = ANIMAL_TYPES[animal.animalType] ?? 0xff9933;
     const mat = new MeshStandardMaterial({ color });
-    ownerMesh = new Mesh(geo, mat);
-    ownerMesh.position.set(owner.x, owner.height, owner.y);
-    scene.add(ownerMesh);
+    animalMesh = new Mesh(geo, mat);
+    animalMesh.position.set(animal.x, animal.height, animal.y);
+    scene.add(animalMesh);
   }
 
   // Scent visualizer — created only if scentState is provided
   let scentVisualizer: ScentVisualizer | null = null;
   if (scentState) {
-    scentVisualizer = createScentVisualizer(scene, DEFAULT_SCENT_VISUAL_CONFIG, OWNER_PROFILES);
+    scentVisualizer = createScentVisualizer(scene, DEFAULT_SCENT_VISUAL_CONFIG, ANIMAL_PROFILES);
   }
 
   const updateScent = (now: number): void => {
@@ -237,9 +234,9 @@ export function createSceneRuntime(
     scentVisualizer.update(scentState.trailPoints, now);
   };
 
-  const updateOwner = (o: OwnerState): void => {
-    if (ownerMesh) {
-      ownerMesh.position.set(o.x, o.height, o.y);
+  const updateAnimal = (o: AnimalState): void => {
+    if (animalMesh) {
+      animalMesh.position.set(o.x, o.height, o.y);
     }
   };
 
@@ -258,14 +255,13 @@ export function createSceneRuntime(
     return null;
   };
 
+  const setScentVisible = (visible: boolean): void => {
+    scentVisualizer?.setVisible(visible);
+  };
+
   const resetCamera = (): void => {
     isReturningToHome = true;
   };
-
-  const getCameraState = () => ({
-    pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-    target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
-  });
 
   let animationFrameId: number | null = null;
 
@@ -318,9 +314,9 @@ export function createSceneRuntime(
     start,
     stop,
     updateScent,
-    updateOwner,
+    updateAnimal,
     resetCamera,
     getMouseGroundIntersection,
-    getCameraState
+    setScentVisible
   };
 }

@@ -1,25 +1,25 @@
-import type { OwnerState } from '../types/owner';
+import type { AnimalState } from '../types/animal';
 import type { MapData } from '../types/map';
-import { OWNER_SPEED, HEIGHT_SPEED_FACTOR, OWNER_HEIGHT_OFFSET } from '../config/ownerConfig';
+import { ANIMAL_SPEED, HEIGHT_SPEED_FACTOR, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import { isObstacleInFootprint, getHeightAt } from './mapService';
 
-export function createOwner(
+export function createAnimal(
   id: string,
-  ownerType: string,
+  animalType: string,
   x: number,
   y: number,
   mapData: MapData
-): OwnerState {
-  const height = getHeightAt(mapData, x, y) + OWNER_HEIGHT_OFFSET;
-  return { id, ownerType, x, y, height, directionX: 1, directionY: 0 };
+): AnimalState {
+  const height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
+  return { id, animalType, x, y, height, directionX: 1, directionY: 0 };
 }
 
-export function moveOwner(
-  owner: OwnerState,
+export function moveAnimal(
+  animal: AnimalState,
   keys: Set<string>,
   dt: number,
   mapData: MapData
-): OwnerState {
+): AnimalState {
   let dx = 0;
   let dy = 0;
 
@@ -32,23 +32,23 @@ export function moveOwner(
     const len = Math.sqrt(dx * dx + dy * dy);
     dx /= len;
     dy /= len;
-    owner.directionX = dx;
-    owner.directionY = dy;
+    animal.directionX = dx;
+    animal.directionY = dy;
   }
 
-  const speed = OWNER_SPEED * dt;
+  const speed = ANIMAL_SPEED * dt;
 
   // Tentative new position
-  const newX = owner.x + dx * speed;
-  const newY = owner.y + dy * speed;
+  const newX = animal.x + dx * speed;
+  const newY = animal.y + dy * speed;
 
   // Obstacle collision detection and resolution
   let finalDx = dx;
   let finalDy = dy;
 
   if (isObstacleInFootprint(mapData, newX, newY)) {
-    const xClear = !isObstacleInFootprint(mapData, newX, owner.y);
-    const yClear = !isObstacleInFootprint(mapData, owner.x, newY);
+    const xClear = !isObstacleInFootprint(mapData, newX, animal.y);
+    const yClear = !isObstacleInFootprint(mapData, animal.x, newY);
 
     if (!xClear && !yClear) {
       finalDx = 0;
@@ -64,15 +64,15 @@ export function moveOwner(
   }
 
   // Height speed adjustment
-  const targetX = owner.x + finalDx * speed;
-  const targetY = owner.y + finalDy * speed;
+  const targetX = animal.x + finalDx * speed;
+  const targetY = animal.y + finalDy * speed;
   const heightDiff = Math.abs(
-    getHeightAt(mapData, targetX, targetY) - getHeightAt(mapData, owner.x, owner.y)
+    getHeightAt(mapData, targetX, targetY) - getHeightAt(mapData, animal.x, animal.y)
   );
   const heightFactor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
 
-  owner.x += finalDx * speed * heightFactor;
-  owner.y += finalDy * speed * heightFactor;
-  owner.height = getHeightAt(mapData, owner.x, owner.y) + OWNER_HEIGHT_OFFSET;
-  return owner;
+  animal.x += finalDx * speed * heightFactor;
+  animal.y += finalDy * speed * heightFactor;
+  animal.height = getHeightAt(mapData, animal.x, animal.y) + ANIMAL_HEIGHT_OFFSET;
+  return animal;
 }

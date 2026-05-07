@@ -1,4 +1,4 @@
-import type { OwnerScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
+import type { AnimalScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
 
 export const DEFAULT_SCENT_PARAMS: ScentParams = {
   maxTrailAge: 25000,
@@ -9,10 +9,10 @@ export const DEFAULT_SCENT_PARAMS: ScentParams = {
   emitSpacing: 1.0
 };
 
-export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
+export const ANIMAL_PROFILES: Record<string, AnimalScentProfile> = {
   dog: {
     ...DEFAULT_SCENT_PARAMS,
-    ownerType: 'dog',
+    animalType: 'dog',
     baseIntensity: 1.0,
     emitInterval: 200,
     emitProbability: 0.8,
@@ -23,7 +23,7 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
   },
   cow: {
     ...DEFAULT_SCENT_PARAMS,
-    ownerType: 'cow',
+    animalType: 'cow',
     baseIntensity: 1.5,
     emitInterval: 300,
     emitProbability: 0.6,
@@ -34,7 +34,7 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
   },
   pig: {
     ...DEFAULT_SCENT_PARAMS,
-    ownerType: 'pig',
+    animalType: 'pig',
     baseIntensity: 0.8,
     emitInterval: 150,
     emitProbability: 0.9,
@@ -48,21 +48,21 @@ export const OWNER_PROFILES: Record<string, OwnerScentProfile> = {
 export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
   pointSize: 0.18,
   minHeight: 0.05,
-  ownerColorMap: {
+  animalColorMap: {
     dog: 0xff9933,
     cow: 0x44aa44,
     pig: 0xff6688
   }
 };
 
-export function getOwnerProfile(ownerType: string): OwnerScentProfile {
-  const existing = OWNER_PROFILES[ownerType];
+export function getAnimalProfile(animalType: string): AnimalScentProfile {
+  const existing = ANIMAL_PROFILES[animalType];
   if (existing) {
     return existing;
   }
   return {
     ...DEFAULT_SCENT_PARAMS,
-    ownerType,
+    animalType,
     baseIntensity: 1.0,
     emitInterval: 250,
     emitProbability: 0.5,

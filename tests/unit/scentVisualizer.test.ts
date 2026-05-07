@@ -1,21 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import { Scene } from 'three';
 import { createScentVisualizer, MAX_INSTANCES } from '../../src/runtime/scentVisualizer';
-import type { ScentVisualConfig, OwnerScentProfile, ScentPoint } from '../../src/types/scent';
+import type { ScentVisualConfig, AnimalScentProfile, ScentPoint } from '../../src/types/scent';
 
 const mockConfig: ScentVisualConfig = {
   pointSize: 0.18,
   minHeight: 0.05,
-  ownerColorMap: {
+  animalColorMap: {
     dog: 0xff9933,
     cow: 0x44aa44,
     pig: 0xff6688
   }
 };
 
-const mockProfileMap: Record<string, OwnerScentProfile> = {
+const mockProfileMap: Record<string, AnimalScentProfile> = {
   dog: {
-    ownerType: 'dog',
+    animalType: 'dog',
     maxTrailAge: 25000,
     tauDecay: 8000,
     scentSpreadSigma: 2.0,
@@ -50,8 +50,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -83,8 +83,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 1,
         y: 2,
         height: 0,
@@ -100,17 +100,43 @@ describe('createScentVisualizer', () => {
     }).not.toThrow();
   });
 
+  it('provides setVisible method that toggles mesh visibility', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    expect(visualizer).toHaveProperty('setVisible');
+    expect(typeof visualizer.setVisible).toBe('function');
+  });
+
+  it('setVisible hides mesh when called with false', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const mesh = scene.children[scene.children.length - 1] as any;
+    expect(mesh.visible).toBe(true);
+    visualizer.setVisible(false);
+    expect(mesh.visible).toBe(false);
+  });
+
+  it('setVisible shows mesh when called with true after hiding', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const mesh = scene.children[scene.children.length - 1] as any;
+    visualizer.setVisible(false);
+    expect(mesh.visible).toBe(false);
+    visualizer.setVisible(true);
+    expect(mesh.visible).toBe(true);
+  });
+
   it('exports MAX_INSTANCES as 2000', () => {
     expect(MAX_INSTANCES).toBe(2000);
   });
 
-  it('handles unknown ownerType color gracefully', () => {
+  it('handles unknown animalType color gracefully', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'unknown-1',
-        ownerType: 'unknown',
+        animalId: 'unknown-1',
+        animalType: 'unknown',
         x: 0,
         y: 0,
         height: 0,
@@ -132,8 +158,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -159,8 +185,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -190,8 +216,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -214,8 +240,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -242,8 +268,8 @@ describe('createScentVisualizer', () => {
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -268,8 +294,8 @@ describe('createScentVisualizer', () => {
     // Point with tauDecay=16000 (double profile's 8000)
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 0,
@@ -295,8 +321,8 @@ describe('createScentVisualizer', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = Array.from({ length: 3000 }, (_, i) => ({
-      ownerId: `dog-${i}`,
-      ownerType: 'dog',
+      animalId: `dog-${i}`,
+      animalType: 'dog',
       x: i,
       y: i,
       height: i,
@@ -313,8 +339,8 @@ describe('createScentVisualizer', () => {
     // Fresh point: age=0 → decayFactor=1 → ratio=0 → height = point.height
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 1.5,
@@ -334,8 +360,8 @@ describe('createScentVisualizer', () => {
     // Very old point: age→∞ → decayFactor→0 → ratio→1 → height → minHeight
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 1.5,
@@ -356,8 +382,8 @@ describe('createScentVisualizer', () => {
     // We verify no error (position set via mesh matrix, hard to read back)
     const points: ScentPoint[] = [
       {
-        ownerId: 'dog-1',
-        ownerType: 'dog',
+        animalId: 'dog-1',
+        animalType: 'dog',
         x: 0,
         y: 0,
         height: 2.0,

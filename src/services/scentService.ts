@@ -1,4 +1,4 @@
-import type { ScentWorldState, ScentPoint, OwnerScentProfile, ScentParams } from '../types/scent';
+import type { ScentWorldState, ScentPoint, AnimalScentProfile, ScentParams } from '../types/scent';
 
 function randomGaussian(): number {
   const u1 = Math.random();
@@ -8,27 +8,27 @@ function randomGaussian(): number {
 
 export function emitTrailPoint(
   state: ScentWorldState,
-  ownerId: string,
-  ownerType: string,
-  ownerX: number,
-  ownerY: number,
-  ownerHeight: number,
+  animalId: string,
+  animalType: string,
+  animalX: number,
+  animalY: number,
+  animalHeight: number,
   dt: number,
   now: number,
-  profile: OwnerScentProfile
+  profile: AnimalScentProfile
 ): void {
-  let acc = state.emitters.get(ownerId);
+  let acc = state.emitters.get(animalId);
   if (!acc) {
     acc = {
       timeSinceLastEmit: 0,
       distanceSinceLast: 0,
-      ownerId,
-      ownerType,
-      lastX: ownerX,
-      lastY: ownerY,
-      lastHeight: ownerHeight
+      animalId,
+      animalType,
+      lastX: animalX,
+      lastY: animalY,
+      lastHeight: animalHeight
     };
-    state.emitters.set(ownerId, acc);
+    state.emitters.set(animalId, acc);
   }
 
   acc.timeSinceLastEmit += dt;
@@ -43,104 +43,104 @@ export function emitTrailPoint(
     return;
   }
 
-  // 원형 2D 가우시안 확산 (owner 중심, 방향 무관)
+  // 원형 2D 가우시안 확산 (animal 중심, 방향 무관)
   const angle = Math.random() * 2 * Math.PI;
   const radius = Math.abs(randomGaussian()) * profile.spreadRadius;
-  const px = ownerX + Math.cos(angle) * radius;
-  const py = ownerY + Math.sin(angle) * radius;
+  const px = animalX + Math.cos(angle) * radius;
+  const py = animalY + Math.sin(angle) * radius;
 
   const point: ScentPoint = {
-    ownerId,
-    ownerType,
+    animalId,
+    animalType,
     x: px,
     y: py,
-    height: ownerHeight,
+    height: animalHeight,
     t: now,
     baseIntensity: profile.baseIntensity,
     tauDecay: profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)
   };
   state.trailPoints.push(point);
 
-  acc.lastX = ownerX;
-  acc.lastY = ownerY;
-  acc.lastHeight = ownerHeight;
+  acc.lastX = animalX;
+  acc.lastY = animalY;
+  acc.lastHeight = animalHeight;
 }
 
 export function emitTrailPointOnMove(
   state: ScentWorldState,
-  ownerId: string,
-  ownerType: string,
-  ownerX: number,
-  ownerY: number,
-  ownerHeight: number,
+  animalId: string,
+  animalType: string,
+  animalX: number,
+  animalY: number,
+  animalHeight: number,
   now: number,
-  profile: OwnerScentProfile
+  profile: AnimalScentProfile
 ): void {
-  let acc = state.emitters.get(ownerId);
+  let acc = state.emitters.get(animalId);
   if (!acc) {
     acc = {
       timeSinceLastEmit: 0,
       distanceSinceLast: 0,
-      ownerId,
-      ownerType,
-      lastX: ownerX,
-      lastY: ownerY,
-      lastHeight: ownerHeight
+      animalId,
+      animalType,
+      lastX: animalX,
+      lastY: animalY,
+      lastHeight: animalHeight
     };
-    state.emitters.set(ownerId, acc);
+    state.emitters.set(animalId, acc);
   }
 
   // 거리 누적
-  const dx = ownerX - acc.lastX;
-  const dy = ownerY - acc.lastY;
+  const dx = animalX - acc.lastX;
+  const dy = animalY - acc.lastY;
   const dist = Math.sqrt(dx * dx + dy * dy);
   acc.distanceSinceLast += dist;
 
   // 거리 임계치 미달 시 방출하지 않음
   if (acc.distanceSinceLast < profile.emitSpacing) {
-    acc.lastX = ownerX;
-    acc.lastY = ownerY;
-    acc.lastHeight = ownerHeight;
+    acc.lastX = animalX;
+    acc.lastY = animalY;
+    acc.lastHeight = animalHeight;
     return;
   }
 
   acc.distanceSinceLast = 0;
 
   if (Math.random() > profile.emitProbability) {
-    acc.lastX = ownerX;
-    acc.lastY = ownerY;
-    acc.lastHeight = ownerHeight;
+    acc.lastX = animalX;
+    acc.lastY = animalY;
+    acc.lastHeight = animalHeight;
     return;
   }
 
   // 원형 2D 가우시안 확산 (위치 중심, 방향 무관)
   const angle = Math.random() * 2 * Math.PI;
   const radius = Math.abs(randomGaussian()) * profile.spreadRadius;
-  const px = ownerX + Math.cos(angle) * radius;
-  const py = ownerY + Math.sin(angle) * radius;
+  const px = animalX + Math.cos(angle) * radius;
+  const py = animalY + Math.sin(angle) * radius;
 
   const point: ScentPoint = {
-    ownerId,
-    ownerType,
+    animalId,
+    animalType,
     x: px,
     y: py,
-    height: ownerHeight,
+    height: animalHeight,
     t: now,
     baseIntensity: profile.baseIntensity,
     tauDecay: profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)
   };
   state.trailPoints.push(point);
 
-  acc.lastX = ownerX;
-  acc.lastY = ownerY;
-  acc.lastHeight = ownerHeight;
+  acc.lastX = animalX;
+  acc.lastY = animalY;
+  acc.lastHeight = animalHeight;
 }
 
 /**
  * Sample the scent signal at a given position.
  * - Iterates all trail points
  * - Applies time decay (exponential) and spatial decay (Gaussian)
- * - Optionally filters by ownerType
+ * - Optionally filters by animalType
  * - Returns the summed signal value
  */
 export function sampleScentAt(
@@ -148,12 +148,12 @@ export function sampleScentAt(
   position: { x: number; y: number },
   now: number,
   params: ScentParams,
-  ownerType?: string
+  animalType?: string
 ): number {
   let totalSignal = 0;
 
   for (const point of state.trailPoints) {
-    if (ownerType !== undefined && point.ownerType !== ownerType) {
+    if (animalType !== undefined && point.animalType !== animalType) {
       continue;
     }
 

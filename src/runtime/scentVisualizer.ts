@@ -1,18 +1,19 @@
 import { SphereGeometry, MeshStandardMaterial, InstancedMesh, Object3D, Color } from 'three';
 import type { Scene } from 'three';
-import type { ScentPoint, ScentVisualConfig, OwnerScentProfile } from '../types/scent';
+import type { ScentPoint, ScentVisualConfig, AnimalScentProfile } from '../types/scent';
 
 export const MAX_INSTANCES = 2000;
 
 export interface ScentVisualizer {
   update(trailPoints: ScentPoint[], now: number): void;
   dispose(): void;
+  setVisible(visible: boolean): void;
 }
 
 export function createScentVisualizer(
   scene: Scene,
   config: ScentVisualConfig,
-  profileMap: Record<string, OwnerScentProfile>
+  profileMap: Record<string, AnimalScentProfile>
 ): ScentVisualizer {
   const geometry = new SphereGeometry(1, 8, 8);
   const material = new MeshStandardMaterial({
@@ -32,7 +33,7 @@ export function createScentVisualizer(
     for (let i = 0; i < count; i++) {
       const point = trailPoints[i];
       const age = now - point.t;
-      const profile = profileMap[point.ownerType];
+      const profile = profileMap[point.animalType];
       const tauDecay = point.tauDecay ?? profile?.tauDecay ?? 10000;
       const decayFactor = Math.exp(-age / tauDecay);
       const ratio = 1 - decayFactor;
@@ -46,7 +47,7 @@ export function createScentVisualizer(
       tempObject.updateMatrix();
       mesh.setMatrixAt(i, tempObject.matrix);
 
-      const colorHex = config.ownerColorMap[point.ownerType] ?? 0xffffff;
+      const colorHex = config.animalColorMap[point.animalType] ?? 0xffffff;
       tempColor.setHex(colorHex);
       tempColor.multiplyScalar(1 - ratio * 0.6);
       mesh.setColorAt(i, tempColor);
@@ -74,8 +75,12 @@ export function createScentVisualizer(
     material.dispose();
   };
 
+  const setVisible = (visible: boolean): void => {
+    mesh.visible = visible;
+  };
+
   // Initialize all instances as hidden
   update([], 0);
 
-  return { update, dispose };
+  return { update, dispose, setVisible };
 }

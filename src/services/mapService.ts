@@ -1,7 +1,7 @@
 import { OBSTACLE_PATTERNS } from '../config/mapConfig';
 import type { MapCell, MapData } from '../types/map';
 import type { MapConfig } from '../config/mapConfig';
-import { OWNER_HALF_EXTENT } from '../config/ownerConfig';
+import { ANIMAL_HALF_EXTENT } from '../config/animalConfig';
 
 function seededRandom(seed: number): () => number {
   let s = seed >>> 0;
@@ -150,7 +150,7 @@ export function isObstacleInFootprint(
   mapData: MapData,
   cx: number,
   cz: number,
-  halfExtent = OWNER_HALF_EXTENT
+  halfExtent = ANIMAL_HALF_EXTENT
 ): boolean {
   const mapWidth = mapData.width * mapData.cellSize;
   const mapDepth = mapData.depth * mapData.cellSize;

@@ -1,6 +1,6 @@
-export interface OwnerState {
+export interface AnimalState {
   id: string;
-  ownerType: string;
+  animalType: string;
   x: number;
   y: number; // z좌표 (맵 좌표)
   height: number; // worldY (고도)

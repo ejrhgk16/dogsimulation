@@ -1,8 +1,8 @@
-export type OwnerType = 'dog' | 'cow' | 'pig' | string;
+export type AnimalType = 'dog' | 'cow' | 'pig' | string;
 
 export interface ScentPoint {
-  ownerId: string;
-  ownerType: OwnerType;
+  animalId: string;
+  animalType: AnimalType;
   x: number;
   y: number;
   height: number;
@@ -14,8 +14,8 @@ export interface ScentPoint {
 export interface EmitAccumulator {
   timeSinceLastEmit: number;
   distanceSinceLast: number;
-  ownerId: string;
-  ownerType: OwnerType;
+  animalId: string;
+  animalType: AnimalType;
   lastX: number;
   lastY: number;
   lastHeight: number;
@@ -30,8 +30,8 @@ export interface ScentParams {
   emitSpacing: number;
 }
 
-export interface OwnerScentProfile extends ScentParams {
-  ownerType: OwnerType;
+export interface AnimalScentProfile extends ScentParams {
+  animalType: AnimalType;
   baseIntensity: number;
   emitInterval: number;
   emitSpacing: number;
@@ -42,7 +42,7 @@ export interface OwnerScentProfile extends ScentParams {
 export interface ScentVisualConfig {
   pointSize: number;
   minHeight: number;
-  ownerColorMap: Record<string, number>;
+  animalColorMap: Record<string, number>;
 }
 
 export interface ScentWorldState {

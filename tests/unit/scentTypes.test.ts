@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   ScentPoint,
-  OwnerScentProfile,
+  AnimalScentProfile,
   ScentParams,
   EmitAccumulator,
   ScentVisualConfig
@@ -10,8 +10,8 @@ import type {
 describe('ScentPoint', () => {
   it('accepts optional tauDecay field', () => {
     const point: ScentPoint = {
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
@@ -23,8 +23,8 @@ describe('ScentPoint', () => {
 
   it('accepts tauDecay when provided', () => {
     const point: ScentPoint = {
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
@@ -37,8 +37,8 @@ describe('ScentPoint', () => {
 
   it('accepts height field', () => {
     const point: ScentPoint = {
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       x: 0,
       y: 0,
       height: 1.5,
@@ -54,8 +54,8 @@ describe('EmitAccumulator', () => {
     const acc: EmitAccumulator = {
       timeSinceLastEmit: 0,
       distanceSinceLast: 0,
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       lastX: 0,
       lastY: 0,
       lastHeight: 0
@@ -69,8 +69,8 @@ describe('EmitAccumulator', () => {
     const acc: EmitAccumulator = {
       timeSinceLastEmit: 500,
       distanceSinceLast: 0,
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       lastX: 10,
       lastY: 20,
       lastHeight: 1.5
@@ -84,8 +84,8 @@ describe('EmitAccumulator', () => {
     const acc: EmitAccumulator = {
       timeSinceLastEmit: 0,
       distanceSinceLast: 2.5,
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       lastX: 10,
       lastY: 20,
       lastHeight: 1.5
@@ -94,10 +94,10 @@ describe('EmitAccumulator', () => {
   });
 });
 
-describe('OwnerScentProfile', () => {
+describe('AnimalScentProfile', () => {
   it('has emitInterval and spreadRadius as required fields', () => {
-    const profile: OwnerScentProfile = {
-      ownerType: 'dog',
+    const profile: AnimalScentProfile = {
+      animalType: 'dog',
       baseIntensity: 1.0,
       emitInterval: 200,
       emitProbability: 0.8,
@@ -114,8 +114,8 @@ describe('OwnerScentProfile', () => {
   });
 
   it('has tauDecayMin and tauDecayMax as required fields', () => {
-    const profile: OwnerScentProfile = {
-      ownerType: 'dog',
+    const profile: AnimalScentProfile = {
+      animalType: 'dog',
       baseIntensity: 1.0,
       emitInterval: 200,
       emitProbability: 0.8,
@@ -132,8 +132,8 @@ describe('OwnerScentProfile', () => {
   });
 
   it('has emitSpacing as required field', () => {
-    const profile: OwnerScentProfile = {
-      ownerType: 'dog',
+    const profile: AnimalScentProfile = {
+      animalType: 'dog',
       baseIntensity: 1.0,
       emitInterval: 200,
       emitProbability: 0.8,
@@ -193,19 +193,19 @@ describe('ScentVisualConfig', () => {
     const config: ScentVisualConfig = {
       pointSize: 0.18,
       minHeight: 0.05,
-      ownerColorMap: { dog: 0xff9933 }
+      animalColorMap: { dog: 0xff9933 }
     };
     expect((config as unknown as Record<string, unknown>).maxHeight).toBeUndefined();
   });
 
-  it('has pointSize, minHeight, ownerColorMap', () => {
+  it('has pointSize, minHeight, animalColorMap', () => {
     const config: ScentVisualConfig = {
       pointSize: 0.18,
       minHeight: 0.05,
-      ownerColorMap: { dog: 0xff9933, cow: 0x44aa44 }
+      animalColorMap: { dog: 0xff9933, cow: 0x44aa44 }
     };
     expect(config.pointSize).toBe(0.18);
     expect(config.minHeight).toBe(0.05);
-    expect(config.ownerColorMap.dog).toBe(0xff9933);
+    expect(config.animalColorMap.dog).toBe(0xff9933);
   });
 });

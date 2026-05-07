@@ -19,7 +19,7 @@ import type { ScentWorldState } from '../../src/types/scent';
 import { generateMap } from '../../src/services/mapService';
 import { defaultSceneConfig } from '../../src/config/sceneConfig';
 import { emitTrailPointOnMove } from '../../src/services/scentService';
-import { getOwnerProfile } from '../../src/config/scentConfig';
+import { getAnimalProfile } from '../../src/config/scentConfig';
 
 describe('sceneRuntime scent integration', () => {
   it('returns updateScent function when no scentState provided', () => {
@@ -52,8 +52,8 @@ describe('sceneRuntime scent integration', () => {
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
     // An expired point: t=0, now=30000 → age=30000 > DEFAULT maxTrailAge=25000
     scentState.trailPoints.push({
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
@@ -71,8 +71,8 @@ describe('sceneRuntime scent integration', () => {
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
     // Fresh point: t=9000, now=10000 → age=1000 <= maxTrailAge=25000
     scentState.trailPoints.push({
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
@@ -90,8 +90,8 @@ describe('sceneRuntime scent integration', () => {
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
     // Point with explicit tauDecay: age=1000 <= maxTrailAge=25000
     scentState.trailPoints.push({
-      ownerId: 'test',
-      ownerType: 'dog',
+      animalId: 'test',
+      animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
@@ -115,13 +115,13 @@ describe('sceneRuntime scent integration', () => {
 
   it('emitTrailPointOnMove is importable and callable', () => {
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    const profile = getOwnerProfile('dog');
+    const profile = getAnimalProfile('dog');
     expect(() =>
-      emitTrailPointOnMove(scentState, 'o1', 'dog', 0, 0, 0, 100, profile)
+      emitTrailPointOnMove(scentState, 'a1', 'dog', 0, 0, 0, 100, profile)
     ).not.toThrow();
-    expect(scentState.emitters.has('o1')).toBe(true);
+    expect(scentState.emitters.has('a1')).toBe(true);
     // distanceSinceLast initialized to 0
-    expect(scentState.emitters.get('o1')!.distanceSinceLast).toBe(0);
+    expect(scentState.emitters.get('a1')!.distanceSinceLast).toBe(0);
   });
 });
 

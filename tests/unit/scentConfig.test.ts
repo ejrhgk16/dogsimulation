@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_SCENT_PARAMS,
-  OWNER_PROFILES,
+  ANIMAL_PROFILES,
   DEFAULT_SCENT_VISUAL_CONFIG,
-  getOwnerProfile
+  getAnimalProfile
 } from '../../src/config/scentConfig';
 
 describe('DEFAULT_SCENT_PARAMS', () => {
@@ -17,10 +17,10 @@ describe('DEFAULT_SCENT_PARAMS', () => {
   });
 });
 
-describe('OWNER_PROFILES', () => {
+describe('ANIMAL_PROFILES', () => {
   it('has dog profile with correct values', () => {
-    const dog = OWNER_PROFILES['dog'];
-    expect(dog.ownerType).toBe('dog');
+    const dog = ANIMAL_PROFILES['dog'];
+    expect(dog.animalType).toBe('dog');
     expect(dog.baseIntensity).toBe(1.0);
     expect(dog.emitInterval).toBe(200);
     expect(dog.spreadRadius).toBe(0.75);
@@ -34,8 +34,8 @@ describe('OWNER_PROFILES', () => {
   });
 
   it('has cow profile with correct values', () => {
-    const cow = OWNER_PROFILES['cow'];
-    expect(cow.ownerType).toBe('cow');
+    const cow = ANIMAL_PROFILES['cow'];
+    expect(cow.animalType).toBe('cow');
     expect(cow.baseIntensity).toBe(1.5);
     expect(cow.emitInterval).toBe(300);
     expect(cow.spreadRadius).toBe(2.0);
@@ -49,8 +49,8 @@ describe('OWNER_PROFILES', () => {
   });
 
   it('has pig profile with correct values', () => {
-    const pig = OWNER_PROFILES['pig'];
-    expect(pig.ownerType).toBe('pig');
+    const pig = ANIMAL_PROFILES['pig'];
+    expect(pig.animalType).toBe('pig');
     expect(pig.baseIntensity).toBe(0.8);
     expect(pig.emitInterval).toBe(150);
     expect(pig.spreadRadius).toBe(1.2);
@@ -68,40 +68,40 @@ describe('DEFAULT_SCENT_VISUAL_CONFIG', () => {
   it('has correct values', () => {
     expect(DEFAULT_SCENT_VISUAL_CONFIG.pointSize).toBe(0.18);
     expect(DEFAULT_SCENT_VISUAL_CONFIG.minHeight).toBe(0.05);
-    expect(DEFAULT_SCENT_VISUAL_CONFIG.ownerColorMap['dog']).toBe(0xff9933);
-    expect(DEFAULT_SCENT_VISUAL_CONFIG.ownerColorMap['cow']).toBe(0x44aa44);
-    expect(DEFAULT_SCENT_VISUAL_CONFIG.ownerColorMap['pig']).toBe(0xff6688);
+    expect(DEFAULT_SCENT_VISUAL_CONFIG.animalColorMap['dog']).toBe(0xff9933);
+    expect(DEFAULT_SCENT_VISUAL_CONFIG.animalColorMap['cow']).toBe(0x44aa44);
+    expect(DEFAULT_SCENT_VISUAL_CONFIG.animalColorMap['pig']).toBe(0xff6688);
   });
 });
 
-describe('getOwnerProfile', () => {
-  it('returns dog profile for dog ownerType', () => {
-    const profile = getOwnerProfile('dog');
-    expect(profile.ownerType).toBe('dog');
+describe('getAnimalProfile', () => {
+  it('returns dog profile for dog animalType', () => {
+    const profile = getAnimalProfile('dog');
+    expect(profile.animalType).toBe('dog');
     expect(profile.baseIntensity).toBe(1.0);
     expect(profile.emitInterval).toBe(200);
     expect(profile.spreadRadius).toBe(0.75);
   });
 
-  it('returns cow profile for cow ownerType', () => {
-    const profile = getOwnerProfile('cow');
-    expect(profile.ownerType).toBe('cow');
+  it('returns cow profile for cow animalType', () => {
+    const profile = getAnimalProfile('cow');
+    expect(profile.animalType).toBe('cow');
     expect(profile.baseIntensity).toBe(1.5);
     expect(profile.emitInterval).toBe(300);
     expect(profile.spreadRadius).toBe(2.0);
   });
 
-  it('returns pig profile for pig ownerType', () => {
-    const profile = getOwnerProfile('pig');
-    expect(profile.ownerType).toBe('pig');
+  it('returns pig profile for pig animalType', () => {
+    const profile = getAnimalProfile('pig');
+    expect(profile.animalType).toBe('pig');
     expect(profile.baseIntensity).toBe(0.8);
     expect(profile.emitInterval).toBe(150);
     expect(profile.spreadRadius).toBe(1.2);
   });
 
-  it('returns dynamic default for unknown ownerType', () => {
-    const profile = getOwnerProfile('cat');
-    expect(profile.ownerType).toBe('cat');
+  it('returns dynamic default for unknown animalType', () => {
+    const profile = getAnimalProfile('cat');
+    expect(profile.animalType).toBe('cat');
     expect(profile.baseIntensity).toBe(1.0);
     expect(profile.emitInterval).toBe(250);
     expect(profile.spreadRadius).toBe(0.75);

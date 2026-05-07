@@ -2,11 +2,11 @@ import { defaultSceneConfig } from './config/sceneConfig';
 import { generateMap, isObstacleInFootprint, getHeightAt } from './services/mapService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
 import type { ScentWorldState } from './types/scent';
-import type { OwnerState } from './types/owner';
-import { createOwner, moveOwner } from './services/ownerService';
+import type { AnimalState } from './types/animal';
+import { createAnimal, moveAnimal } from './services/animalService';
 import { emitTrailPoint, emitTrailPointOnMove } from './services/scentService';
-import { getOwnerProfile } from './config/scentConfig';
-import { OWNER_HEIGHT_OFFSET } from './config/ownerConfig';
+import { getAnimalProfile } from './config/scentConfig';
+import { ANIMAL_HEIGHT_OFFSET } from './config/animalConfig';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -20,30 +20,32 @@ const mapData = generateMap(defaultSceneConfig.mapConfig);
 
 const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
 
-const owner: OwnerState = createOwner('owner-1', 'dog', 0, 0, mapData);
+const animal: AnimalState = createAnimal('animal-1', 'dog', 0, 0, mapData);
 
 const keys = new Set<string>();
 window.addEventListener('keydown', (e) => keys.add(e.key));
 window.addEventListener('keyup', (e) => keys.delete(e.key));
 
-const runtime = createSceneRuntime(canvas, mapData, scentState, owner);
+const runtime = createSceneRuntime(canvas, mapData, scentState, animal);
 
-const debugOverlay = document.createElement('div');
-debugOverlay.id = 'debug-camera';
-Object.assign(debugOverlay.style, {
-  position: 'absolute',
-  top: '8px',
-  left: '8px',
-  color: '#fff',
-  background: 'rgba(0,0,0,0.7)',
-  padding: '6px 10px',
-  borderRadius: '4px',
-  fontSize: '12px',
-  fontFamily: 'monospace',
-  pointerEvents: 'none',
-  zIndex: '1000'
+// Control panel
+const controlsPanel = document.createElement('div');
+controlsPanel.id = 'controls-panel';
+controlsPanel.innerHTML = `
+  <fieldset>
+    <legend>Visualization</legend>
+    <label>
+      <input type="checkbox" id="toggle-scent" checked />
+      Scent Trail
+    </label>
+  </fieldset>
+`;
+app.appendChild(controlsPanel);
+
+const scentCheckbox = controlsPanel.querySelector<HTMLInputElement>('#toggle-scent')!;
+scentCheckbox.addEventListener('change', () => {
+  runtime.setScentVisible(scentCheckbox.checked);
 });
-app.appendChild(debugOverlay);
 
 window.addEventListener('resize', () => runtime.resize());
 
@@ -59,10 +61,10 @@ canvas.addEventListener('mousedown', (e: MouseEvent) => {
   const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   const intersection = runtime.getMouseGroundIntersection(mouseX, mouseY);
   if (intersection && !isObstacleInFootprint(mapData, intersection.x, intersection.z)) {
-    owner.x = intersection.x;
-    owner.y = intersection.z;
-    owner.height = getHeightAt(mapData, owner.x, owner.y) + OWNER_HEIGHT_OFFSET;
-    runtime.updateOwner(owner);
+    animal.x = intersection.x;
+    animal.y = intersection.z;
+    animal.height = getHeightAt(mapData, animal.x, animal.y) + ANIMAL_HEIGHT_OFFSET;
+    runtime.updateAnimal(animal);
     isDragging = true;
   }
 });
@@ -74,10 +76,10 @@ canvas.addEventListener('mousemove', (e: MouseEvent) => {
   const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   const intersection = runtime.getMouseGroundIntersection(mouseX, mouseY);
   if (intersection && !isObstacleInFootprint(mapData, intersection.x, intersection.z)) {
-    owner.x = intersection.x;
-    owner.y = intersection.z;
-    owner.height = getHeightAt(mapData, owner.x, owner.y) + OWNER_HEIGHT_OFFSET;
-    runtime.updateOwner(owner);
+    animal.x = intersection.x;
+    animal.y = intersection.z;
+    animal.height = getHeightAt(mapData, animal.x, animal.y) + ANIMAL_HEIGHT_OFFSET;
+    runtime.updateAnimal(animal);
   }
 });
 
@@ -86,22 +88,21 @@ canvas.addEventListener('mouseup', () => {
 });
 
 let lastTime = performance.now();
-let lastDebugTime = 0;
 function animate() {
   const now = performance.now();
   const dt = (now - lastTime) / 1000;
   lastTime = now;
 
-  moveOwner(owner, keys, dt, mapData);
+  moveAnimal(animal, keys, dt, mapData);
 
-  const profile = getOwnerProfile(owner.ownerType);
+  const profile = getAnimalProfile(animal.animalType);
   emitTrailPoint(
     scentState,
-    owner.id,
-    owner.ownerType,
-    owner.x,
-    owner.y,
-    owner.height,
+    animal.id,
+    animal.animalType,
+    animal.x,
+    animal.y,
+    animal.height,
     dt * 1000, // dt는 초 단위이므로 ms로 변환
     now,
     profile
@@ -109,24 +110,16 @@ function animate() {
 
   emitTrailPointOnMove(
     scentState,
-    owner.id,
-    owner.ownerType,
-    owner.x,
-    owner.y,
-    owner.height,
+    animal.id,
+    animal.animalType,
+    animal.x,
+    animal.y,
+    animal.height,
     now,
     profile
   );
 
-  runtime.updateOwner(owner);
-
-  if (now - lastDebugTime > 200) {
-    lastDebugTime = now;
-    const cam = runtime.getCameraState();
-    debugOverlay.textContent =
-      `cam pos: (${cam.pos.x.toFixed(1)}, ${cam.pos.y.toFixed(1)}, ${cam.pos.z.toFixed(1)}) | ` +
-      `target: (${cam.target.x.toFixed(1)}, ${cam.target.y.toFixed(1)}, ${cam.target.z.toFixed(1)})`;
-  }
+  runtime.updateAnimal(animal);
 
   requestAnimationFrame(animate);
 }
