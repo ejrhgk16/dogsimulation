@@ -16,13 +16,7 @@ if (branch === 'dev' || branch === 'main') {
 }
 
 function generateMessage() {
-  const log = run('git log dev..HEAD --oneline --format="%s"');
-  if (log) {
-    const lines = log.split('\n').filter(Boolean);
-    if (lines.length > 0) return lines[0];
-  }
-  const desc = branch.replace(/^plan-\d+-/, '').replace(/[-_]/g, ' ');
-  return `feat: ${desc}`;
+  return branch;
 }
 
 const msg = process.argv[2] || process.env.COMMIT_MESSAGE || generateMessage();

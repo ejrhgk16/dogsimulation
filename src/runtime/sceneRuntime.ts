@@ -11,9 +11,7 @@ import {
   MOUSE,
   Object3D,
   PerspectiveCamera,
-  Raycaster,
   Scene,
-  Vector2,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -30,6 +28,7 @@ import { ANIMAL_TYPES } from '../config/animalConfig';
 import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
+import { loadModel } from './modelLoader';
 
 export interface SceneRuntime {
   resize: () => void;
@@ -38,7 +37,6 @@ export interface SceneRuntime {
   updateScent: (now: number) => void;
   updateAnimal: (animal: AnimalState) => void;
   resetCamera: () => void;
-  getMouseGroundIntersection: (mouseX: number, mouseY: number) => { x: number; z: number } | null;
   setScentVisible: (visible: boolean) => void;
 }
 
@@ -117,7 +115,7 @@ export function createSceneRuntime(
   controls.dampingFactor = 0.1;
   controls.target.set(0, 0, 0);
   controls.mouseButtons = {
-    LEFT: null,
+    LEFT: MOUSE.PAN,
     MIDDLE: MOUSE.DOLLY,
     RIGHT: MOUSE.ROTATE
   };
@@ -211,15 +209,31 @@ export function createSceneRuntime(
     scene.add(mesh);
   }
 
-  // Animal box mesh
-  let animalMesh: Mesh | null = null;
+  // Animal object — fallback box initially, replaced by GLTF model if loaded
+  let animalObject: Object3D | null = null;
   if (animal) {
+    const config = ANIMAL_TYPES[animal.animalType];
+    const color = config?.color ?? 0xff9933;
     const geo = new BoxGeometry(1, 1, 1);
-    const color = ANIMAL_TYPES[animal.animalType] ?? 0xff9933;
     const mat = new MeshStandardMaterial({ color });
-    animalMesh = new Mesh(geo, mat);
-    animalMesh.position.set(animal.x, animal.height, animal.y);
-    scene.add(animalMesh);
+    const fallbackMesh = new Mesh(geo, mat);
+    fallbackMesh.position.set(animal.x, animal.height, animal.y);
+    scene.add(fallbackMesh);
+    animalObject = fallbackMesh;
+
+    // Attempt to load GLTF model
+    const modelPath = config?.modelPath;
+    if (modelPath) {
+      loadModel(modelPath).then((loaded) => {
+        if (loaded) {
+          scene.remove(fallbackMesh);
+          loaded.group.position.set(animal.x, animal.height, animal.y);
+          scene.add(loaded.group);
+          animalObject = loaded.group;
+        }
+        // If loaded is null, keep fallback box
+      });
+    }
   }
 
   // Scent visualizer — created only if scentState is provided
@@ -235,24 +249,9 @@ export function createSceneRuntime(
   };
 
   const updateAnimal = (o: AnimalState): void => {
-    if (animalMesh) {
-      animalMesh.position.set(o.x, o.height, o.y);
+    if (animalObject) {
+      animalObject.position.set(o.x, o.height, o.y);
     }
-  };
-
-  const raycaster = new Raycaster();
-
-  const getMouseGroundIntersection = (
-    mouseX: number,
-    mouseY: number
-  ): { x: number; z: number } | null => {
-    raycaster.setFromCamera(new Vector2(mouseX, mouseY), camera);
-    const intersects = raycaster.intersectObject(terrainMesh);
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
-      return { x: point.x, z: point.z };
-    }
-    return null;
   };
 
   const setScentVisible = (visible: boolean): void => {
@@ -316,7 +315,6 @@ export function createSceneRuntime(
     updateScent,
     updateAnimal,
     resetCamera,
-    getMouseGroundIntersection,
     setScentVisible
   };
 }

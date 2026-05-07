@@ -1,12 +1,11 @@
 import { defaultSceneConfig } from './config/sceneConfig';
-import { generateMap, isObstacleInFootprint, getHeightAt } from './services/mapService';
+import { generateMap } from './services/mapService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
 import type { ScentWorldState } from './types/scent';
 import type { AnimalState } from './types/animal';
 import { createAnimal, moveAnimal } from './services/animalService';
 import { emitTrailPoint, emitTrailPointOnMove } from './services/scentService';
 import { getAnimalProfile } from './config/scentConfig';
-import { ANIMAL_HEIGHT_OFFSET } from './config/animalConfig';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -51,41 +50,6 @@ window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
-
-let isDragging = false;
-
-canvas.addEventListener('mousedown', (e: MouseEvent) => {
-  if (e.button !== 0) return;
-  const rect = canvas.getBoundingClientRect();
-  const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  const intersection = runtime.getMouseGroundIntersection(mouseX, mouseY);
-  if (intersection && !isObstacleInFootprint(mapData, intersection.x, intersection.z)) {
-    animal.x = intersection.x;
-    animal.y = intersection.z;
-    animal.height = getHeightAt(mapData, animal.x, animal.y) + ANIMAL_HEIGHT_OFFSET;
-    runtime.updateAnimal(animal);
-    isDragging = true;
-  }
-});
-
-canvas.addEventListener('mousemove', (e: MouseEvent) => {
-  if (!isDragging) return;
-  const rect = canvas.getBoundingClientRect();
-  const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  const intersection = runtime.getMouseGroundIntersection(mouseX, mouseY);
-  if (intersection && !isObstacleInFootprint(mapData, intersection.x, intersection.z)) {
-    animal.x = intersection.x;
-    animal.y = intersection.z;
-    animal.height = getHeightAt(mapData, animal.x, animal.y) + ANIMAL_HEIGHT_OFFSET;
-    runtime.updateAnimal(animal);
-  }
-});
-
-canvas.addEventListener('mouseup', () => {
-  isDragging = false;
-});
 
 let lastTime = performance.now();
 function animate() {

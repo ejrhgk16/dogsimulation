@@ -1,3 +1,8 @@
+export interface AnimalTypeConfig {
+  modelPath: string;
+  color: number;
+}
+
 export interface AnimalState {
   id: string;
   animalType: string;

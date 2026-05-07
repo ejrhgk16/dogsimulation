@@ -34,6 +34,11 @@
       "dir": "plan-15-animal-rename-ui-controls",
       "status": "completed",
       "completed_at": "2026-05-07T09:30:26+0900"
+    },
+    {
+      "dir": "plan-16-camera-pan-gltf-animals",
+      "status": "completed",
+      "completed_at": "2026-05-07T09:45:24+0900"
     }
   ]
 }
