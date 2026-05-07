@@ -11,7 +11,16 @@ export function createAnimal(
   mapData: MapData
 ): AnimalState {
   const height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
-  return { id, animalType, x, y, height, directionX: 1, directionY: 0 };
+  return {
+    id,
+    animalType,
+    x,
+    y,
+    height,
+    directionX: 1,
+    directionY: 0,
+    rotationAngle: Math.atan2(1, 0)
+  };
 }
 
 export function moveAnimal(

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ANIMAL_SCALE } from '../../src/config/animalConfig';
 import {
   DEFAULT_SCENT_PARAMS,
   ANIMAL_PROFILES,
@@ -65,9 +66,15 @@ describe('ANIMAL_PROFILES', () => {
 });
 
 describe('DEFAULT_SCENT_VISUAL_CONFIG', () => {
-  it('has correct values', () => {
-    expect(DEFAULT_SCENT_VISUAL_CONFIG.pointSize).toBe(0.18);
-    expect(DEFAULT_SCENT_VISUAL_CONFIG.minHeight).toBe(0.05);
+  it('has pointSize computed from ANIMAL_SCALE', () => {
+    expect(DEFAULT_SCENT_VISUAL_CONFIG.pointSize).toBe(ANIMAL_SCALE * 0.2);
+  });
+
+  it('has minHeight computed from ANIMAL_SCALE', () => {
+    expect(DEFAULT_SCENT_VISUAL_CONFIG.minHeight).toBe(ANIMAL_SCALE * 0.05);
+  });
+
+  it('has correct animalColorMap values', () => {
     expect(DEFAULT_SCENT_VISUAL_CONFIG.animalColorMap['dog']).toBe(0xff9933);
     expect(DEFAULT_SCENT_VISUAL_CONFIG.animalColorMap['cow']).toBe(0x44aa44);
     expect(DEFAULT_SCENT_VISUAL_CONFIG.animalColorMap['pig']).toBe(0xff6688);

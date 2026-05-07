@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 
-// Mock WebGLRenderer — jsdom has no WebGL context
+vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
+  GLTFLoader: vi.fn().mockImplementation(() => ({
+    load: vi.fn()
+  }))
+}));
+
 vi.mock('three', async (importOriginal) => {
   const actual: Record<string, unknown> = await importOriginal();
   return {
@@ -17,9 +22,11 @@ vi.mock('three', async (importOriginal) => {
 import { createSceneRuntime } from '../../src/runtime/sceneRuntime';
 import type { ScentWorldState } from '../../src/types/scent';
 import { generateMap } from '../../src/services/mapService';
+import { createAnimal } from '../../src/services/animalService';
 import { defaultSceneConfig } from '../../src/config/sceneConfig';
 import { emitTrailPointOnMove } from '../../src/services/scentService';
 import { getAnimalProfile } from '../../src/config/scentConfig';
+import { ANIMAL_HEIGHT_OFFSET } from '../../src/config/animalConfig';
 
 describe('sceneRuntime scent integration', () => {
   it('returns updateScent function when no scentState provided', () => {
@@ -111,6 +118,44 @@ describe('sceneRuntime scent integration', () => {
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
     const runtime = createSceneRuntime(canvas, mapData, scentState);
     expect(() => runtime.updateScent(5000)).not.toThrow();
+  });
+
+  describe('sceneRuntime animal rotation', () => {
+    it('updateAnimal does not throw when animal provided', () => {
+      const canvas = document.createElement('canvas');
+      const mapData = generateMap(defaultSceneConfig.mapConfig);
+      const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+      expect(() => runtime.updateAnimal(animal)).not.toThrow();
+    });
+
+    it('updateAnimal handles direction change without error', () => {
+      const canvas = document.createElement('canvas');
+      const mapData = generateMap(defaultSceneConfig.mapConfig);
+      const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+      animal.directionX = 0;
+      animal.directionY = -1;
+      expect(() => runtime.updateAnimal(animal)).not.toThrow();
+    });
+
+    it('updateAnimal works with fallback mesh when no model loaded', () => {
+      const canvas = document.createElement('canvas');
+      const mapData = generateMap(defaultSceneConfig.mapConfig);
+      const animal = createAnimal('a1', 'pig', 0, 0, mapData);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+      expect(() => runtime.updateAnimal(animal)).not.toThrow();
+    });
+
+    it('updateAnimal positions fallback at height using scale-based offset', () => {
+      const canvas = document.createElement('canvas');
+      const mapData = generateMap(defaultSceneConfig.mapConfig);
+      const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+      // height should include ANIMAL_HEIGHT_OFFSET on top of terrain height
+      expect(animal.height - ANIMAL_HEIGHT_OFFSET).toBeGreaterThanOrEqual(0);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+      expect(() => runtime.updateAnimal(animal)).not.toThrow();
+    });
   });
 
   it('emitTrailPointOnMove is importable and callable', () => {

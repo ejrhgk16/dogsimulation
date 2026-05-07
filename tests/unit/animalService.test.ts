@@ -46,6 +46,12 @@ describe('createAnimal', () => {
     expect(a.directionY).toBe(0);
   });
 
+  it('initializes rotationAngle from initial direction (1,0)', () => {
+    const map = createFlatMap();
+    const a = createAnimal('a1', 'dog', 0, 0, map);
+    expect(a.rotationAngle).toBeCloseTo(Math.atan2(1, 0));
+  });
+
   it('initializes height from terrain height plus offset', () => {
     const map = createFlatMap();
     // Set all 4 cells to same height so bilinear interpolation is uniform
@@ -114,6 +120,16 @@ describe('moveAnimal — basic movement (no map obstacles)', () => {
     moveAnimal(animal, new Set(['a']), 1, map);
     expect(animal.directionX).toBeCloseTo(-1);
     expect(animal.directionY).toBeCloseTo(0);
+  });
+
+  it('does not change rotationAngle when direction changes', () => {
+    const map = createFlatMap();
+    const animal = animalAt(-5, -5);
+    const initialAngle = animal.rotationAngle;
+    moveAnimal(animal, new Set(['w']), 1, map);
+    expect(animal.directionX).toBe(0);
+    expect(animal.directionY).toBe(-1);
+    expect(animal.rotationAngle).toBe(initialAngle);
   });
 });
 

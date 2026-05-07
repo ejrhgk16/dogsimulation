@@ -1,3 +1,4 @@
+import { ANIMAL_SCALE } from './animalConfig';
 import type { AnimalScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
 
 export const DEFAULT_SCENT_PARAMS: ScentParams = {
@@ -46,8 +47,8 @@ export const ANIMAL_PROFILES: Record<string, AnimalScentProfile> = {
 };
 
 export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
-  pointSize: 0.18,
-  minHeight: 0.05,
+  pointSize: ANIMAL_SCALE * 0.2,
+  minHeight: ANIMAL_SCALE * 0.05,
   animalColorMap: {
     dog: 0xff9933,
     cow: 0x44aa44,

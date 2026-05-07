@@ -1,5 +1,6 @@
 import {
   AmbientLight,
+  Box3,
   BoxGeometry,
   BufferGeometry,
   Color,
@@ -16,6 +17,7 @@ import {
   WebGLRenderer
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { AnimationAction } from 'three';
 import type { MapData, ObstacleShape } from '../types/map';
 import type { ScentWorldState } from '../types/scent';
 import type { AnimalState } from '../types/animal';
@@ -24,11 +26,12 @@ import {
   DEFAULT_SCENT_PARAMS,
   DEFAULT_SCENT_VISUAL_CONFIG
 } from '../config/scentConfig';
-import { ANIMAL_TYPES } from '../config/animalConfig';
+import { ANIMAL_TYPES, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
 import { loadModel } from './modelLoader';
+import type { LoadedModel } from './modelLoader';
 
 export interface SceneRuntime {
   resize: () => void;
@@ -211,10 +214,23 @@ export function createSceneRuntime(
 
   // Animal object — fallback box initially, replaced by GLTF model if loaded
   let animalObject: Object3D | null = null;
+  let animalLoadedModel: LoadedModel | null = null;
+  let animalWalkAction: AnimationAction | null = null;
+  let animalIdleAction: AnimationAction | null = null;
+  let currentAnimName: string | null = null;
+  let prevAnimalX = animal?.x ?? 0;
+  let prevAnimalY = animal?.y ?? 0;
+  let lastAnimFrameTime = performance.now();
+  const CROSSFADE_DURATION = 0.2;
+  const ROTATION_SPEED = 8.0;
+  let groundOffset = ANIMAL_HEIGHT_OFFSET;
+  let currentAngle = 0;
+  let lastRotationTime = performance.now();
+
   if (animal) {
     const config = ANIMAL_TYPES[animal.animalType];
     const color = config?.color ?? 0xff9933;
-    const geo = new BoxGeometry(1, 1, 1);
+    const geo = new BoxGeometry(0.5, 0.5, 0.5);
     const mat = new MeshStandardMaterial({ color });
     const fallbackMesh = new Mesh(geo, mat);
     fallbackMesh.position.set(animal.x, animal.height, animal.y);
@@ -227,9 +243,33 @@ export function createSceneRuntime(
       loadModel(modelPath).then((loaded) => {
         if (loaded) {
           scene.remove(fallbackMesh);
-          loaded.group.position.set(animal.x, animal.height, animal.y);
+          loaded.group.position.set(animal.x, 0, animal.y);
+          loaded.group.scale.set(config.scale, config.scale, config.scale);
+          // Compute bounding box to find origin-to-feet distance
+          const box = new Box3().setFromObject(loaded.group);
+          groundOffset = -box.min.y;
+          const terrainHeight = animal.height - ANIMAL_HEIGHT_OFFSET;
+          loaded.group.position.set(animal.x, terrainHeight + groundOffset, animal.y);
           scene.add(loaded.group);
           animalObject = loaded.group;
+          animalLoadedModel = loaded;
+
+          // Find Walk/Idle clips by name pattern (case-insensitive)
+          const walkClip =
+            loaded.animations.find((c) => c.name.toLowerCase().includes('walk')) ?? null;
+          const idleClip =
+            loaded.animations.find(
+              (c) => c.name.toLowerCase().includes('idle') || c.name.toLowerCase().includes('stand')
+            ) ?? null;
+
+          animalWalkAction = walkClip ? loaded.mixer.clipAction(walkClip) : null;
+          animalIdleAction = idleClip ? loaded.mixer.clipAction(idleClip) : null;
+
+          // Start with Idle
+          if (animalIdleAction) {
+            animalIdleAction.play();
+            currentAnimName = 'idle';
+          }
         }
         // If loaded is null, keep fallback box
       });
@@ -248,9 +288,55 @@ export function createSceneRuntime(
     scentVisualizer.update(scentState.trailPoints, now);
   };
 
+  function crossFadeTo(nextAction: AnimationAction, prevAction: AnimationAction | null): void {
+    nextAction.reset();
+    nextAction.play();
+    if (prevAction) {
+      nextAction.crossFadeFrom(prevAction, CROSSFADE_DURATION, false);
+    }
+  }
+
   const updateAnimal = (o: AnimalState): void => {
-    if (animalObject) {
-      animalObject.position.set(o.x, o.height, o.y);
+    if (!animalObject) return;
+    const terrainY = o.height - ANIMAL_HEIGHT_OFFSET;
+    animalObject.position.set(o.x, terrainY + groundOffset, o.y);
+
+    // Delta time for smooth rotation
+    const now = performance.now();
+    const dt = (now - lastRotationTime) / 1000;
+    lastRotationTime = now;
+
+    // Smooth rotation toward movement direction
+    const moving = o.directionX !== 0 || o.directionY !== 0;
+    if (moving) {
+      const targetAngle = Math.atan2(o.directionX, o.directionY);
+      const diff = targetAngle - currentAngle;
+      const wrapped = Math.atan2(Math.sin(diff), Math.cos(diff));
+      const step = ROTATION_SPEED * dt;
+      if (Math.abs(wrapped) < step) {
+        currentAngle = targetAngle;
+      } else {
+        currentAngle += Math.sign(wrapped) * step;
+      }
+      animalObject.rotation.y = currentAngle;
+    }
+
+    // Detect movement by comparing current position to previous
+    const isMoving = o.x !== prevAnimalX || o.y !== prevAnimalY;
+    prevAnimalX = o.x;
+    prevAnimalY = o.y;
+
+    if (!animalLoadedModel) return;
+
+    const targetAnim = isMoving ? 'walk' : 'idle';
+    if (targetAnim === currentAnimName) return;
+
+    if (targetAnim === 'walk' && animalWalkAction) {
+      crossFadeTo(animalWalkAction, animalIdleAction);
+      currentAnimName = 'walk';
+    } else if (targetAnim === 'idle' && animalIdleAction) {
+      crossFadeTo(animalIdleAction, animalWalkAction);
+      currentAnimName = 'idle';
     }
   };
 
@@ -283,6 +369,15 @@ export function createSceneRuntime(
         isReturningToHome = false;
       }
     }
+
+    // Delta time for animation mixer
+    const now = performance.now();
+    const dt = (now - lastAnimFrameTime) / 1000;
+    lastAnimFrameTime = now;
+    if (animalLoadedModel?.mixer) {
+      animalLoadedModel.mixer.update(dt);
+    }
+
     controls.update();
     updateScent(performance.now());
     renderer.render(scene, camera);

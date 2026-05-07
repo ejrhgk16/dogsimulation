@@ -19,7 +19,7 @@ function generateMessage() {
   return branch;
 }
 
-const msg = process.argv[2] || process.env.COMMIT_MESSAGE || generateMessage();
+const msg = generateMessage();
 
 console.log(`\n=== finishing plan: ${branch} ===\n`);
 
