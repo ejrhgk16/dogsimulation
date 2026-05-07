@@ -16,10 +16,8 @@ const mockConfig: ScentVisualConfig = {
 const mockProfileMap: Record<string, AnimalScentProfile> = {
   dog: {
     animalType: 'dog',
-    maxTrailAge: 25000,
     tauDecay: 8000,
     scentSpreadSigma: 2.0,
-    baseIntensity: 1.0,
     emitInterval: 200,
     emitProbability: 0.8,
     spreadRadius: 0.75,
@@ -56,7 +54,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -89,7 +86,6 @@ describe('createScentVisualizer', () => {
         y: 2,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -118,7 +114,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 25000,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -142,7 +137,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 100,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -165,7 +159,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -189,6 +182,13 @@ describe('createScentVisualizer', () => {
     expect(typeof visualizer.setVisible).toBe('function');
   });
 
+  it('sets frustumCulled to false on InstancedMesh', () => {
+    const scene = new Scene();
+    createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const mesh = scene.children[scene.children.length - 1] as any;
+    expect(mesh.frustumCulled).toBe(false);
+  });
+
   it('setVisible hides mesh when called with false', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
@@ -208,8 +208,8 @@ describe('createScentVisualizer', () => {
     expect(mesh.visible).toBe(true);
   });
 
-  it('exports MAX_INSTANCES as 2000', () => {
-    expect(MAX_INSTANCES).toBe(2000);
+  it('exports MAX_INSTANCES as 10000', () => {
+    expect(MAX_INSTANCES).toBe(10000);
   });
 
   it('handles unknown animalType color gracefully', () => {
@@ -223,7 +223,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -246,7 +245,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -273,7 +271,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -304,7 +301,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 25000,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -328,7 +324,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 25000,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -356,7 +351,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -382,7 +376,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 16000
       }
     ];
@@ -409,7 +402,6 @@ describe('createScentVisualizer', () => {
       y: i,
       height: i,
       t: 0,
-      baseIntensity: 1.0,
       tauDecay: 8000
     }));
     expect(() => visualizer.update(points, 100)).not.toThrow();
@@ -427,7 +419,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 1.5,
         t: 100,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];
@@ -448,7 +439,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 1.5,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 100
       }
     ];
@@ -470,7 +460,6 @@ describe('createScentVisualizer', () => {
         y: 0,
         height: 2.0,
         t: 0,
-        baseIntensity: 1.0,
         tauDecay: 8000
       }
     ];

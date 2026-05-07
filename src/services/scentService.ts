@@ -1,4 +1,5 @@
 import type { ScentWorldState, ScentPoint, AnimalScentProfile, ScentParams } from '../types/scent';
+import { getTauDecayMultiplier, getEmitRateMultiplier } from '../config/scentConfig';
 
 function randomGaussian(): number {
   const u1 = Math.random();
@@ -39,7 +40,7 @@ export function emitTrailPoint(
 
   acc.timeSinceLastEmit = 0;
 
-  if (Math.random() > profile.emitProbability) {
+  if (Math.random() > profile.emitProbability * getEmitRateMultiplier()) {
     return;
   }
 
@@ -56,8 +57,9 @@ export function emitTrailPoint(
     y: py,
     height: animalHeight,
     t: now,
-    baseIntensity: profile.baseIntensity,
-    tauDecay: profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)
+    tauDecay:
+      (profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)) *
+      getTauDecayMultiplier()
   };
   state.trailPoints.push(point);
 
@@ -106,7 +108,7 @@ export function emitTrailPointOnMove(
 
   acc.distanceSinceLast = 0;
 
-  if (Math.random() > profile.emitProbability) {
+  if (Math.random() > profile.emitProbability * getEmitRateMultiplier()) {
     acc.lastX = animalX;
     acc.lastY = animalY;
     acc.lastHeight = animalHeight;
@@ -126,8 +128,9 @@ export function emitTrailPointOnMove(
     y: py,
     height: animalHeight,
     t: now,
-    baseIntensity: profile.baseIntensity,
-    tauDecay: profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)
+    tauDecay:
+      (profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)) *
+      getTauDecayMultiplier()
   };
   state.trailPoints.push(point);
 
@@ -137,51 +140,13 @@ export function emitTrailPointOnMove(
 }
 
 /**
- * Sample the scent signal at a given position.
- * - Iterates all trail points
- * - Applies time decay (exponential) and spatial decay (Gaussian)
- * - Optionally filters by animalType
- * - Returns the summed signal value
- */
-export function sampleScentAt(
-  state: ScentWorldState,
-  position: { x: number; y: number },
-  now: number,
-  params: ScentParams,
-  animalType?: string
-): number {
-  let totalSignal = 0;
-
-  for (const point of state.trailPoints) {
-    if (animalType !== undefined && point.animalType !== animalType) {
-      continue;
-    }
-
-    const age = now - point.t;
-    if (age < 0 || age > params.maxTrailAge) {
-      continue;
-    }
-
-    const dx = position.x - point.x;
-    const dy = position.y - point.y;
-    const distSq = dx * dx + dy * dy;
-
-    const decay = point.tauDecay ?? params.tauDecay;
-    const intensity = point.baseIntensity * Math.exp(-age / decay);
-    const sigmaSq = params.scentSpreadSigma * params.scentSpreadSigma;
-    totalSignal += intensity * Math.exp(-distSq / (2 * sigmaSq));
-  }
-
-  return totalSignal;
-}
-
-/**
- * Remove trail points whose age exceeds maxTrailAge.
+ * Remove trail points whose age exceeds 5× tauDecay.
  * Modifies state.trailPoints in place.
  */
 export function trimExpiredTrails(state: ScentWorldState, now: number, params: ScentParams): void {
   state.trailPoints = state.trailPoints.filter((point) => {
     const age = now - point.t;
-    return age <= params.maxTrailAge;
+    const threshold = (point.tauDecay ?? params.tauDecay) * 5;
+    return age <= threshold;
   });
 }

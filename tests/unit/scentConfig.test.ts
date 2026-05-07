@@ -1,17 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ANIMAL_SCALE } from '../../src/config/animalConfig';
 import {
   DEFAULT_SCENT_PARAMS,
   ANIMAL_PROFILES,
   DEFAULT_SCENT_VISUAL_CONFIG,
   getAnimalProfile,
-  getScentMaxTrailAge,
-  setScentMaxTrailAge
+  getTauDecayMultiplier,
+  setTauDecayMultiplier,
+  getEmitRateMultiplier,
+  setEmitRateMultiplier
 } from '../../src/config/scentConfig';
 
 describe('DEFAULT_SCENT_PARAMS', () => {
   it('has correct default values', () => {
-    expect(DEFAULT_SCENT_PARAMS.maxTrailAge).toBe(25000);
     expect(DEFAULT_SCENT_PARAMS.tauDecay).toBe(8000);
     expect(DEFAULT_SCENT_PARAMS.scentSpreadSigma).toBe(2.0);
     expect(DEFAULT_SCENT_PARAMS.tauDecayMin).toBe(6000);
@@ -24,11 +25,9 @@ describe('ANIMAL_PROFILES', () => {
   it('has dog profile with correct values', () => {
     const dog = ANIMAL_PROFILES['dog'];
     expect(dog.animalType).toBe('dog');
-    expect(dog.baseIntensity).toBe(1.0);
     expect(dog.emitInterval).toBe(200);
     expect(dog.spreadRadius).toBe(0.75);
     expect(dog.emitProbability).toBe(0.8);
-    expect(dog.maxTrailAge).toBe(25000);
     expect(dog.tauDecay).toBe(8000);
     expect(dog.scentSpreadSigma).toBe(2.0);
     expect(dog.tauDecayMin).toBe(6000);
@@ -39,11 +38,9 @@ describe('ANIMAL_PROFILES', () => {
   it('has cow profile with correct values', () => {
     const cow = ANIMAL_PROFILES['cow'];
     expect(cow.animalType).toBe('cow');
-    expect(cow.baseIntensity).toBe(1.5);
     expect(cow.emitInterval).toBe(300);
     expect(cow.spreadRadius).toBe(2.0);
     expect(cow.emitProbability).toBe(0.6);
-    expect(cow.maxTrailAge).toBe(25000);
     expect(cow.tauDecay).toBe(8000);
     expect(cow.scentSpreadSigma).toBe(2.0);
     expect(cow.tauDecayMin).toBe(8000);
@@ -54,11 +51,9 @@ describe('ANIMAL_PROFILES', () => {
   it('has pig profile with correct values', () => {
     const pig = ANIMAL_PROFILES['pig'];
     expect(pig.animalType).toBe('pig');
-    expect(pig.baseIntensity).toBe(0.8);
     expect(pig.emitInterval).toBe(150);
     expect(pig.spreadRadius).toBe(1.2);
     expect(pig.emitProbability).toBe(0.9);
-    expect(pig.maxTrailAge).toBe(25000);
     expect(pig.tauDecay).toBe(8000);
     expect(pig.scentSpreadSigma).toBe(2.0);
     expect(pig.tauDecayMin).toBe(4000);
@@ -87,7 +82,6 @@ describe('getAnimalProfile', () => {
   it('returns dog profile for dog animalType', () => {
     const profile = getAnimalProfile('dog');
     expect(profile.animalType).toBe('dog');
-    expect(profile.baseIntensity).toBe(1.0);
     expect(profile.emitInterval).toBe(200);
     expect(profile.spreadRadius).toBe(0.75);
   });
@@ -95,7 +89,6 @@ describe('getAnimalProfile', () => {
   it('returns cow profile for cow animalType', () => {
     const profile = getAnimalProfile('cow');
     expect(profile.animalType).toBe('cow');
-    expect(profile.baseIntensity).toBe(1.5);
     expect(profile.emitInterval).toBe(300);
     expect(profile.spreadRadius).toBe(2.0);
   });
@@ -103,7 +96,6 @@ describe('getAnimalProfile', () => {
   it('returns pig profile for pig animalType', () => {
     const profile = getAnimalProfile('pig');
     expect(profile.animalType).toBe('pig');
-    expect(profile.baseIntensity).toBe(0.8);
     expect(profile.emitInterval).toBe(150);
     expect(profile.spreadRadius).toBe(1.2);
   });
@@ -111,11 +103,9 @@ describe('getAnimalProfile', () => {
   it('returns dynamic default for unknown animalType', () => {
     const profile = getAnimalProfile('cat');
     expect(profile.animalType).toBe('cat');
-    expect(profile.baseIntensity).toBe(1.0);
     expect(profile.emitInterval).toBe(250);
     expect(profile.spreadRadius).toBe(0.75);
     expect(profile.emitProbability).toBe(0.5);
-    expect(profile.maxTrailAge).toBe(DEFAULT_SCENT_PARAMS.maxTrailAge);
     expect(profile.tauDecay).toBe(DEFAULT_SCENT_PARAMS.tauDecay);
     expect(profile.scentSpreadSigma).toBe(DEFAULT_SCENT_PARAMS.scentSpreadSigma);
     expect(profile.tauDecayMin).toBe(DEFAULT_SCENT_PARAMS.tauDecayMin);
@@ -124,27 +114,46 @@ describe('getAnimalProfile', () => {
   });
 });
 
-describe('getScentMaxTrailAge / setScentMaxTrailAge', () => {
+describe('tauDecayMultiplier', () => {
   beforeEach(() => {
-    setScentMaxTrailAge(25000);
+    setTauDecayMultiplier(1.0);
   });
 
-  it('returns default value 25000', () => {
-    expect(getScentMaxTrailAge()).toBe(25000);
+  it('returns initial value of 1.0', () => {
+    expect(getTauDecayMultiplier()).toBe(1.0);
   });
 
-  it('returns updated value after setScentMaxTrailAge', () => {
-    setScentMaxTrailAge(5000);
-    expect(getScentMaxTrailAge()).toBe(5000);
+  it('setTauDecayMultiplier updates the multiplier', () => {
+    setTauDecayMultiplier(2.5);
+    expect(getTauDecayMultiplier()).toBe(2.5);
   });
 
-  it('accepts 0 as a valid value', () => {
-    setScentMaxTrailAge(0);
-    expect(getScentMaxTrailAge()).toBe(0);
+  it('ignores non-positive values', () => {
+    setTauDecayMultiplier(0);
+    expect(getTauDecayMultiplier()).toBe(1.0);
+    setTauDecayMultiplier(-1);
+    expect(getTauDecayMultiplier()).toBe(1.0);
+  });
+});
+
+describe('emitRateMultiplier', () => {
+  beforeEach(() => {
+    setEmitRateMultiplier(1.0);
   });
 
-  it('accepts large values', () => {
-    setScentMaxTrailAge(100000);
-    expect(getScentMaxTrailAge()).toBe(100000);
+  it('returns initial value of 1.0', () => {
+    expect(getEmitRateMultiplier()).toBe(1.0);
+  });
+
+  it('setEmitRateMultiplier updates the multiplier', () => {
+    setEmitRateMultiplier(0.5);
+    expect(getEmitRateMultiplier()).toBe(0.5);
+  });
+
+  it('ignores non-positive values', () => {
+    setEmitRateMultiplier(0);
+    expect(getEmitRateMultiplier()).toBe(1.0);
+    setEmitRateMultiplier(-1);
+    expect(getEmitRateMultiplier()).toBe(1.0);
   });
 });

@@ -7,7 +7,6 @@ export interface ScentPoint {
   y: number;
   height: number;
   t: number;
-  baseIntensity: number;
   tauDecay?: number;
 }
 
@@ -22,7 +21,6 @@ export interface EmitAccumulator {
 }
 
 export interface ScentParams {
-  maxTrailAge: number;
   tauDecay: number;
   scentSpreadSigma: number;
   tauDecayMin: number;
@@ -32,7 +30,6 @@ export interface ScentParams {
 
 export interface AnimalScentProfile extends ScentParams {
   animalType: AnimalType;
-  baseIntensity: number;
   emitInterval: number;
   emitSpacing: number;
   emitProbability: number;

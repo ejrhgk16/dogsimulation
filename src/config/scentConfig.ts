@@ -2,7 +2,6 @@ import { ANIMAL_SCALE } from './animalConfig';
 import type { AnimalScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
 
 export const DEFAULT_SCENT_PARAMS: ScentParams = {
-  maxTrailAge: 25000,
   tauDecay: 8000,
   scentSpreadSigma: 2.0,
   tauDecayMin: 6000,
@@ -14,7 +13,6 @@ export const ANIMAL_PROFILES: Record<string, AnimalScentProfile> = {
   dog: {
     ...DEFAULT_SCENT_PARAMS,
     animalType: 'dog',
-    baseIntensity: 1.0,
     emitInterval: 200,
     emitProbability: 0.8,
     spreadRadius: 0.75,
@@ -25,7 +23,6 @@ export const ANIMAL_PROFILES: Record<string, AnimalScentProfile> = {
   cow: {
     ...DEFAULT_SCENT_PARAMS,
     animalType: 'cow',
-    baseIntensity: 1.5,
     emitInterval: 300,
     emitProbability: 0.6,
     spreadRadius: 2.0,
@@ -36,7 +33,6 @@ export const ANIMAL_PROFILES: Record<string, AnimalScentProfile> = {
   pig: {
     ...DEFAULT_SCENT_PARAMS,
     animalType: 'pig',
-    baseIntensity: 0.8,
     emitInterval: 150,
     emitProbability: 0.9,
     spreadRadius: 1.2,
@@ -56,14 +52,28 @@ export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
   }
 };
 
-let _scentMaxTrailAge = 25000;
+let _tauDecayMultiplier = 1.0;
 
-export function getScentMaxTrailAge(): number {
-  return _scentMaxTrailAge;
+export function getTauDecayMultiplier(): number {
+  return _tauDecayMultiplier;
 }
 
-export function setScentMaxTrailAge(ms: number): void {
-  _scentMaxTrailAge = ms;
+export function setTauDecayMultiplier(multiplier: number): void {
+  if (multiplier > 0) {
+    _tauDecayMultiplier = multiplier;
+  }
+}
+
+let _emitRateMultiplier = 1.0;
+
+export function getEmitRateMultiplier(): number {
+  return _emitRateMultiplier;
+}
+
+export function setEmitRateMultiplier(multiplier: number): void {
+  if (multiplier > 0) {
+    _emitRateMultiplier = multiplier;
+  }
 }
 
 export function getAnimalProfile(animalType: string): AnimalScentProfile {
@@ -74,7 +84,6 @@ export function getAnimalProfile(animalType: string): AnimalScentProfile {
   return {
     ...DEFAULT_SCENT_PARAMS,
     animalType,
-    baseIntensity: 1.0,
     emitInterval: 250,
     emitProbability: 0.5,
     spreadRadius: 0.75,

@@ -15,8 +15,7 @@ describe('ScentPoint', () => {
       x: 0,
       y: 0,
       height: 0,
-      t: 100,
-      baseIntensity: 1.0
+      t: 100
     };
     expect(point.tauDecay).toBeUndefined();
   });
@@ -29,7 +28,6 @@ describe('ScentPoint', () => {
       y: 0,
       height: 0,
       t: 100,
-      baseIntensity: 1.0,
       tauDecay: 5000
     };
     expect(point.tauDecay).toBe(5000);
@@ -42,8 +40,7 @@ describe('ScentPoint', () => {
       x: 0,
       y: 0,
       height: 1.5,
-      t: 100,
-      baseIntensity: 1.0
+      t: 100
     };
     expect(point.height).toBe(1.5);
   });
@@ -98,11 +95,9 @@ describe('AnimalScentProfile', () => {
   it('has emitInterval and spreadRadius as required fields', () => {
     const profile: AnimalScentProfile = {
       animalType: 'dog',
-      baseIntensity: 1.0,
       emitInterval: 200,
       emitProbability: 0.8,
       spreadRadius: 1.5,
-      maxTrailAge: 25000,
       tauDecay: 8000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
@@ -116,11 +111,9 @@ describe('AnimalScentProfile', () => {
   it('has tauDecayMin and tauDecayMax as required fields', () => {
     const profile: AnimalScentProfile = {
       animalType: 'dog',
-      baseIntensity: 1.0,
       emitInterval: 200,
       emitProbability: 0.8,
       spreadRadius: 1.5,
-      maxTrailAge: 25000,
       tauDecay: 8000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
@@ -134,11 +127,9 @@ describe('AnimalScentProfile', () => {
   it('has emitSpacing as required field', () => {
     const profile: AnimalScentProfile = {
       animalType: 'dog',
-      baseIntensity: 1.0,
       emitInterval: 200,
       emitProbability: 0.8,
       spreadRadius: 1.5,
-      maxTrailAge: 25000,
       tauDecay: 8000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
@@ -152,7 +143,6 @@ describe('AnimalScentProfile', () => {
 describe('ScentParams', () => {
   it('has tauDecay as required field', () => {
     const params: ScentParams = {
-      maxTrailAge: 25000,
       tauDecay: 8000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
@@ -164,7 +154,6 @@ describe('ScentParams', () => {
 
   it('has tauDecayMin and tauDecayMax as required fields', () => {
     const params: ScentParams = {
-      maxTrailAge: 25000,
       tauDecay: 8000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
@@ -177,7 +166,6 @@ describe('ScentParams', () => {
 
   it('has emitSpacing as required field', () => {
     const params: ScentParams = {
-      maxTrailAge: 25000,
       tauDecay: 8000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,

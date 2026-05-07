@@ -2,7 +2,7 @@ import { SphereGeometry, MeshStandardMaterial, InstancedMesh, Object3D, Color } 
 import type { Scene } from 'three';
 import type { ScentPoint, ScentVisualConfig, AnimalScentProfile } from '../types/scent';
 
-export const MAX_INSTANCES = 2000;
+export const MAX_INSTANCES = 10000;
 
 export interface ScentVisualizer {
   update(trailPoints: ScentPoint[], now: number): void;
@@ -23,6 +23,7 @@ export function createScentVisualizer(
   });
 
   const mesh = new InstancedMesh(geometry, material, MAX_INSTANCES);
+  mesh.frustumCulled = false;
   scene.add(mesh);
 
   const tempObject = new Object3D();
@@ -31,16 +32,17 @@ export function createScentVisualizer(
 
   const update = (trailPoints: ScentPoint[], now: number): void => {
     const count = Math.min(trailPoints.length, MAX_INSTANCES);
+    const offset = Math.max(0, trailPoints.length - MAX_INSTANCES);
 
     for (let i = 0; i < count; i++) {
-      const point = trailPoints[i];
+      const point = trailPoints[offset + i];
       const age = now - point.t;
       const profile = profileMap[point.animalType];
       const tauDecay = point.tauDecay ?? profile?.tauDecay ?? 10000;
       const decayFactor = Math.exp(-age / tauDecay);
       const ratio = 1 - decayFactor;
 
-      // Height lerp: age 0 = point.height, age ≈ maxTrailAge = minHeight
+      // Height lerp: age 0 = point.height, age → ∞ = minHeight
       const height = point.height * (1 - ratio) + config.minHeight * ratio;
 
       tempObject.position.set(point.x, height, point.y);

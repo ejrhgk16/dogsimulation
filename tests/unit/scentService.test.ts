@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ScentWorldState, ScentPoint } from '../../src/types/scent';
-import { DEFAULT_SCENT_PARAMS, getAnimalProfile } from '../../src/config/scentConfig';
+import {
+  DEFAULT_SCENT_PARAMS,
+  getAnimalProfile,
+  setTauDecayMultiplier,
+  setEmitRateMultiplier
+} from '../../src/config/scentConfig';
 import {
   emitTrailPoint,
   emitTrailPointOnMove,
-  sampleScentAt,
   trimExpiredTrails
 } from '../../src/services/scentService';
 
@@ -20,7 +24,6 @@ function makeScentPoint(overrides: Partial<ScentPoint> = {}): ScentPoint {
     y: 0,
     height: 0,
     t: 0,
-    baseIntensity: 1.0,
     tauDecay: 8000,
     ...overrides
   };
@@ -64,7 +67,6 @@ describe('emitTrailPoint', () => {
     emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     expect(state.trailPoints).toHaveLength(1);
     expect(state.trailPoints[0].t).toBe(350);
-    expect(state.trailPoints[0].baseIntensity).toBe(1.0);
     expect(state.trailPoints[0].animalId).toBe('a1');
     expect(state.trailPoints[0].animalType).toBe('dog');
   });
@@ -174,6 +176,42 @@ describe('emitTrailPoint', () => {
     emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
     // Math.random()=0.5 => 6000 + 0.5*(10000-6000) = 8000
     expect(state.trailPoints[0].tauDecay).toBeCloseTo(8000, 5);
+  });
+
+  it('applies tauDecayMultiplier to emitted tauDecay', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const state = createEmptyState();
+    const profile = makeDogProfile(); // tauDecayMin=6000, tauDecayMax=10000
+    // multiplier=2.0 => base 8000 * 2 = 16000
+    setTauDecayMultiplier(2.0);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
+    expect(state.trailPoints[0].tauDecay).toBeCloseTo(16000, 5);
+    setTauDecayMultiplier(1.0); // restore
+  });
+
+  it('applies emitRateMultiplier — multiplier 2.0 causes emit even when random > emitProbability', () => {
+    // emitProbability=0.8, multiplier=2.0 → effective=1.6 → Math.random() < 1 always, so always emit
+    vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    const state = createEmptyState();
+    const profile = makeDogProfile();
+    setEmitRateMultiplier(2.0);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
+    expect(state.trailPoints).toHaveLength(1);
+    setEmitRateMultiplier(1.0);
+  });
+
+  it('applies emitRateMultiplier — multiplier 0.1 causes skip when random > effective probability', () => {
+    // emitProbability=0.8, multiplier=0.1 → effective=0.08, random=0.1 > 0.08 → skip
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const state = createEmptyState();
+    const profile = makeDogProfile();
+    setEmitRateMultiplier(0.1);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 0, 100, profile);
+    emitTrailPoint(state, 'a1', 'dog', 0, 0, 0, 250, 350, profile);
+    expect(state.trailPoints).toHaveLength(0);
+    setEmitRateMultiplier(1.0);
   });
 
   it('handles multiple emitters independently', () => {
@@ -360,6 +398,28 @@ describe('emitTrailPointOnMove', () => {
     expect(state.trailPoints[1].animalId).toBe('a2');
   });
 
+  it('applies emitRateMultiplier in emitTrailPointOnMove — multiplier 2.0 causes emit', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    const state = createEmptyState();
+    const profile = makeDogProfile(); // emitProbability=0.8
+    setEmitRateMultiplier(2.0); // effective=1.6 → always emit
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    expect(state.trailPoints).toHaveLength(1);
+    setEmitRateMultiplier(1.0);
+  });
+
+  it('applies emitRateMultiplier in emitTrailPointOnMove — multiplier 0.1 causes skip', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const state = createEmptyState();
+    const profile = makeDogProfile(); // emitProbability=0.8
+    setEmitRateMultiplier(0.1); // effective=0.08, random=0.1 > 0.08 → skip
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    expect(state.trailPoints).toHaveLength(0);
+    setEmitRateMultiplier(1.0);
+  });
+
   it('uses per-profile tauDecayMin/Max for point tauDecay', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const state = createEmptyState();
@@ -368,166 +428,31 @@ describe('emitTrailPointOnMove', () => {
     emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
     expect(state.trailPoints[0].tauDecay).toBeCloseTo(8000, 5);
   });
-});
 
-describe('sampleScentAt', () => {
-  it('returns 0 for empty trail', () => {
+  it('applies tauDecayMultiplier to emitted tauDecay in emitTrailPointOnMove', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const state = createEmptyState();
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS);
-    expect(signal).toBe(0);
-  });
-
-  it('returns baseIntensity for fresh point at same position', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 5, y: 10, t: 100, baseIntensity: 2.0 }));
-    const signal = sampleScentAt(state, { x: 5, y: 10 }, 100, DEFAULT_SCENT_PARAMS);
-    expect(signal).toBeCloseTo(2.0);
-  });
-
-  it('applies time decay correctly', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(
-      makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 3000 })
-    );
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 3000, {
-      maxTrailAge: 10000,
-      tauDecay: 3000,
-      scentSpreadSigma: 2.0,
-      tauDecayMin: 6000,
-      tauDecayMax: 10000,
-      emitSpacing: 1.0
-    });
-    expect(signal).toBeCloseTo(Math.exp(-1), 3);
-  });
-
-  it('uses per-point tauDecay over global params', () => {
-    const state = createEmptyState();
-    // point.tauDecay=5000, params.tauDecay=10000
-    state.trailPoints.push(
-      makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0, tauDecay: 5000 })
-    );
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 5000, {
-      maxTrailAge: 25000,
-      tauDecay: 10000,
-      scentSpreadSigma: 2.0,
-      tauDecayMin: 6000,
-      tauDecayMax: 10000,
-      emitSpacing: 1.0
-    });
-    // With tauDecay=5000: exp(-5000/5000) = exp(-1)
-    expect(signal).toBeCloseTo(Math.exp(-1), 3);
-  });
-
-  it('applies spatial decay correctly', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 100, baseIntensity: 1.0 }));
-    const signal = sampleScentAt(state, { x: 2, y: 0 }, 100, {
-      maxTrailAge: 10000,
-      tauDecay: 3000,
-      scentSpreadSigma: 2.0,
-      tauDecayMin: 6000,
-      tauDecayMax: 10000,
-      emitSpacing: 1.0
-    });
-    expect(signal).toBeCloseTo(Math.exp(-0.5), 3);
-  });
-
-  it('skips points with age > maxTrailAge', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 0, baseIntensity: 1.0 }));
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 30000, DEFAULT_SCENT_PARAMS);
-    expect(signal).toBe(0);
-  });
-
-  it('skips points with age < 0 (future timestamp)', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 9999, baseIntensity: 1.0 }));
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 0, DEFAULT_SCENT_PARAMS);
-    expect(signal).toBe(0);
-  });
-
-  it('filters by animalType when specified', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(
-      makeScentPoint({
-        animalId: 'd1',
-        animalType: 'dog',
-        x: 0,
-        y: 0,
-        t: 100,
-        baseIntensity: 1.0
-      })
-    );
-    state.trailPoints.push(
-      makeScentPoint({
-        animalId: 'c1',
-        animalType: 'cow',
-        x: 0,
-        y: 0,
-        t: 100,
-        baseIntensity: 2.0
-      })
-    );
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS, 'dog');
-    expect(signal).toBeCloseTo(1.0);
-  });
-
-  it('sums multiple points correctly', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 100, baseIntensity: 1.0 }));
-    state.trailPoints.push(makeScentPoint({ x: 0, y: 0, t: 100, baseIntensity: 2.0 }));
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS);
-    expect(signal).toBeCloseTo(3.0);
-  });
-
-  it('returns 0 when animalType filter matches nothing', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(
-      makeScentPoint({ animalType: 'dog', x: 0, y: 0, t: 100, baseIntensity: 1.0 })
-    );
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS, 'cow');
-    expect(signal).toBe(0);
-  });
-
-  it('combines time and spatial decay correctly', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(
-      makeScentPoint({ x: 3, y: 4, t: 0, baseIntensity: 2.0, tauDecay: 3000 })
-    );
-    const expected = 2.0 * Math.exp(-3000 / 3000) * Math.exp(-25 / (2 * 2 * 2));
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 3000, {
-      maxTrailAge: 10000,
-      tauDecay: 3000,
-      scentSpreadSigma: 2.0,
-      tauDecayMin: 6000,
-      tauDecayMax: 10000,
-      emitSpacing: 1.0
-    });
-    expect(signal).toBeCloseTo(expected, 5);
-  });
-
-  it('does not filter by animalType when animalType is undefined', () => {
-    const state = createEmptyState();
-    state.trailPoints.push(
-      makeScentPoint({ animalType: 'dog', x: 0, y: 0, t: 100, baseIntensity: 1.0 })
-    );
-    state.trailPoints.push(
-      makeScentPoint({ animalType: 'cow', x: 0, y: 0, t: 100, baseIntensity: 2.0 })
-    );
-    const signal = sampleScentAt(state, { x: 0, y: 0 }, 100, DEFAULT_SCENT_PARAMS);
-    expect(signal).toBeCloseTo(3.0);
+    const profile = makeDogProfile(); // tauDecayMin=6000, tauDecayMax=10000
+    // multiplier=2.0 => base 8000 * 2 = 16000
+    setTauDecayMultiplier(2.0);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(state, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    expect(state.trailPoints[0].tauDecay).toBeCloseTo(16000, 5);
+    setTauDecayMultiplier(1.0); // restore
   });
 });
 
 describe('trimExpiredTrails', () => {
-  it('removes points older than maxTrailAge', () => {
+  it('removes points older than tauDecay*5', () => {
     const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ t: 0, baseIntensity: 1.0 }));
-    state.trailPoints.push(makeScentPoint({ t: 2000, baseIntensity: 1.0 }));
-    state.trailPoints.push(makeScentPoint({ t: 4000, baseIntensity: 1.0 }));
+    // point0: tauDecay=600 → threshold=3000, age=5000 → removed
+    state.trailPoints.push(makeScentPoint({ t: 0, tauDecay: 600 }));
+    // point1: tauDecay=600 → threshold=3000, age=3000 → kept (boundary)
+    state.trailPoints.push(makeScentPoint({ t: 2000, tauDecay: 600 }));
+    // point2: tauDecay=600 → threshold=3000, age=1000 → kept
+    state.trailPoints.push(makeScentPoint({ t: 4000, tauDecay: 600 }));
     trimExpiredTrails(state, 5000, {
-      maxTrailAge: 3000,
-      tauDecay: 3000,
+      tauDecay: 600,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
       tauDecayMax: 10000,
@@ -540,11 +465,11 @@ describe('trimExpiredTrails', () => {
 
   it('keeps all points when none are expired', () => {
     const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ t: 8000, baseIntensity: 1.0 }));
-    state.trailPoints.push(makeScentPoint({ t: 9000, baseIntensity: 1.0 }));
+    // both points: tauDecay=600 → threshold=3000, ages=2000,1000 → kept
+    state.trailPoints.push(makeScentPoint({ t: 8000, tauDecay: 600 }));
+    state.trailPoints.push(makeScentPoint({ t: 9000, tauDecay: 600 }));
     trimExpiredTrails(state, 10000, {
-      maxTrailAge: 3000,
-      tauDecay: 3000,
+      tauDecay: 600,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
       tauDecayMax: 10000,
@@ -555,11 +480,11 @@ describe('trimExpiredTrails', () => {
 
   it('removes all points when all are expired', () => {
     const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ t: 0, baseIntensity: 1.0 }));
-    state.trailPoints.push(makeScentPoint({ t: 1000, baseIntensity: 1.0 }));
+    // both points: tauDecay=1000 → threshold=5000, ages=10000,9000 → removed
+    state.trailPoints.push(makeScentPoint({ t: 0, tauDecay: 1000 }));
+    state.trailPoints.push(makeScentPoint({ t: 1000, tauDecay: 1000 }));
     trimExpiredTrails(state, 10000, {
-      maxTrailAge: 3000,
-      tauDecay: 3000,
+      tauDecay: 1000,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
       tauDecayMax: 10000,
@@ -574,17 +499,20 @@ describe('trimExpiredTrails', () => {
     expect(state.trailPoints).toHaveLength(0);
   });
 
-  it('keeps point with age exactly equal to maxTrailAge (boundary)', () => {
+  it('keeps point with age exactly equal to tauDecay*5 (boundary)', () => {
     const state = createEmptyState();
-    state.trailPoints.push(makeScentPoint({ t: 7000, baseIntensity: 1.0 }));
+    // tauDecay=600 → threshold=3000, age=3000 → kept (boundary)
+    state.trailPoints.push(makeScentPoint({ t: 7000, tauDecay: 600 }));
+    // tauDecay=600 → threshold=3000, age=4000 → removed (over boundary)
+    state.trailPoints.push(makeScentPoint({ t: 6000, tauDecay: 600 }));
     trimExpiredTrails(state, 10000, {
-      maxTrailAge: 3000,
-      tauDecay: 3000,
+      tauDecay: 600,
       scentSpreadSigma: 2.0,
       tauDecayMin: 6000,
       tauDecayMax: 10000,
       emitSpacing: 1.0
     });
     expect(state.trailPoints).toHaveLength(1);
+    expect(state.trailPoints[0].t).toBe(7000);
   });
 });

@@ -49,14 +49,19 @@ controlsPanel.innerHTML = `
       <span class="slider-value" id="scale-value">0.2</span>
     </label>
     <label>
-      <span>Scent</span>
-      <input type="range" id="scent-slider" min="1" max="60" step="1" value="25" />
-      <span class="slider-value" id="scent-value">25s</span>
-    </label>
-    <label>
       <span>Rotation</span>
       <input type="range" id="rotation-slider" min="1" max="20" step="0.5" value="8" />
       <span class="slider-value" id="rotation-value">8.0</span>
+    </label>
+    <label>
+      <span>TauDecay</span>
+      <input type="range" id="tau-decay-slider" min="0.1" max="20.0" step="0.1" value="1.0" />
+      <span class="slider-value" id="tau-decay-value">1.0x</span>
+    </label>
+    <label>
+      <span>EmitRate</span>
+      <input type="range" id="emit-rate-slider" min="0.1" max="2.0" step="0.1" value="1.0" />
+      <span class="slider-value" id="emit-rate-value">1.0x</span>
     </label>
   </fieldset>
 `;
@@ -83,20 +88,28 @@ scaleSlider.addEventListener('input', () => {
   runtime.setAnimalScale(val);
 });
 
-const scentSlider = controlsPanel.querySelector<HTMLInputElement>('#scent-slider')!;
-const scentValue = controlsPanel.querySelector<HTMLElement>('#scent-value')!;
-scentSlider.addEventListener('input', () => {
-  const sec = parseInt(scentSlider.value, 10);
-  scentValue.textContent = `${sec}s`;
-  runtime.setScentPersistence(sec * 1000);
-});
-
 const rotationSlider = controlsPanel.querySelector<HTMLInputElement>('#rotation-slider')!;
 const rotationValue = controlsPanel.querySelector<HTMLElement>('#rotation-value')!;
 rotationSlider.addEventListener('input', () => {
   const val = parseFloat(rotationSlider.value);
   rotationValue.textContent = val.toFixed(1);
   runtime.setRotationSpeed(val);
+});
+
+const tauDecaySlider = controlsPanel.querySelector<HTMLInputElement>('#tau-decay-slider')!;
+const tauDecayValue = controlsPanel.querySelector<HTMLElement>('#tau-decay-value')!;
+tauDecaySlider.addEventListener('input', () => {
+  const val = parseFloat(tauDecaySlider.value);
+  tauDecayValue.textContent = val.toFixed(1) + 'x';
+  runtime.setScentDecayRate(val);
+});
+
+const emitRateSlider = controlsPanel.querySelector<HTMLInputElement>('#emit-rate-slider')!;
+const emitRateValue = controlsPanel.querySelector<HTMLElement>('#emit-rate-value')!;
+emitRateSlider.addEventListener('input', () => {
+  const val = parseFloat(emitRateSlider.value);
+  emitRateValue.textContent = val.toFixed(1) + 'x';
+  runtime.setEmitRate(val);
 });
 
 window.addEventListener('resize', () => runtime.resize());

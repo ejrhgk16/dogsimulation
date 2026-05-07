@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
   GLTFLoader: vi.fn().mockImplementation(() => ({
@@ -27,8 +27,9 @@ import { defaultSceneConfig } from '../../src/config/sceneConfig';
 import { emitTrailPointOnMove } from '../../src/services/scentService';
 import {
   getAnimalProfile,
-  getScentMaxTrailAge,
-  setScentMaxTrailAge
+  setTauDecayMultiplier,
+  getEmitRateMultiplier,
+  setEmitRateMultiplier
 } from '../../src/config/scentConfig';
 import { ANIMAL_HEIGHT_OFFSET } from '../../src/config/animalConfig';
 
@@ -61,18 +62,17 @@ describe('sceneRuntime scent integration', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // An expired point: t=0, now=30000 → age=30000 > DEFAULT maxTrailAge=25000
+    // An expired point: t=0, no per-point tauDecay → uses params tauDecay=8000, threshold=40000, age=200000 > 40000 → removed
     scentState.trailPoints.push({
       animalId: 'test',
       animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
-      t: 0,
-      baseIntensity: 1.0
+      t: 0
     });
     const runtime = createSceneRuntime(canvas, mapData, scentState);
-    runtime.updateScent(30000);
+    runtime.updateScent(200000);
     expect(scentState.trailPoints).toHaveLength(0);
   });
 
@@ -80,15 +80,14 @@ describe('sceneRuntime scent integration', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // Fresh point: t=9000, now=10000 → age=1000 <= maxTrailAge=25000
+    // Fresh point: t=9000, now=10000 → age=1000 <= tauDecay*5=40000
     scentState.trailPoints.push({
       animalId: 'test',
       animalType: 'dog',
       x: 0,
       y: 0,
       height: 0,
-      t: 9000,
-      baseIntensity: 1.0
+      t: 9000
     });
     const runtime = createSceneRuntime(canvas, mapData, scentState);
     runtime.updateScent(10000);
@@ -99,7 +98,7 @@ describe('sceneRuntime scent integration', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // Point with explicit tauDecay: age=1000 <= maxTrailAge=25000
+    // Point with explicit tauDecay=12000 → threshold=60000, age=1000 <= 60000
     scentState.trailPoints.push({
       animalId: 'test',
       animalType: 'dog',
@@ -107,7 +106,6 @@ describe('sceneRuntime scent integration', () => {
       y: 0,
       height: 0,
       t: 9000,
-      baseIntensity: 1.0,
       tauDecay: 12000
     });
     const runtime = createSceneRuntime(canvas, mapData, scentState);
@@ -251,71 +249,69 @@ describe('sceneRuntime setAnimalScale', () => {
   });
 });
 
-describe('sceneRuntime setScentPersistence', () => {
+describe('sceneRuntime setScentDecayRate', () => {
   beforeEach(() => {
-    setScentMaxTrailAge(25000);
+    setTauDecayMultiplier(1.0);
   });
 
-  it('exposes setScentPersistence method', () => {
+  it('exposes setScentDecayRate method', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const runtime = createSceneRuntime(canvas, mapData);
-    expect(runtime).toHaveProperty('setScentPersistence');
-    expect(typeof runtime.setScentPersistence).toBe('function');
+    expect(runtime).toHaveProperty('setScentDecayRate');
+    expect(typeof runtime.setScentDecayRate).toBe('function');
   });
 
-  it('setScentPersistence does not throw', () => {
+  it('setScentDecayRate does not throw', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const runtime = createSceneRuntime(canvas, mapData);
-    expect(() => runtime.setScentPersistence(5000)).not.toThrow();
+    expect(() => runtime.setScentDecayRate(2.0)).not.toThrow();
   });
 
-  it('setScentPersistence(5000) removes trails older than 5s in next updateScent', () => {
+  it('setScentDecayRate affects emitted tauDecay via config', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    runtime.setScentDecayRate(3.0);
+    expect(setTauDecayMultiplier).toBeDefined();
+    // Verify via emitTrailPointOnMove that the multiplier is applied
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // Point from t=0, now=30000 → age=30000. After setScentPersistence(5000), maxTrailAge=5000
-    scentState.trailPoints.push({
-      animalId: 'test',
-      animalType: 'dog',
-      x: 0,
-      y: 0,
-      height: 0,
-      t: 0,
-      baseIntensity: 1.0
-    });
-    const runtime = createSceneRuntime(canvas, mapData, scentState);
-    runtime.setScentPersistence(5000);
-    runtime.updateScent(30000);
-    expect(scentState.trailPoints).toHaveLength(0);
+    const profile = getAnimalProfile('dog');
+    // mock Math.random for deterministic tauDecay
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    emitTrailPointOnMove(scentState, 'a1', 'dog', 0, 0, 0, 100, profile);
+    emitTrailPointOnMove(scentState, 'a1', 'dog', 0.6, 0, 0, 200, profile);
+    // base 8000 * 3.0 = 24000
+    expect(scentState.trailPoints[0].tauDecay).toBeCloseTo(24000, 5);
+  });
+});
+
+describe('sceneRuntime setEmitRate', () => {
+  beforeEach(() => {
+    setEmitRateMultiplier(1.0);
   });
 
-  it('keeps fresh trails after setScentPersistence(5000)', () => {
-    const canvas = document.createElement('canvas');
-    const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    // Point from t=29000, now=30000 → age=1000 <= 5000
-    scentState.trailPoints.push({
-      animalId: 'test',
-      animalType: 'dog',
-      x: 0,
-      y: 0,
-      height: 0,
-      t: 29000,
-      baseIntensity: 1.0
-    });
-    const runtime = createSceneRuntime(canvas, mapData, scentState);
-    runtime.setScentPersistence(5000);
-    runtime.updateScent(30000);
-    expect(scentState.trailPoints).toHaveLength(1);
-  });
-
-  it('setScentMaxTrailAge value changes after setScentPersistence call', () => {
+  it('exposes setEmitRate method', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const runtime = createSceneRuntime(canvas, mapData);
-    runtime.setScentPersistence(8000);
-    expect(getScentMaxTrailAge()).toBe(8000);
+    expect(runtime).toHaveProperty('setEmitRate');
+    expect(typeof runtime.setEmitRate).toBe('function');
+  });
+
+  it('setEmitRate does not throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.setEmitRate(2.0)).not.toThrow();
+  });
+
+  it('setEmitRate updates config multiplier', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    runtime.setEmitRate(0.5);
+    expect(getEmitRateMultiplier()).toBe(0.5);
   });
 });

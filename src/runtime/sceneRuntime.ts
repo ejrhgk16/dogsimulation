@@ -24,11 +24,10 @@ import type { AnimalState } from '../types/animal';
 import {
   ANIMAL_PROFILES,
   DEFAULT_SCENT_PARAMS,
-  DEFAULT_SCENT_VISUAL_CONFIG,
-  getScentMaxTrailAge,
-  setScentMaxTrailAge
+  DEFAULT_SCENT_VISUAL_CONFIG
 } from '../config/scentConfig';
 import { ANIMAL_TYPES, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
+import { setTauDecayMultiplier, setEmitRateMultiplier } from '../config/scentConfig';
 import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
@@ -44,8 +43,9 @@ export interface SceneRuntime {
   resetCamera: () => void;
   setScentVisible: (visible: boolean) => void;
   setAnimalScale: (scale: number) => void;
-  setScentPersistence: (ms: number) => void;
   setRotationSpeed: (radPerSec: number) => void;
+  setScentDecayRate: (multiplier: number) => void;
+  setEmitRate: (multiplier: number) => void;
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -292,10 +292,7 @@ export function createSceneRuntime(
 
   const updateScent = (now: number): void => {
     if (!scentState || !scentVisualizer) return;
-    trimExpiredTrails(scentState, now, {
-      ...DEFAULT_SCENT_PARAMS,
-      maxTrailAge: getScentMaxTrailAge()
-    });
+    trimExpiredTrails(scentState, now, DEFAULT_SCENT_PARAMS);
     scentVisualizer.update(scentState.trailPoints, now);
   };
 
@@ -363,12 +360,16 @@ export function createSceneRuntime(
     scentVisualizer?.setPointSize(scale * 0.2);
   };
 
-  const setScentPersistence = (ms: number): void => {
-    setScentMaxTrailAge(ms);
-  };
-
   const setRotationSpeed = (radPerSec: number): void => {
     rotationSpeed = radPerSec;
+  };
+
+  const setScentDecayRate = (multiplier: number): void => {
+    setTauDecayMultiplier(multiplier);
+  };
+
+  const setEmitRate = (multiplier: number): void => {
+    setEmitRateMultiplier(multiplier);
   };
 
   const resetCamera = (): void => {
@@ -439,7 +440,8 @@ export function createSceneRuntime(
     resetCamera,
     setScentVisible,
     setAnimalScale,
-    setScentPersistence,
-    setRotationSpeed
+    setRotationSpeed,
+    setScentDecayRate,
+    setEmitRate
   };
 }
