@@ -4,7 +4,9 @@ import {
   DEFAULT_SCENT_PARAMS,
   ANIMAL_PROFILES,
   DEFAULT_SCENT_VISUAL_CONFIG,
-  getAnimalProfile
+  getAnimalProfile,
+  getScentMaxTrailAge,
+  setScentMaxTrailAge
 } from '../../src/config/scentConfig';
 
 describe('DEFAULT_SCENT_PARAMS', () => {
@@ -119,5 +121,30 @@ describe('getAnimalProfile', () => {
     expect(profile.tauDecayMin).toBe(DEFAULT_SCENT_PARAMS.tauDecayMin);
     expect(profile.tauDecayMax).toBe(DEFAULT_SCENT_PARAMS.tauDecayMax);
     expect(profile.emitSpacing).toBe(DEFAULT_SCENT_PARAMS.emitSpacing);
+  });
+});
+
+describe('getScentMaxTrailAge / setScentMaxTrailAge', () => {
+  beforeEach(() => {
+    setScentMaxTrailAge(25000);
+  });
+
+  it('returns default value 25000', () => {
+    expect(getScentMaxTrailAge()).toBe(25000);
+  });
+
+  it('returns updated value after setScentMaxTrailAge', () => {
+    setScentMaxTrailAge(5000);
+    expect(getScentMaxTrailAge()).toBe(5000);
+  });
+
+  it('accepts 0 as a valid value', () => {
+    setScentMaxTrailAge(0);
+    expect(getScentMaxTrailAge()).toBe(0);
+  });
+
+  it('accepts large values', () => {
+    setScentMaxTrailAge(100000);
+    expect(getScentMaxTrailAge()).toBe(100000);
   });
 });

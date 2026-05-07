@@ -25,7 +25,11 @@ import { generateMap } from '../../src/services/mapService';
 import { createAnimal } from '../../src/services/animalService';
 import { defaultSceneConfig } from '../../src/config/sceneConfig';
 import { emitTrailPointOnMove } from '../../src/services/scentService';
-import { getAnimalProfile } from '../../src/config/scentConfig';
+import {
+  getAnimalProfile,
+  getScentMaxTrailAge,
+  setScentMaxTrailAge
+} from '../../src/config/scentConfig';
 import { ANIMAL_HEIGHT_OFFSET } from '../../src/config/animalConfig';
 
 describe('sceneRuntime scent integration', () => {
@@ -184,5 +188,134 @@ describe('sceneRuntime camera controls', () => {
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const runtime = createSceneRuntime(canvas, mapData);
     expect(() => runtime.resetCamera()).not.toThrow();
+  });
+});
+
+describe('sceneRuntime setAnimalScale', () => {
+  it('exposes setAnimalScale method', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(runtime).toHaveProperty('setAnimalScale');
+    expect(typeof runtime.setAnimalScale).toBe('function');
+  });
+
+  it('setAnimalScale does not throw with animal provided', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    expect(() => runtime.setAnimalScale(0.5)).not.toThrow();
+  });
+
+  it('setAnimalScale does not throw without animal', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.setAnimalScale(0.5)).not.toThrow();
+  });
+
+  it('setAnimalScale accepts value 0.1 and 1.0 edge cases', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    expect(() => runtime.setAnimalScale(0.1)).not.toThrow();
+    expect(() => runtime.setAnimalScale(1.0)).not.toThrow();
+  });
+
+  it('setAnimalScale does not throw with scentState present', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    const runtime = createSceneRuntime(canvas, mapData, scentState, animal);
+    expect(() => runtime.setAnimalScale(0.5)).not.toThrow();
+  });
+
+  it('setAnimalScale does not throw with scentState and scale 0.1', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    const runtime = createSceneRuntime(canvas, mapData, scentState, animal);
+    expect(() => runtime.setAnimalScale(0.1)).not.toThrow();
+  });
+
+  it('setAnimalScale does not throw with scentState and no animal', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    const runtime = createSceneRuntime(canvas, mapData, scentState);
+    expect(() => runtime.setAnimalScale(0.5)).not.toThrow();
+  });
+});
+
+describe('sceneRuntime setScentPersistence', () => {
+  beforeEach(() => {
+    setScentMaxTrailAge(25000);
+  });
+
+  it('exposes setScentPersistence method', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(runtime).toHaveProperty('setScentPersistence');
+    expect(typeof runtime.setScentPersistence).toBe('function');
+  });
+
+  it('setScentPersistence does not throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.setScentPersistence(5000)).not.toThrow();
+  });
+
+  it('setScentPersistence(5000) removes trails older than 5s in next updateScent', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    // Point from t=0, now=30000 → age=30000. After setScentPersistence(5000), maxTrailAge=5000
+    scentState.trailPoints.push({
+      animalId: 'test',
+      animalType: 'dog',
+      x: 0,
+      y: 0,
+      height: 0,
+      t: 0,
+      baseIntensity: 1.0
+    });
+    const runtime = createSceneRuntime(canvas, mapData, scentState);
+    runtime.setScentPersistence(5000);
+    runtime.updateScent(30000);
+    expect(scentState.trailPoints).toHaveLength(0);
+  });
+
+  it('keeps fresh trails after setScentPersistence(5000)', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
+    // Point from t=29000, now=30000 → age=1000 <= 5000
+    scentState.trailPoints.push({
+      animalId: 'test',
+      animalType: 'dog',
+      x: 0,
+      y: 0,
+      height: 0,
+      t: 29000,
+      baseIntensity: 1.0
+    });
+    const runtime = createSceneRuntime(canvas, mapData, scentState);
+    runtime.setScentPersistence(5000);
+    runtime.updateScent(30000);
+    expect(scentState.trailPoints).toHaveLength(1);
+  });
+
+  it('setScentMaxTrailAge value changes after setScentPersistence call', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    runtime.setScentPersistence(8000);
+    expect(getScentMaxTrailAge()).toBe(8000);
   });
 });

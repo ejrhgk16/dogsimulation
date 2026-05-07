@@ -56,6 +56,16 @@ export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
   }
 };
 
+let _scentMaxTrailAge = 25000;
+
+export function getScentMaxTrailAge(): number {
+  return _scentMaxTrailAge;
+}
+
+export function setScentMaxTrailAge(ms: number): void {
+  _scentMaxTrailAge = ms;
+}
+
 export function getAnimalProfile(animalType: string): AnimalScentProfile {
   const existing = ANIMAL_PROFILES[animalType];
   if (existing) {

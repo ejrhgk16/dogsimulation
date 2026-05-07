@@ -24,7 +24,9 @@ import type { AnimalState } from '../types/animal';
 import {
   ANIMAL_PROFILES,
   DEFAULT_SCENT_PARAMS,
-  DEFAULT_SCENT_VISUAL_CONFIG
+  DEFAULT_SCENT_VISUAL_CONFIG,
+  getScentMaxTrailAge,
+  setScentMaxTrailAge
 } from '../config/scentConfig';
 import { ANIMAL_TYPES, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import { trimExpiredTrails } from '../services/scentService';
@@ -41,6 +43,9 @@ export interface SceneRuntime {
   updateAnimal: (animal: AnimalState) => void;
   resetCamera: () => void;
   setScentVisible: (visible: boolean) => void;
+  setAnimalScale: (scale: number) => void;
+  setScentPersistence: (ms: number) => void;
+  setRotationSpeed: (radPerSec: number) => void;
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -222,10 +227,12 @@ export function createSceneRuntime(
   let prevAnimalY = animal?.y ?? 0;
   let lastAnimFrameTime = performance.now();
   const CROSSFADE_DURATION = 0.2;
-  const ROTATION_SPEED = 8.0;
+  let rotationSpeed = 8.0;
   let groundOffset = ANIMAL_HEIGHT_OFFSET;
   let currentAngle = 0;
   let lastRotationTime = performance.now();
+  const initialScale = animal ? (ANIMAL_TYPES[animal.animalType]?.scale ?? 0.2) : 0.2;
+  let animalScale = initialScale;
 
   if (animal) {
     const config = ANIMAL_TYPES[animal.animalType];
@@ -234,6 +241,7 @@ export function createSceneRuntime(
     const mat = new MeshStandardMaterial({ color });
     const fallbackMesh = new Mesh(geo, mat);
     fallbackMesh.position.set(animal.x, animal.height, animal.y);
+    fallbackMesh.scale.set(animalScale, animalScale, animalScale);
     scene.add(fallbackMesh);
     animalObject = fallbackMesh;
 
@@ -244,7 +252,7 @@ export function createSceneRuntime(
         if (loaded) {
           scene.remove(fallbackMesh);
           loaded.group.position.set(animal.x, 0, animal.y);
-          loaded.group.scale.set(config.scale, config.scale, config.scale);
+          loaded.group.scale.set(animalScale, animalScale, animalScale);
           // Compute bounding box to find origin-to-feet distance
           const box = new Box3().setFromObject(loaded.group);
           groundOffset = -box.min.y;
@@ -284,7 +292,10 @@ export function createSceneRuntime(
 
   const updateScent = (now: number): void => {
     if (!scentState || !scentVisualizer) return;
-    trimExpiredTrails(scentState, now, DEFAULT_SCENT_PARAMS);
+    trimExpiredTrails(scentState, now, {
+      ...DEFAULT_SCENT_PARAMS,
+      maxTrailAge: getScentMaxTrailAge()
+    });
     scentVisualizer.update(scentState.trailPoints, now);
   };
 
@@ -312,7 +323,7 @@ export function createSceneRuntime(
       const targetAngle = Math.atan2(o.directionX, o.directionY);
       const diff = targetAngle - currentAngle;
       const wrapped = Math.atan2(Math.sin(diff), Math.cos(diff));
-      const step = ROTATION_SPEED * dt;
+      const step = rotationSpeed * dt;
       if (Math.abs(wrapped) < step) {
         currentAngle = targetAngle;
       } else {
@@ -342,6 +353,22 @@ export function createSceneRuntime(
 
   const setScentVisible = (visible: boolean): void => {
     scentVisualizer?.setVisible(visible);
+  };
+
+  const setAnimalScale = (scale: number): void => {
+    animalScale = scale;
+    if (animalObject) {
+      animalObject.scale.set(scale, scale, scale);
+    }
+    scentVisualizer?.setPointSize(scale * 0.2);
+  };
+
+  const setScentPersistence = (ms: number): void => {
+    setScentMaxTrailAge(ms);
+  };
+
+  const setRotationSpeed = (radPerSec: number): void => {
+    rotationSpeed = radPerSec;
   };
 
   const resetCamera = (): void => {
@@ -410,6 +437,9 @@ export function createSceneRuntime(
     updateScent,
     updateAnimal,
     resetCamera,
-    setScentVisible
+    setScentVisible,
+    setAnimalScale,
+    setScentPersistence,
+    setRotationSpeed
   };
 }

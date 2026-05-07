@@ -100,6 +100,88 @@ describe('createScentVisualizer', () => {
     }).not.toThrow();
   });
 
+  it('provides setPointSize method', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    expect(visualizer).toHaveProperty('setPointSize');
+    expect(typeof visualizer.setPointSize).toBe('function');
+  });
+
+  it('setPointSize affects fresh point (ratio=0) scale', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const points: ScentPoint[] = [
+      {
+        animalId: 'dog-1',
+        animalType: 'dog',
+        x: 0,
+        y: 0,
+        height: 0,
+        t: 25000,
+        baseIntensity: 1.0,
+        tauDecay: 8000
+      }
+    ];
+    // age = 0 → ratio = 0 → scale = pointSize * 1.0
+    visualizer.setPointSize(0.5);
+    visualizer.update(points, 25000);
+    const mesh = getMesh(scene);
+    const matrix = mesh.instanceMatrix.array;
+    const scaleX = matrix[0];
+    expect(scaleX).toBeCloseTo(0.5, 4);
+  });
+
+  it('setPointSize(0.1) gives scale 0.1 for fresh point', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const points: ScentPoint[] = [
+      {
+        animalId: 'dog-1',
+        animalType: 'dog',
+        x: 0,
+        y: 0,
+        height: 0,
+        t: 100,
+        baseIntensity: 1.0,
+        tauDecay: 8000
+      }
+    ];
+    visualizer.setPointSize(0.1);
+    visualizer.update(points, 100);
+    const mesh = getMesh(scene);
+    const matrix = mesh.instanceMatrix.array;
+    const scaleX = matrix[0];
+    expect(scaleX).toBeCloseTo(0.1, 4);
+  });
+
+  it('setPointSize change persists across multiple updates', () => {
+    const scene = new Scene();
+    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const points: ScentPoint[] = [
+      {
+        animalId: 'dog-1',
+        animalType: 'dog',
+        x: 0,
+        y: 0,
+        height: 0,
+        t: 0,
+        baseIntensity: 1.0,
+        tauDecay: 8000
+      }
+    ];
+    // Set to 0.3, update with age=25000 → ratio≈0.956
+    visualizer.setPointSize(0.3);
+    visualizer.update(points, 25000);
+    const mesh = getMesh(scene);
+    const matrix = mesh.instanceMatrix.array;
+    const scaleX = matrix[0];
+    // scale = 0.3 * (1 - 0.95606 * 0.85) ≈ 0.0562
+    const decayFactor = Math.exp(-25000 / 8000);
+    const ratio = 1 - decayFactor;
+    const expectedScale = 0.3 * (1 - ratio * 0.85);
+    expect(scaleX).toBeCloseTo(expectedScale, 4);
+  });
+
   it('provides setVisible method that toggles mesh visibility', () => {
     const scene = new Scene();
     const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);

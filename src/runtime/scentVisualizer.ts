@@ -8,6 +8,7 @@ export interface ScentVisualizer {
   update(trailPoints: ScentPoint[], now: number): void;
   dispose(): void;
   setVisible(visible: boolean): void;
+  setPointSize(size: number): void;
 }
 
 export function createScentVisualizer(
@@ -26,6 +27,7 @@ export function createScentVisualizer(
 
   const tempObject = new Object3D();
   const tempColor = new Color();
+  let pointSize = config.pointSize;
 
   const update = (trailPoints: ScentPoint[], now: number): void => {
     const count = Math.min(trailPoints.length, MAX_INSTANCES);
@@ -42,7 +44,7 @@ export function createScentVisualizer(
       const height = point.height * (1 - ratio) + config.minHeight * ratio;
 
       tempObject.position.set(point.x, height, point.y);
-      const scale = config.pointSize * (1 - ratio * 0.85);
+      const scale = pointSize * (1 - ratio * 0.85);
       tempObject.scale.set(scale, scale, scale);
       tempObject.updateMatrix();
       mesh.setMatrixAt(i, tempObject.matrix);
@@ -79,8 +81,12 @@ export function createScentVisualizer(
     mesh.visible = visible;
   };
 
+  const setPointSize = (size: number): void => {
+    pointSize = size;
+  };
+
   // Initialize all instances as hidden
   update([], 0);
 
-  return { update, dispose, setVisible };
+  return { update, dispose, setVisible, setPointSize };
 }

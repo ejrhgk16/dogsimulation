@@ -3,7 +3,7 @@ import { createAnimal, moveAnimal } from '../../src/services/animalService';
 import { getHeightAt } from '../../src/services/mapService';
 import type { MapData, MapCell } from '../../src/types/map';
 import type { AnimalState } from '../../src/types/animal';
-import { ANIMAL_SPEED, ANIMAL_HEIGHT_OFFSET } from '../../src/config/animalConfig';
+import { getAnimalSpeed, ANIMAL_HEIGHT_OFFSET } from '../../src/config/animalConfig';
 import { HEIGHT_SPEED_FACTOR } from '../../src/config/animalConfig';
 
 /**
@@ -69,7 +69,7 @@ describe('moveAnimal — basic movement (no map obstacles)', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
     moveAnimal(animal, new Set(['d']), 1, map);
-    expect(animal.x).toBeCloseTo(-5 + ANIMAL_SPEED * 1);
+    expect(animal.x).toBeCloseTo(-5 + getAnimalSpeed() * 1);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -77,7 +77,7 @@ describe('moveAnimal — basic movement (no map obstacles)', () => {
     const map = createFlatMap();
     const animal = animalAt(5, -5);
     moveAnimal(animal, new Set(['a']), 1, map);
-    expect(animal.x).toBeCloseTo(5 - ANIMAL_SPEED * 1);
+    expect(animal.x).toBeCloseTo(5 - getAnimalSpeed() * 1);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -86,7 +86,7 @@ describe('moveAnimal — basic movement (no map obstacles)', () => {
     const animal = animalAt(-5, -5);
     moveAnimal(animal, new Set(['s']), 1, map);
     expect(animal.x).toBeCloseTo(-5);
-    expect(animal.y).toBeCloseTo(-5 + ANIMAL_SPEED * 1);
+    expect(animal.y).toBeCloseTo(-5 + getAnimalSpeed() * 1);
   });
 
   it('moves up on key w', () => {
@@ -94,7 +94,7 @@ describe('moveAnimal — basic movement (no map obstacles)', () => {
     const animal = animalAt(-5, 5);
     moveAnimal(animal, new Set(['w']), 1, map);
     expect(animal.x).toBeCloseTo(-5);
-    expect(animal.y).toBeCloseTo(5 - ANIMAL_SPEED * 1);
+    expect(animal.y).toBeCloseTo(5 - getAnimalSpeed() * 1);
   });
 
   it('normalizes diagonal movement', () => {
@@ -102,8 +102,8 @@ describe('moveAnimal — basic movement (no map obstacles)', () => {
     const animal = animalAt(-5, -5);
     moveAnimal(animal, new Set(['d', 's']), 1, map);
     const len = Math.SQRT1_2;
-    expect(animal.x).toBeCloseTo(-5 + len * ANIMAL_SPEED * 1);
-    expect(animal.y).toBeCloseTo(-5 + len * ANIMAL_SPEED * 1);
+    expect(animal.x).toBeCloseTo(-5 + len * getAnimalSpeed() * 1);
+    expect(animal.y).toBeCloseTo(-5 + len * getAnimalSpeed() * 1);
   });
 
   it('does not move when no key pressed', () => {
@@ -156,7 +156,7 @@ describe('moveAnimal — obstacle collision', () => {
     // x blocked → only y movement
     const len = Math.SQRT1_2;
     expect(animal.x).toBeCloseTo(-5);
-    expect(animal.y).toBeCloseTo(-5 + len * ANIMAL_SPEED * dt);
+    expect(animal.y).toBeCloseTo(-5 + len * getAnimalSpeed() * dt);
   });
 
   it('slides along x-axis when y is blocked (diagonal)', () => {
@@ -167,7 +167,7 @@ describe('moveAnimal — obstacle collision', () => {
     const dt = 2;
     moveAnimal(animal, new Set(['s', 'd']), dt, map);
     const len = Math.SQRT1_2;
-    expect(animal.x).toBeCloseTo(-5 + len * ANIMAL_SPEED * dt);
+    expect(animal.x).toBeCloseTo(-5 + len * getAnimalSpeed() * dt);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -179,7 +179,7 @@ describe('moveAnimal — obstacle collision', () => {
     const dt = 2;
     moveAnimal(animal, new Set(['s', 'd']), dt, map);
     const len = Math.SQRT1_2;
-    expect(animal.x).toBeCloseTo(-5 + len * ANIMAL_SPEED * dt);
+    expect(animal.x).toBeCloseTo(-5 + len * getAnimalSpeed() * dt);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -221,7 +221,7 @@ describe('moveAnimal — height speed adjustment', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
     moveAnimal(animal, new Set(['d']), 1, map);
-    expect(animal.x).toBeCloseTo(-5 + ANIMAL_SPEED * 1);
+    expect(animal.x).toBeCloseTo(-5 + getAnimalSpeed() * 1);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -235,7 +235,7 @@ describe('moveAnimal — height speed adjustment', () => {
     const targetH = getHeightAt(map, 0, -5);
     const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
-    expect(animal.x).toBeCloseTo(-5 + ANIMAL_SPEED * 1 * factor);
+    expect(animal.x).toBeCloseTo(-5 + getAnimalSpeed() * 1 * factor);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -250,7 +250,7 @@ describe('moveAnimal — height speed adjustment', () => {
     const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
     expect(factor).toBe(0.2);
-    expect(animal.x).toBeCloseTo(-5 + ANIMAL_SPEED * 1 * 0.2);
+    expect(animal.x).toBeCloseTo(-5 + getAnimalSpeed() * 1 * 0.2);
     expect(animal.y).toBeCloseTo(-5);
   });
 
@@ -276,13 +276,13 @@ describe('moveAnimal — height speed adjustment', () => {
     const startH = getHeightAt(map, -5, -5);
     expect(animal.height).toBeCloseTo(startH + ANIMAL_HEIGHT_OFFSET);
     // Compute expected before move (moveAnimal uses target position without height factor for heightDiff)
-    const targetX = -5 + ANIMAL_SPEED * 2; // speed = ANIMAL_SPEED * dt = 5 * 2 = 10, dx=1
+    const targetX = -5 + getAnimalSpeed() * 2; // speed = getAnimalSpeed() * dt = 5 * 2 = 10, dx=1
     const targetY = -5; // dy=0
     const targetH = getHeightAt(map, targetX, targetY);
     const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
     moveAnimal(animal, new Set(['d']), 2, map);
-    expect(animal.x).toBeCloseTo(-5 + ANIMAL_SPEED * 2 * factor);
+    expect(animal.x).toBeCloseTo(-5 + getAnimalSpeed() * 2 * factor);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.height).toBeCloseTo(getHeightAt(map, animal.x, animal.y) + ANIMAL_HEIGHT_OFFSET);
   });
@@ -298,11 +298,11 @@ describe('moveAnimal — height speed adjustment', () => {
     moveAnimal(animal, new Set(['s', 'd']), dt, map);
     const len = Math.SQRT1_2;
     const startH = getHeightAt(map, -5, -5);
-    const targetH = getHeightAt(map, -5, -5 + len * ANIMAL_SPEED * dt);
+    const targetH = getHeightAt(map, -5, -5 + len * getAnimalSpeed() * dt);
     const heightDiff = Math.abs(targetH - startH);
     const factor = Math.max(0.2, 1 - heightDiff * HEIGHT_SPEED_FACTOR);
     // Only y movement, reduced by height factor
     expect(animal.x).toBeCloseTo(-5);
-    expect(animal.y).toBeCloseTo(-5 + len * ANIMAL_SPEED * dt * factor);
+    expect(animal.y).toBeCloseTo(-5 + len * getAnimalSpeed() * dt * factor);
   });
 });
