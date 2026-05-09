@@ -13,6 +13,7 @@ import {
   MOUSE,
   Object3D,
   PerspectiveCamera,
+  Quaternion,
   Scene,
   Vector3,
   WebGLRenderer
@@ -28,8 +29,10 @@ import {
   DEFAULT_SCENT_VISUAL_CONFIG
 } from '../config/scentConfig';
 import { ANIMAL_TYPES, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
+import { HEAD_DOWN_MAX_TERRAIN } from '../config/sceneConfig';
 import { setTauDecayMultiplier, setEmitRateMultiplier } from '../config/scentConfig';
 import { trimExpiredTrails } from '../services/scentService';
+import { getTerrainNormal } from '../services/mapService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
 import { loadModel } from './modelLoader';
@@ -144,6 +147,7 @@ export function createSceneRuntime(
   const homePosition = new Vector3(0, 25, 35);
   const homeTarget = new Vector3(0, 0, 0);
   let isReturningToHome = false;
+  let homeResetDist = 0;
 
   let shouldResetOnEnd = false;
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
@@ -155,6 +159,7 @@ export function createSceneRuntime(
   });
   controls.addEventListener('end', () => {
     if (shouldResetOnEnd) {
+      homeResetDist = camera.position.distanceTo(controls.target);
       isReturningToHome = true;
       shouldResetOnEnd = false;
     }
@@ -355,8 +360,15 @@ export function createSceneRuntime(
       } else {
         currentAngle += Math.sign(wrapped) * step;
       }
-      animalObject.rotation.y = currentAngle;
     }
+
+    // Terrain tilt + yaw via quaternion
+    const { nx, ny, nz } = getTerrainNormal(mapData, o.x, o.y, 0.3);
+    const up = new Vector3(0, 1, 0);
+    const slopeNormal = new Vector3(nx, ny, nz).normalize();
+    const tiltQuat = new Quaternion().setFromUnitVectors(up, slopeNormal);
+    const yawQuat = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), currentAngle);
+    animalObject.quaternion.multiplyQuaternions(tiltQuat, yawQuat);
 
     // Detect movement by comparing current position to previous
     const isMoving = o.x !== prevAnimalX || o.y !== prevAnimalY;
@@ -402,6 +414,12 @@ export function createSceneRuntime(
   };
 
   const playAnimation = (name: string): void => {
+    if (name === 'HeadDown' && animal) {
+      const terrainHeight = animal.height - ANIMAL_HEIGHT_OFFSET;
+      if (terrainHeight > HEAD_DOWN_MAX_TERRAIN) {
+        name = 'HeadRaise';
+      }
+    }
     const action = headActionsMap.get(name);
     if (!action) return;
 
@@ -463,6 +481,7 @@ export function createSceneRuntime(
   };
 
   const resetCamera = (): void => {
+    homeResetDist = camera.position.distanceTo(controls.target);
     isReturningToHome = true;
   };
 
@@ -479,11 +498,12 @@ export function createSceneRuntime(
 
   const render = () => {
     if (isReturningToHome) {
-      camera.position.lerp(homePosition, 0.03);
-      controls.target.lerp(homeTarget, 0.03);
-      if (camera.position.distanceTo(homePosition) < 0.01) {
-        camera.position.copy(homePosition);
-        controls.target.copy(homeTarget);
+      const homeDir = new Vector3().subVectors(homePosition, homeTarget).normalize();
+      const idealPos = controls.target.clone().addScaledVector(homeDir, homeResetDist);
+      camera.position.lerp(idealPos, 0.03);
+      const currentDir = new Vector3().subVectors(camera.position, controls.target).normalize();
+      if (currentDir.dot(homeDir) > 0.9999) {
+        camera.position.copy(idealPos);
         isReturningToHome = false;
       }
     }

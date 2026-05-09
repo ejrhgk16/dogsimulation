@@ -198,6 +198,42 @@ function getVertexHeight(mapData: MapData, vRow: number, vCol: number): number {
   return count > 0 ? h / count : 0;
 }
 
+export function getTerrainNormal(
+  mapData: MapData,
+  x: number,
+  z: number,
+  sampleDist = 0.5
+): { nx: number; ny: number; nz: number } {
+  const h = getHeightAt(mapData, x, z);
+  const dhX = getHeightAt(mapData, x + sampleDist, z) - h;
+  const dhZ = getHeightAt(mapData, x, z + sampleDist) - h;
+
+  // Tangent vectors along x and z surface directions
+  const xLen = Math.sqrt(1 + dhX * dhX);
+  const zLen = Math.sqrt(1 + dhZ * dhZ);
+  const xTx = 1 / xLen;
+  const xTy = dhX / xLen;
+  const xTz = 0;
+  const zTx = 0;
+  const zTy = dhZ / zLen;
+  const zTz = 1 / zLen;
+
+  // Normal = cross(z_tangent, x_tangent)
+  let nx = zTy * xTz - zTz * xTy;
+  let ny = zTz * xTx - zTx * xTz;
+  let nz = zTx * xTy - zTy * xTx;
+
+  // Normalize
+  const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+  if (nLen > 0) {
+    nx /= nLen;
+    ny /= nLen;
+    nz /= nLen;
+  }
+
+  return { nx, ny, nz };
+}
+
 export function getHeightAt(mapData: MapData, x: number, z: number): number {
   const mapWidth = mapData.width * mapData.cellSize;
   const mapDepth = mapData.depth * mapData.cellSize;

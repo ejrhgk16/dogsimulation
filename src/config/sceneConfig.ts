@@ -12,3 +12,5 @@ export const defaultSceneConfig: SceneConfig = {
   groundSize: 50,
   mapConfig: defaultMapConfig
 };
+
+export const HEAD_DOWN_MAX_TERRAIN = 0.5;

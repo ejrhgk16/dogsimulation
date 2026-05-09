@@ -187,6 +187,25 @@ describe('sceneRuntime camera controls', () => {
     const runtime = createSceneRuntime(canvas, mapData);
     expect(() => runtime.resetCamera()).not.toThrow();
   });
+
+  it('start does not throw after resetCamera', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    runtime.resetCamera();
+    expect(() => runtime.start()).not.toThrow();
+    runtime.stop();
+  });
+
+  it('calling resetCamera multiple times does not throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    runtime.resetCamera();
+    runtime.resetCamera();
+    expect(() => runtime.start()).not.toThrow();
+    runtime.stop();
+  });
 });
 
 describe('sceneRuntime setAnimalScale', () => {
@@ -355,5 +374,32 @@ describe('sceneRuntime playAnimation', () => {
     expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
     expect(() => runtime.playAnimation('HeadBobbing')).not.toThrow();
     expect(() => runtime.playAnimation('HeadRaise')).not.toThrow();
+  });
+
+  it('HeadDown on flat terrain (height <= HEAD_DOWN_MAX_TERRAIN) does not throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    // Flat terrain → animal.height = ANIMAL_HEIGHT_OFFSET → terrainHeight = 0 ≤ 0.5
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
+  });
+
+  it('HeadDown on high terrain (height > HEAD_DOWN_MAX_TERRAIN) redirects to HeadRaise without throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    // Simulate high terrain: set height above HEAD_DOWN_MAX_TERRAIN + ANIMAL_HEIGHT_OFFSET
+    animal.height = 1.0;
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    // Should redirect to HeadRaise internally, still no throw
+    expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
+  });
+
+  it('HeadDown without animal provided does not throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
   });
 });

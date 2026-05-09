@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { generateMap, getCellAt, isObstacleAt, getHeightAt } from '../../src/services/mapService';
+import {
+  generateMap,
+  getCellAt,
+  isObstacleAt,
+  getHeightAt,
+  getTerrainNormal
+} from '../../src/services/mapService';
 import type { MapConfig } from '../../src/config/mapConfig';
 
 const baseConfig: MapConfig = {
@@ -322,5 +328,96 @@ describe('getHeightAt', () => {
     const right = getHeightAt(map, boundaryX + 1e-8, z);
     // Values should match to high precision (floating point difference < 1e-7)
     expect(Math.abs(left - right)).toBeLessThan(1e-7);
+  });
+});
+
+describe('getTerrainNormal', () => {
+  it('returns normal pointing up on flat terrain', () => {
+    const map = generateMap({
+      ...baseConfig,
+      baseHeight: 5,
+      hillHeight: 0,
+      obstacleRatio: 0
+    });
+    const result = getTerrainNormal(map, 0, 0);
+    expect(result.nx).toBeCloseTo(0, 5);
+    expect(result.ny).toBeCloseTo(1, 5);
+    expect(result.nz).toBeCloseTo(0, 5);
+  });
+
+  it('returns normal with negative nx when terrain slopes up in +x', () => {
+    const map = generateMap({
+      ...baseConfig,
+      width: 5,
+      depth: 5,
+      cellSize: 2,
+      baseHeight: 0,
+      hillHeight: 0,
+      obstacleRatio: 0
+    });
+    // Height increases with column index: slopes up in +x direction
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        map.grid[r][c].height = c * 2;
+      }
+    }
+    const result = getTerrainNormal(map, 0, 0);
+    expect(result.nx).toBeLessThan(0);
+    expect(result.ny).toBeGreaterThan(0);
+    const len = Math.sqrt(result.nx ** 2 + result.ny ** 2 + result.nz ** 2);
+    expect(len).toBeCloseTo(1, 5);
+  });
+
+  it('returns normal with negative nz when terrain slopes up in +z', () => {
+    const map = generateMap({
+      ...baseConfig,
+      width: 5,
+      depth: 5,
+      cellSize: 2,
+      baseHeight: 0,
+      hillHeight: 0,
+      obstacleRatio: 0
+    });
+    // Height increases with row index: slopes up in +z direction
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        map.grid[r][c].height = r * 2;
+      }
+    }
+    const result = getTerrainNormal(map, 0, 0);
+    expect(result.nz).toBeLessThan(0);
+    expect(result.ny).toBeGreaterThan(0);
+    const len = Math.sqrt(result.nx ** 2 + result.ny ** 2 + result.nz ** 2);
+    expect(len).toBeCloseTo(1, 5);
+  });
+
+  it('uses custom sampleDist parameter', () => {
+    const map = generateMap({
+      ...baseConfig,
+      width: 5,
+      depth: 5,
+      cellSize: 2,
+      baseHeight: 0,
+      hillHeight: 0,
+      obstacleRatio: 0
+    });
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        map.grid[r][c].height = c * 2;
+      }
+    }
+    const resultSmall = getTerrainNormal(map, 0, 0, 0.5);
+    const resultLarge = getTerrainNormal(map, 0, 0, 2);
+    // Different sample distances should give consistent direction
+    expect(resultSmall.nx).toBeLessThan(0);
+    expect(resultLarge.nx).toBeLessThan(0);
+  });
+
+  it('returns object with correct shape', () => {
+    const map = generateMap(baseConfig);
+    const result = getTerrainNormal(map, 0, 0);
+    expect(result).toHaveProperty('nx');
+    expect(result).toHaveProperty('ny');
+    expect(result).toHaveProperty('nz');
   });
 });
