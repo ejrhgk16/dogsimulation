@@ -14,7 +14,8 @@ vi.mock('three', async (importOriginal) => {
       setPixelRatio: vi.fn(),
       setSize: vi.fn(),
       render: vi.fn(),
-      dispose: vi.fn()
+      dispose: vi.fn(),
+      domElement: document.createElement('canvas')
     }))
   };
 });
