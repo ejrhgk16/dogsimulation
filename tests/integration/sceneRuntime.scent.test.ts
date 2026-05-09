@@ -336,6 +336,38 @@ describe('sceneRuntime setEmitRate', () => {
   });
 });
 
+describe('sceneRuntime setHeadFrameRanges', () => {
+  it('exposes setHeadFrameRanges method', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(runtime).toHaveProperty('setHeadFrameRanges');
+    expect(typeof runtime.setHeadFrameRanges).toBe('function');
+  });
+
+  it('accepts default values (0, 20, 20, 60, 60, 80) without throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.setHeadFrameRanges(0, 20, 20, 60, 60, 80)).not.toThrow();
+  });
+
+  it('accepts default values with animal provided without throw', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    expect(() => runtime.setHeadFrameRanges(0, 20, 20, 60, 60, 80)).not.toThrow();
+  });
+
+  it('rejects negative start values gracefully', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.setHeadFrameRanges(-1, 20, 20, 60, 60, 80)).not.toThrow();
+  });
+});
+
 describe('sceneRuntime playAnimation', () => {
   it('exposes playAnimation method', () => {
     const canvas = document.createElement('canvas');

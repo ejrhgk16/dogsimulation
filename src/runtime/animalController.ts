@@ -47,6 +47,7 @@ export function createAnimalController(
   let currentAnimName: string | null = null;
   const headActionsMap: Map<string, AnimationAction> = new Map();
   let currentHeadAction: AnimationAction | null = null;
+  let pendingHeadRanges: [number, number, number, number, number, number] | null = null;
   let prevAnimalX = animal?.x ?? 0;
   let prevAnimalY = animal?.y ?? 0;
   let rotationSpeed = 8.0;
@@ -113,6 +114,12 @@ export function createAnimalController(
           if (animalIdleAction) {
             animalIdleAction.play();
             currentAnimName = 'idle';
+          }
+
+          if (pendingHeadRanges) {
+            const [ds, de, bs, be, rs, re] = pendingHeadRanges;
+            pendingHeadRanges = null;
+            applyHeadFrameRanges(ds, de, bs, be, rs, re);
           }
         }
       });
@@ -204,7 +211,7 @@ export function createAnimalController(
     rotationSpeed = radPerSec;
   };
 
-  const setHeadFrameRanges = (
+  const applyHeadFrameRanges = (
     downStart: number,
     downEnd: number,
     bobStart: number,
@@ -249,6 +256,22 @@ export function createAnimalController(
     console.debug(
       `[HeadRanges] Down:${downStart}-${downEnd} Bob:${bobStart}-${bobEnd} Raise:${raiseStart}-${raiseEnd}`
     );
+  };
+
+  const setHeadFrameRanges = (
+    downStart: number,
+    downEnd: number,
+    bobStart: number,
+    bobEnd: number,
+    raiseStart: number,
+    raiseEnd: number
+  ): void => {
+    if (!animalLoadedModel?.eatingClip) {
+      pendingHeadRanges = [downStart, downEnd, bobStart, bobEnd, raiseStart, raiseEnd];
+      return;
+    }
+    pendingHeadRanges = null;
+    applyHeadFrameRanges(downStart, downEnd, bobStart, bobEnd, raiseStart, raiseEnd);
   };
 
   return {

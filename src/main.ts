@@ -79,29 +79,8 @@ controlsPanel.innerHTML = `
       <span class="slider-value" id="emit-rate-value">1.0x</span>
     </label>
   </fieldset>
-  <fieldset>
-    <legend>Head Frames</legend>
-    <label>
-      <span>Down</span>
-      <input type="number" id="head-down-start" min="0" max="80" step="1" value="0" style="width:40px" />
-      <span>~</span>
-      <input type="number" id="head-down-end" min="0" max="80" step="1" value="10" style="width:40px" />
-    </label>
-    <label>
-      <span>Bob</span>
-      <input type="number" id="head-bob-start" min="0" max="80" step="1" value="10" style="width:40px" />
-      <span>~</span>
-      <input type="number" id="head-bob-end" min="0" max="80" step="1" value="60" style="width:40px" />
-    </label>
-    <label>
-      <span>Raise</span>
-      <input type="number" id="head-raise-start" min="0" max="80" step="1" value="60" style="width:40px" />
-      <span>~</span>
-      <input type="number" id="head-raise-end" min="0" max="80" step="1" value="70" style="width:40px" />
-    </label>
-    <button id="head-frames-apply">Apply</button>
-  </fieldset>
 `;
+
 app.appendChild(controlsPanel);
 
 const scentCheckbox = controlsPanel.querySelector<HTMLInputElement>('#toggle-scent')!;
@@ -149,28 +128,11 @@ emitRateSlider.addEventListener('input', () => {
   runtime.setEmitRate(val);
 });
 
-const headDownStart = controlsPanel.querySelector<HTMLInputElement>('#head-down-start')!;
-const headDownEnd = controlsPanel.querySelector<HTMLInputElement>('#head-down-end')!;
-const headBobStart = controlsPanel.querySelector<HTMLInputElement>('#head-bob-start')!;
-const headBobEnd = controlsPanel.querySelector<HTMLInputElement>('#head-bob-end')!;
-const headRaiseStart = controlsPanel.querySelector<HTMLInputElement>('#head-raise-start')!;
-const headRaiseEnd = controlsPanel.querySelector<HTMLInputElement>('#head-raise-end')!;
-const headFramesApply = controlsPanel.querySelector<HTMLButtonElement>('#head-frames-apply')!;
-headFramesApply.addEventListener('click', () => {
-  runtime.setHeadFrameRanges(
-    parseInt(headDownStart.value),
-    parseInt(headDownEnd.value),
-    parseInt(headBobStart.value),
-    parseInt(headBobEnd.value),
-    parseInt(headRaiseStart.value),
-    parseInt(headRaiseEnd.value)
-  );
-});
-
 window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
+runtime.setHeadFrameRanges(0, 20, 20, 60, 60, 80);
 
 const prevKeys = new Set<string>();
 let lastTime = performance.now();
