@@ -26,6 +26,21 @@ const keys = new Set<string>();
 window.addEventListener('keydown', (e) => keys.add(e.key));
 window.addEventListener('keyup', (e) => keys.delete(e.key));
 
+// Head animation keys
+window.addEventListener('keydown', (e) => {
+  switch (e.key) {
+    case '1':
+      runtime.playAnimation('HeadDown');
+      break;
+    case '2':
+      runtime.playAnimation('HeadBobbing');
+      break;
+    case '3':
+      runtime.playAnimation('HeadRaise');
+      break;
+  }
+});
+
 const runtime = createSceneRuntime(canvas, mapData, scentState, animal);
 
 // Control panel
@@ -63,6 +78,28 @@ controlsPanel.innerHTML = `
       <input type="range" id="emit-rate-slider" min="0.1" max="2.0" step="0.1" value="1.0" />
       <span class="slider-value" id="emit-rate-value">1.0x</span>
     </label>
+  </fieldset>
+  <fieldset>
+    <legend>Head Frames</legend>
+    <label>
+      <span>Down</span>
+      <input type="number" id="head-down-start" min="0" max="80" step="1" value="0" style="width:40px" />
+      <span>~</span>
+      <input type="number" id="head-down-end" min="0" max="80" step="1" value="10" style="width:40px" />
+    </label>
+    <label>
+      <span>Bob</span>
+      <input type="number" id="head-bob-start" min="0" max="80" step="1" value="10" style="width:40px" />
+      <span>~</span>
+      <input type="number" id="head-bob-end" min="0" max="80" step="1" value="60" style="width:40px" />
+    </label>
+    <label>
+      <span>Raise</span>
+      <input type="number" id="head-raise-start" min="0" max="80" step="1" value="60" style="width:40px" />
+      <span>~</span>
+      <input type="number" id="head-raise-end" min="0" max="80" step="1" value="70" style="width:40px" />
+    </label>
+    <button id="head-frames-apply">Apply</button>
   </fieldset>
 `;
 app.appendChild(controlsPanel);
@@ -112,16 +149,42 @@ emitRateSlider.addEventListener('input', () => {
   runtime.setEmitRate(val);
 });
 
+const headDownStart = controlsPanel.querySelector<HTMLInputElement>('#head-down-start')!;
+const headDownEnd = controlsPanel.querySelector<HTMLInputElement>('#head-down-end')!;
+const headBobStart = controlsPanel.querySelector<HTMLInputElement>('#head-bob-start')!;
+const headBobEnd = controlsPanel.querySelector<HTMLInputElement>('#head-bob-end')!;
+const headRaiseStart = controlsPanel.querySelector<HTMLInputElement>('#head-raise-start')!;
+const headRaiseEnd = controlsPanel.querySelector<HTMLInputElement>('#head-raise-end')!;
+const headFramesApply = controlsPanel.querySelector<HTMLButtonElement>('#head-frames-apply')!;
+headFramesApply.addEventListener('click', () => {
+  runtime.setHeadFrameRanges(
+    parseInt(headDownStart.value),
+    parseInt(headDownEnd.value),
+    parseInt(headBobStart.value),
+    parseInt(headBobEnd.value),
+    parseInt(headRaiseStart.value),
+    parseInt(headRaiseEnd.value)
+  );
+});
+
 window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
 
+const prevKeys = new Set<string>();
 let lastTime = performance.now();
 function animate() {
   const now = performance.now();
   const dt = (now - lastTime) / 1000;
   lastTime = now;
+
+  // A/S/D head animation (press once, edge detection)
+  if (keys.has('a') && !prevKeys.has('a')) runtime.playAnimation('HeadDown');
+  if (keys.has('s') && !prevKeys.has('s')) runtime.playAnimation('HeadBobbing');
+  if (keys.has('d') && !prevKeys.has('d')) runtime.playAnimation('HeadRaise');
+  prevKeys.clear();
+  keys.forEach((k) => prevKeys.add(k));
 
   moveAnimal(animal, keys, dt, mapData);
 

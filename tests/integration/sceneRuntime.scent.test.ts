@@ -315,3 +315,45 @@ describe('sceneRuntime setEmitRate', () => {
     expect(getEmitRateMultiplier()).toBe(0.5);
   });
 });
+
+describe('sceneRuntime playAnimation', () => {
+  it('exposes playAnimation method', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(runtime).toHaveProperty('playAnimation');
+    expect(typeof runtime.playAnimation).toBe('function');
+  });
+
+  it('playAnimation does not throw with valid name', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
+  });
+
+  it('playAnimation does not throw with unknown name', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const runtime = createSceneRuntime(canvas, mapData);
+    expect(() => runtime.playAnimation('Unknown')).not.toThrow();
+  });
+
+  it('playAnimation does not throw when animal provided', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
+  });
+
+  it('playAnimation does not throw with all head animation names', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, animal);
+    expect(() => runtime.playAnimation('HeadDown')).not.toThrow();
+    expect(() => runtime.playAnimation('HeadBobbing')).not.toThrow();
+    expect(() => runtime.playAnimation('HeadRaise')).not.toThrow();
+  });
+});

@@ -20,10 +20,22 @@ const mockMixer = {
 
 vi.mock('three', () => ({
   Group: vi.fn().mockImplementation(() => mockGroup),
+  AnimationClip: class {
+    name: string;
+    duration: number;
+    tracks: unknown[];
+    uuid: string;
+    constructor(name: string, duration: number, tracks: unknown[]) {
+      this.name = name;
+      this.duration = duration;
+      this.tracks = tracks;
+      this.uuid = 'mock-' + Math.random().toString(36).slice(2);
+    }
+  },
   AnimationMixer: vi.fn().mockImplementation(() => mockMixer)
 }));
 
-import { loadModel } from '../../src/runtime/modelLoader';
+import { loadModel, createSubClip } from '../../src/runtime/modelLoader';
 
 describe('loadModel', () => {
   beforeEach(() => {
@@ -109,5 +121,212 @@ describe('loadModel', () => {
     expect(result).toBeNull();
     expect(consoleWarnSpy).toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
+  });
+
+  it('extracts Eating sub-clips from loaded gltf animations', async () => {
+    const eatingClip: Record<string, unknown> = {
+      name: 'Eating',
+      duration: 2.667,
+      tracks: [
+        makeMockTrack(
+          'Head.position',
+          [0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 2.667],
+          [
+            0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0, 0.5, 0.3, 0, 0.4, 0.2, 0, 0.2, 0.1, 0, 0.1, 0.05, 0,
+            0, 0, 0
+          ]
+        )
+      ]
+    };
+    const fakeGltf = { scene: mockGroup, animations: [eatingClip] };
+    mockLoad.mockImplementation((_path: string, onLoad: (gltf: unknown) => void) => {
+      onLoad(fakeGltf);
+    });
+
+    const result = await loadModel('/models/ShibaInu.gltf');
+    expect(result).not.toBeNull();
+    expect(result!.headDownClip).toBeDefined();
+    expect(result!.headDownClip!.name).toBe('HeadDown');
+    expect(result!.headDownClip!.duration).toBeCloseTo(0.333);
+    expect(result!.headBobbingClip).toBeDefined();
+    expect(result!.headBobbingClip!.name).toBe('HeadBobbing');
+    expect(result!.headBobbingClip!.duration).toBeCloseTo(1.667);
+    expect(result!.headRaiseClip).toBeDefined();
+    expect(result!.headRaiseClip!.name).toBe('HeadRaise');
+    expect(result!.headRaiseClip!.duration).toBeCloseTo(0.333);
+  });
+
+  it('logs Eating clip debug info when Eating animation found', async () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const eatingClip: Record<string, unknown> = {
+      name: 'Eating',
+      duration: 2.667,
+      tracks: [
+        makeMockTrack(
+          'Head.position',
+          [0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5],
+          [0, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 0, 0]
+        ),
+        makeMockTrack(
+          'Neck1.rotation',
+          [0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5],
+          [0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6]
+        )
+      ]
+    };
+    const fakeGltf = { scene: mockGroup, animations: [eatingClip] };
+    mockLoad.mockImplementation((_path: string, onLoad: (gltf: unknown) => void) => {
+      onLoad(fakeGltf);
+    });
+
+    await loadModel('/models/ShibaInu.gltf');
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[SubClips] HeadDown: 2 tracks, HeadBobbing: 2 tracks, HeadRaise: 2 tracks'
+    );
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[BoneFilter] first 3 Eating track names: Head.position | Neck1.rotation'
+    );
+    expect(debugSpy).toHaveBeenCalledWith('[BoneFilter] matched by isHeadBoneTrack: 2/2');
+    debugSpy.mockRestore();
+  });
+
+  it('does not add sub-clips when no Eating animation exists', async () => {
+    const fakeGltf = { scene: mockGroup, animations: [{ name: 'Walk' }] };
+    mockLoad.mockImplementation((_path: string, onLoad: (gltf: unknown) => void) => {
+      onLoad(fakeGltf);
+    });
+
+    const result = await loadModel('/models/ShibaInu.gltf');
+    expect(result).not.toBeNull();
+    expect(result!.headDownClip).toBeUndefined();
+    expect(result!.headBobbingClip).toBeUndefined();
+    expect(result!.headRaiseClip).toBeUndefined();
+  });
+});
+
+function makeMockTrack(name: string, times: number[], values: number[]): Record<string, unknown> {
+  const valueSize = times.length > 0 ? values.length / times.length : 3;
+  return {
+    name,
+    times: [...times],
+    values: [...values],
+    getValueSize: () => valueSize,
+    constructor: function MockTrack(n: string, t: number[], v: number[]) {
+      return makeMockTrack(n, t, v);
+    }
+  };
+}
+
+describe('createSubClip', () => {
+  it('returns clip with correct name and duration', () => {
+    const tracks = [makeMockTrack('Head.position', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 2, 2, 2])];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'HeadDown', 0, 0.5);
+
+    expect(result.name).toBe('HeadDown');
+    expect(result.duration).toBe(0.5);
+    expect(result.tracks).toHaveLength(1);
+  });
+
+  it('filters keyframes within range and normalizes times', () => {
+    const tracks = [
+      makeMockTrack('Head.position', [0.25, 0.5, 0.75, 1.0], [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3])
+    ];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'Test', 0.25, 0.75);
+
+    expect(result.tracks).toHaveLength(1);
+    // times [0.25, 0.5, 0.75] normalized to [0, 0.25, 0.5]
+    expect(result.tracks[0].times).toEqual([0, 0.25, 0.5]);
+    // values for indices 0,1,2 with valueSize=3
+    expect(result.tracks[0].values).toEqual([0, 0, 0, 1, 1, 1, 2, 2, 2]);
+  });
+
+  it('filters multiple tracks', () => {
+    const tracks = [
+      makeMockTrack('Head.position', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 2, 2, 2]),
+      makeMockTrack('Neck1.quaternion', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 1, 0, 0, 0])
+    ];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'HeadDown', 0, 0.5);
+
+    expect(result.tracks).toHaveLength(2);
+    expect(result.tracks[0].times).toEqual([0, 0.5]);
+    expect(result.tracks[1].times).toEqual([0, 0.5]);
+  });
+
+  it('returns empty tracks array when no keyframes in range', () => {
+    const tracks = [makeMockTrack('Head.position', [1, 2, 3], [0, 0, 0, 1, 1, 1, 2, 2, 2])];
+    const clip = { name: 'Eating', duration: 3, tracks } as const;
+
+    const result = createSubClip(clip as never, 'Empty', 4, 5);
+
+    expect(result.name).toBe('Empty');
+    expect(result.duration).toBe(1);
+    expect(result.tracks).toHaveLength(0);
+  });
+
+  it('handles empty source tracks array', () => {
+    const clip = { name: 'Eating', duration: 2, tracks: [] } as const;
+
+    const result = createSubClip(clip as never, 'EmptyClip', 0, 1);
+
+    expect(result.name).toBe('EmptyClip');
+    expect(result.duration).toBe(1);
+    expect(result.tracks).toHaveLength(0);
+  });
+
+  it('filters out non-head bone tracks', () => {
+    const tracks = [
+      makeMockTrack('Tail.position', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 2, 2, 2]),
+      makeMockTrack('LeftLeg.quaternion', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 0, 0, 0, 0])
+    ];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'Filtered', 0, 0.5);
+
+    expect(result.tracks).toHaveLength(0);
+  });
+
+  it('keeps head bone tracks and filters non-head tracks', () => {
+    const tracks = [
+      makeMockTrack('Head.position', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 2, 2, 2]),
+      makeMockTrack('Tail.quaternion', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 0, 0, 0, 0]),
+      makeMockTrack('Neck1.scale', [0, 0.5, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1])
+    ];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'HeadOnly', 0, 0.5);
+
+    expect(result.tracks).toHaveLength(2);
+    expect(result.tracks[0].name).toBe('Head.position');
+    expect(result.tracks[1].name).toBe('Neck1.scale');
+  });
+
+  it('bone filter is case-sensitive', () => {
+    const tracks = [
+      makeMockTrack('HEAD.position', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 2, 2, 2]),
+      makeMockTrack('Skull.scale', [0, 0.5, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1])
+    ];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'CaseSensitive', 0, 0.5);
+
+    expect(result.tracks).toHaveLength(0);
+  });
+
+  it('keeps Ear bone tracks', () => {
+    const tracks = [
+      makeMockTrack('Ear1.L.position', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 2, 2, 2]),
+      makeMockTrack('Ear4.R.quaternion', [0, 0.5, 1], [0, 0, 0, 1, 1, 1, 0, 0, 0, 0])
+    ];
+    const clip = { name: 'Eating', duration: 1, tracks } as const;
+
+    const result = createSubClip(clip as never, 'EarTracks', 0, 0.5);
+
+    expect(result.tracks).toHaveLength(2);
   });
 });

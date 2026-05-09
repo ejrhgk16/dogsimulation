@@ -32,10 +32,10 @@ export function moveAnimal(
   let dx = 0;
   let dy = 0;
 
-  if (keys.has('w') || keys.has('W') || keys.has('ArrowUp')) dy -= 1;
-  if (keys.has('s') || keys.has('S') || keys.has('ArrowDown')) dy += 1;
-  if (keys.has('a') || keys.has('A') || keys.has('ArrowLeft')) dx -= 1;
-  if (keys.has('d') || keys.has('D') || keys.has('ArrowRight')) dx += 1;
+  if (keys.has('ArrowUp')) dy = -1;
+  if (keys.has('ArrowDown')) dy = 1;
+  if (keys.has('ArrowLeft')) dx = -1;
+  if (keys.has('ArrowRight')) dx = 1;
 
   if (dx !== 0 || dy !== 0) {
     const len = Math.sqrt(dx * dx + dy * dy);

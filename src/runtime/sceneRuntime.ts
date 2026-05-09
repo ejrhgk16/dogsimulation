@@ -7,6 +7,7 @@ import {
   DirectionalLight,
   Float32BufferAttribute,
   InstancedMesh,
+  LoopOnce,
   Mesh,
   MeshStandardMaterial,
   MOUSE,
@@ -32,6 +33,7 @@ import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
 import { loadModel } from './modelLoader';
+import { createSubClip } from './modelLoader';
 import type { LoadedModel } from './modelLoader';
 
 export interface SceneRuntime {
@@ -46,6 +48,15 @@ export interface SceneRuntime {
   setRotationSpeed: (radPerSec: number) => void;
   setScentDecayRate: (multiplier: number) => void;
   setEmitRate: (multiplier: number) => void;
+  playAnimation: (name: string) => void;
+  setHeadFrameRanges: (
+    downStart: number,
+    downEnd: number,
+    bobStart: number,
+    bobEnd: number,
+    raiseStart: number,
+    raiseEnd: number
+  ) => void;
 }
 
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
@@ -223,6 +234,8 @@ export function createSceneRuntime(
   let animalWalkAction: AnimationAction | null = null;
   let animalIdleAction: AnimationAction | null = null;
   let currentAnimName: string | null = null;
+  const headActionsMap: Map<string, AnimationAction> = new Map();
+  let currentHeadAction: AnimationAction | null = null;
   let prevAnimalX = animal?.x ?? 0;
   let prevAnimalY = animal?.y ?? 0;
   let lastAnimFrameTime = performance.now();
@@ -272,6 +285,22 @@ export function createSceneRuntime(
 
           animalWalkAction = walkClip ? loaded.mixer.clipAction(walkClip) : null;
           animalIdleAction = idleClip ? loaded.mixer.clipAction(idleClip) : null;
+
+          // Prepare head animation actions from sub-clips
+          const headClips: Array<{ name: string; clip: typeof loaded.headDownClip }> = [
+            { name: 'HeadDown', clip: loaded.headDownClip },
+            { name: 'HeadBobbing', clip: loaded.headBobbingClip },
+            { name: 'HeadRaise', clip: loaded.headRaiseClip }
+          ];
+          for (const { name, clip } of headClips) {
+            if (clip) {
+              const action = loaded.mixer.clipAction(clip);
+              action.setLoop(LoopOnce, 1);
+              action.clampWhenFinished = true;
+              action.weight = 999;
+              headActionsMap.set(name, action);
+            }
+          }
 
           // Start with Idle
           if (animalIdleAction) {
@@ -372,6 +401,67 @@ export function createSceneRuntime(
     setEmitRateMultiplier(multiplier);
   };
 
+  const playAnimation = (name: string): void => {
+    const action = headActionsMap.get(name);
+    if (!action) return;
+
+    action.reset();
+    action.weight = 999;
+    action.play();
+    if (currentHeadAction && currentHeadAction !== action) {
+      currentHeadAction.stop();
+    }
+    currentHeadAction = action;
+  };
+
+  const setHeadFrameRanges = (
+    downStart: number,
+    downEnd: number,
+    bobStart: number,
+    bobEnd: number,
+    raiseStart: number,
+    raiseEnd: number
+  ): void => {
+    if (!animalLoadedModel?.eatingClip) return;
+
+    const eating = animalLoadedModel.eatingClip;
+    const fps = 30;
+    const ds = downStart / fps;
+    const de = downEnd / fps;
+    const bs = bobStart / fps;
+    const be = bobEnd / fps;
+    const rs = raiseStart / fps;
+    const re = raiseEnd / fps;
+
+    // Stop current head action
+    if (currentHeadAction) {
+      currentHeadAction.stop();
+      currentHeadAction = null;
+    }
+
+    headActionsMap.clear();
+
+    const headDownClip = createSubClip(eating, 'HeadDown', ds, de);
+    const headBobbingClip = createSubClip(eating, 'HeadBobbing', bs, be);
+    const headRaiseClip = createSubClip(eating, 'HeadRaise', rs, re);
+
+    for (const [name, clip] of [
+      ['HeadDown', headDownClip],
+      ['HeadBobbing', headBobbingClip],
+      ['HeadRaise', headRaiseClip]
+    ] as const) {
+      const action = animalLoadedModel.mixer.clipAction(clip);
+      action.setLoop(LoopOnce, 1);
+      action.clampWhenFinished = true;
+      action.weight = 999;
+      headActionsMap.set(name, action);
+    }
+
+    console.debug(
+      `[HeadRanges] Down:${downStart}-${downEnd} Bob:${bobStart}-${bobEnd} Raise:${raiseStart}-${raiseEnd}`
+    );
+  };
+
   const resetCamera = (): void => {
     isReturningToHome = true;
   };
@@ -442,6 +532,8 @@ export function createSceneRuntime(
     setAnimalScale,
     setRotationSpeed,
     setScentDecayRate,
-    setEmitRate
+    setEmitRate,
+    playAnimation,
+    setHeadFrameRanges
   };
 }
