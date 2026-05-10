@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createAnimal, moveAnimal } from '../../src/services/animalService';
+import { createAnimal, moveAnimal_keyevent } from '../../src/services/animalService';
 import type { MapData, MapCell } from '../../src/types/map';
 import type { AnimalState } from '../../src/types/animal';
 import { ANIMAL_HEIGHT_OFFSET } from '../../src/config/animalConfig';
@@ -66,7 +66,7 @@ describe('moveAnimal — keyboard-driven movement', () => {
   it('moves right on ArrowRight', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowRight']), 1, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowRight']), 1, map);
     expect(animal.x).toBeCloseTo(0);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.directionX).toBe(1);
@@ -76,7 +76,7 @@ describe('moveAnimal — keyboard-driven movement', () => {
   it('moves left on ArrowLeft', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowLeft']), 0.5, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowLeft']), 0.5, map);
     expect(animal.x).toBeCloseTo(-7.5);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.directionX).toBe(-1);
@@ -87,7 +87,7 @@ describe('moveAnimal — keyboard-driven movement', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
     const initialAngle = animal.rotationAngle;
-    moveAnimal(animal, new Set(['ArrowUp']), 0.5, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowUp']), 0.5, map);
     expect(animal.x).toBeCloseTo(-5);
     expect(animal.y).toBeCloseTo(-7.5);
     expect(animal.directionX).toBe(0);
@@ -98,7 +98,7 @@ describe('moveAnimal — keyboard-driven movement', () => {
   it('does not move when no key pressed', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(), 1, map);
+    moveAnimal_keyevent(animal, new Set(), 1, map);
     expect(animal.x).toBeCloseTo(-5);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.directionX).toBe(0);
@@ -108,7 +108,7 @@ describe('moveAnimal — keyboard-driven movement', () => {
   it('supports arrow keys (ArrowRight)', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowRight']), 1, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowRight']), 1, map);
     expect(animal.x).toBeCloseTo(0);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.directionX).toBe(1);
@@ -118,7 +118,7 @@ describe('moveAnimal — keyboard-driven movement', () => {
   it('supports arrow keys (ArrowDown + ArrowLeft)', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowDown', 'ArrowLeft']), 1, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowDown', 'ArrowLeft']), 1, map);
     const expectedDx = -1 / Math.SQRT2;
     const expectedDy = 1 / Math.SQRT2;
     expect(animal.directionX).toBeCloseTo(expectedDx);
@@ -135,7 +135,7 @@ describe('moveAnimal — obstacle collision', () => {
     const map = createFlatMap();
     map.grid[0][1] = { ...map.grid[0][1], terrain: 'obstacle', height: 0 };
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowRight']), 1, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowRight']), 1, map);
     expect(animal.x).toBeCloseTo(-5);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.directionX).toBe(1);
@@ -148,7 +148,7 @@ describe('moveAnimal — obstacle collision', () => {
     map.grid[1][1] = { ...map.grid[1][1], terrain: 'obstacle', height: 0 };
     const animal = animalAt(-5, -5);
     const dt = 2;
-    moveAnimal(animal, new Set(['ArrowDown', 'ArrowRight']), dt, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowDown', 'ArrowRight']), dt, map);
     // x blocked (grid[0][1] obstacle), y clear (grid[1][0] flat) → slides down
     expect(animal.x).toBeCloseTo(-5);
     expect(animal.y).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe('moveAnimal — obstacle collision', () => {
     map.grid[1][1] = { ...map.grid[1][1], terrain: 'obstacle', height: 0 };
     const animal = animalAt(-5, -5);
     const dt = 2;
-    moveAnimal(animal, new Set(['ArrowDown', 'ArrowRight']), dt, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowDown', 'ArrowRight']), dt, map);
     expect(animal.x).toBeCloseTo(-5);
     expect(animal.y).toBeCloseTo(-5);
   });
@@ -173,7 +173,7 @@ describe('moveAnimal — boundary collision', () => {
   it('stays in place when moving out of bounds', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowLeft']), 2, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowLeft']), 2, map);
     expect(animal.x).toBeCloseTo(-5);
     expect(animal.y).toBeCloseTo(-5);
     expect(animal.directionX).toBe(-1);
@@ -185,7 +185,7 @@ describe('moveAnimal — height effects on movement', () => {
   it('moves slower uphill on flat terrain (no height diff)', () => {
     const map = createFlatMap();
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowRight']), 1, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowRight']), 1, map);
     expect(animal.x).toBeCloseTo(0);
     expect(animal.y).toBeCloseTo(-5);
   });
@@ -194,7 +194,7 @@ describe('moveAnimal — height effects on movement', () => {
     const map = createFlatMap();
     map.grid[0][1] = { ...map.grid[0][1], height: 8, terrain: 'hill' };
     const animal = animalAt(-5, -5);
-    moveAnimal(animal, new Set(['ArrowRight']), 1, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowRight']), 1, map);
     // Height diff between hill cell and start reduces speed factor
     expect(animal.x).toBeGreaterThan(-5);
     expect(animal.x).toBeLessThan(0);
@@ -207,7 +207,7 @@ describe('moveAnimal — height effects on movement', () => {
     map.grid[0][1] = { ...map.grid[0][1], height: 4, terrain: 'hill' };
     const animal = createAnimal('test', 'dog', -1, -5, map);
     const origHeight = animal.height;
-    moveAnimal(animal, new Set(['ArrowRight']), 2, map);
+    moveAnimal_keyevent(animal, new Set(['ArrowRight']), 2, map);
     expect(animal.height).not.toBe(origHeight);
     expect(animal.x).toBeGreaterThan(-1);
   });

@@ -25,7 +25,7 @@ export function createAnimal(
   };
 }
 
-export function moveAnimal(
+export function moveAnimal_keyevent(
   animal: AnimalState,
   keys: Set<string>,
   dt: number,

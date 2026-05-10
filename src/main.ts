@@ -3,7 +3,7 @@ import { generateMap } from './services/mapService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
 import type { ScentWorldState } from './types/scent';
 import type { AnimalState } from './types/animal';
-import { createAnimal, moveAnimal } from './services/animalService';
+import { createAnimal, moveAnimal_keyevent } from './services/animalService';
 import { emitTrailPoint, emitTrailPointOnMove } from './services/scentService';
 import { getAnimalProfile } from './config/scentConfig';
 
@@ -19,13 +19,9 @@ const mapData = generateMap(defaultSceneConfig.mapConfig);
 
 const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
 
-const animals: AnimalState[] = [
-  createAnimal('dog-1', 'dog', -4, -2, mapData, 5.0),
-  createAnimal('alpaca-1', 'alpaca', 2, -2, mapData, 3.0),
-  createAnimal('alpaca-2', 'alpaca', 0, 3, mapData, 3.5)
-];
-
-let selectedAnimalId = animals[0].id;
+const alpacaAnimal = createAnimal('alpaca', 'alpaca', 0, 3, mapData, 3.5);
+const animals: AnimalState[] = [createAnimal('dog-1', 'dog', -4, -2, mapData, 5.0), alpacaAnimal];
+const ALPACA_ID = alpacaAnimal.id;
 
 const keys = new Set<string>();
 window.addEventListener('keydown', (e) => keys.add(e.key));
@@ -35,27 +31,18 @@ window.addEventListener('keyup', (e) => keys.delete(e.key));
 window.addEventListener('keydown', (e) => {
   switch (e.key) {
     case '1':
-      runtime.playAnimation(selectedAnimalId, 'HeadDown');
+      runtime.playAnimation(ALPACA_ID, 'HeadDown');
       break;
     case '2':
-      runtime.playAnimation(selectedAnimalId, 'HeadBobbing');
+      runtime.playAnimation(ALPACA_ID, 'HeadBobbing');
       break;
     case '3':
-      runtime.playAnimation(selectedAnimalId, 'HeadRaise');
+      runtime.playAnimation(ALPACA_ID, 'HeadRaise');
       break;
   }
 });
 
 const runtime = createSceneRuntime(canvas, mapData, scentState, animals);
-
-// Canvas click → pick animal
-canvas.addEventListener('click', (e) => {
-  const id = runtime.pickAnimal(e.offsetX, e.offsetY);
-  if (id) {
-    selectedAnimalId = id;
-    updateAnimalSelectionUI();
-  }
-});
 
 // Control panel
 const controlsPanel = document.createElement('div');
@@ -97,30 +84,6 @@ controlsPanel.innerHTML = `
 
 app.appendChild(controlsPanel);
 
-// Animal selection buttons
-const animalSelector = document.createElement('fieldset');
-const animalLegend = document.createElement('legend');
-animalLegend.textContent = 'Animals';
-animalSelector.appendChild(animalLegend);
-for (const a of animals) {
-  const btn = document.createElement('button');
-  btn.textContent = `${a.animalType} (${a.id})`;
-  btn.dataset.animalId = a.id;
-  btn.addEventListener('click', () => {
-    selectedAnimalId = a.id;
-    updateAnimalSelectionUI();
-  });
-  animalSelector.appendChild(btn);
-}
-controlsPanel.appendChild(animalSelector);
-
-function updateAnimalSelectionUI() {
-  for (const btn of animalSelector.querySelectorAll('button')) {
-    btn.classList.toggle('selected', btn.dataset.animalId === selectedAnimalId);
-  }
-}
-updateAnimalSelectionUI();
-
 const scentCheckbox = controlsPanel.querySelector<HTMLInputElement>('#toggle-scent')!;
 scentCheckbox.addEventListener('change', () => {
   runtime.setScentVisible(scentCheckbox.checked);
@@ -131,7 +94,7 @@ const speedValue = controlsPanel.querySelector<HTMLElement>('#speed-value')!;
 speedSlider.addEventListener('input', () => {
   const val = parseFloat(speedSlider.value);
   speedValue.textContent = val.toFixed(1);
-  const animal = animals.find((a) => a.id === selectedAnimalId);
+  const animal = animals.find((a) => a.id === ALPACA_ID);
   if (animal) animal.speed = val;
 });
 
@@ -140,7 +103,7 @@ const scaleValue = controlsPanel.querySelector<HTMLElement>('#scale-value')!;
 scaleSlider.addEventListener('input', () => {
   const val = parseFloat(scaleSlider.value);
   scaleValue.textContent = val.toFixed(2);
-  runtime.setAnimalScale(selectedAnimalId, val);
+  runtime.setAnimalScale(ALPACA_ID, val);
 });
 
 const rotationSlider = controlsPanel.querySelector<HTMLInputElement>('#rotation-slider')!;
@@ -148,7 +111,7 @@ const rotationValue = controlsPanel.querySelector<HTMLElement>('#rotation-value'
 rotationSlider.addEventListener('input', () => {
   const val = parseFloat(rotationSlider.value);
   rotationValue.textContent = val.toFixed(1);
-  runtime.setRotationSpeed(selectedAnimalId, val);
+  runtime.setRotationSpeed(ALPACA_ID, val);
 });
 
 const tauDecaySlider = controlsPanel.querySelector<HTMLInputElement>('#tau-decay-slider')!;
@@ -171,7 +134,7 @@ window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
-runtime.setHeadFrameRanges(selectedAnimalId, 0, 20, 20, 60, 60, 80);
+runtime.setHeadFrameRanges(ALPACA_ID, 0, 20, 20, 60, 60, 80);
 
 const prevKeys = new Set<string>();
 let lastTime = performance.now();
@@ -181,14 +144,14 @@ function animate() {
   lastTime = now;
 
   // A/S/D head animation (press once, edge detection)
-  if (keys.has('a') && !prevKeys.has('a')) runtime.playAnimation(selectedAnimalId, 'HeadDown');
-  if (keys.has('s') && !prevKeys.has('s')) runtime.playAnimation(selectedAnimalId, 'HeadBobbing');
-  if (keys.has('d') && !prevKeys.has('d')) runtime.playAnimation(selectedAnimalId, 'HeadRaise');
+  if (keys.has('a') && !prevKeys.has('a')) runtime.playAnimation(ALPACA_ID, 'HeadDown');
+  if (keys.has('s') && !prevKeys.has('s')) runtime.playAnimation(ALPACA_ID, 'HeadBobbing');
+  if (keys.has('d') && !prevKeys.has('d')) runtime.playAnimation(ALPACA_ID, 'HeadRaise');
   prevKeys.clear();
   keys.forEach((k) => prevKeys.add(k));
 
   for (const a of animals) {
-    moveAnimal(a, keys, dt, mapData);
+    if (a.id === ALPACA_ID) moveAnimal_keyevent(a, keys, dt, mapData);
 
     const profile = getAnimalProfile(a.animalType);
     emitTrailPoint(
