@@ -1,11 +1,4 @@
-import { defaultSceneConfig } from './config/sceneConfig';
-import { generateMap } from './services/mapService';
 import { createSceneRuntime } from './runtime/sceneRuntime';
-import type { ScentWorldState } from './types/scent';
-import type { PursuerState } from './types/pursuer';
-import type { PursuedState } from './types/pursued';
-import { createPursuer } from './services/pursuerService';
-import { createPursued } from './services/pursuedService';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -15,19 +8,8 @@ canvas.className = 'scene-canvas';
 canvas.setAttribute('aria-label', 'Three.js scene viewport');
 app.appendChild(canvas);
 
-const mapData = generateMap(defaultSceneConfig.mapConfig);
-
-const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-
-const dogPursuer = createPursuer('dog-1', -4, -2, mapData, 5.0, 7.0);
-const alpacaPursued = createPursued('alpaca', 'alpaca', 0, 3, mapData, 3.5);
-
-const pursuers: PursuerState[] = [dogPursuer];
-const pursuedList: PursuedState[] = [alpacaPursued];
-
-const ALPACA_ID = alpacaPursued.id;
-
-const runtime = createSceneRuntime(canvas, mapData, scentState, pursuers, pursuedList);
+const runtime = createSceneRuntime(canvas);
+const ALPACA_ID = runtime.alpacaId;
 
 // Control panel
 const controlsPanel = document.createElement('div');

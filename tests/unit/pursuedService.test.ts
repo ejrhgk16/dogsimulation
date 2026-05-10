@@ -172,3 +172,23 @@ describe('movePursued_keyevent', () => {
     expect(p.x).toBeGreaterThan(-1);
   });
 });
+
+describe('movePursued_keyevent with entity collision', () => {
+  it('moves right when no pursuer blocks', () => {
+    const map = createFlatMap();
+    const p = pursuedAt(-5, -5);
+    movePursued_keyevent(p, new Set(['ArrowRight']), 1, map, []);
+    expect(p.x).toBeCloseTo(0);
+    expect(p.y).toBeCloseTo(-5);
+  });
+
+  it('stops when pursuer blocks the path', () => {
+    const map = createFlatMap();
+    const p = pursuedAt(-5, -5);
+    // Start at (-5,-5), move right, speed=5, dt=1 → combined=(0,-5)
+    // Pursuer at (-0.4, -5): dist to (0,-5)=0.4<1 → blocked
+    movePursued_keyevent(p, new Set(['ArrowRight']), 1, map, [{ x: -0.4, y: -5 }]);
+    expect(p.x).toBeCloseTo(-5);
+    expect(p.y).toBeCloseTo(-5);
+  });
+});

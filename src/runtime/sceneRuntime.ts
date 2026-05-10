@@ -13,6 +13,9 @@ import type { MapData } from '../types/map';
 import type { ScentWorldState } from '../types/scent';
 import type { PursuerState } from '../types/pursuer';
 import type { PursuedState } from '../types/pursued';
+import { generateMap } from '../services/mapService';
+import { createPursuer } from '../services/pursuerService';
+import { createPursued } from '../services/pursuedService';
 import {
   ANIMAL_PROFILES,
   DEFAULT_SCENT_PARAMS,
@@ -31,6 +34,7 @@ import { createPursuedController } from './pursuedController';
 import type { PursuedController } from './pursuedController';
 import { emitTrailPoint, emitTrailPointOnMove } from '../services/scentService';
 import { movePursued_keyevent } from '../services/pursuedService';
+import { chaseTarget } from '../services/pursuerService';
 import { getAnimalProfile } from '../config/scentConfig';
 // render loop inlined — no separate renderLoop
 
@@ -48,15 +52,26 @@ export interface SceneRuntime {
   setScentDecayRate: (multiplier: number) => void;
   setEmitRate: (multiplier: number) => void;
   setPursuedSpeed: (id: string, speed: number) => void;
+  alpacaId: string;
 }
 
 export function createSceneRuntime(
   canvas: HTMLCanvasElement,
-  mapData: MapData,
-  scentState?: ScentWorldState,
-  pursuers?: PursuerState[],
-  pursuedList?: PursuedState[]
+  externalMapData?: MapData,
+  externalScentState?: ScentWorldState,
+  externalPursuers?: PursuerState[],
+  externalPursuedList?: PursuedState[]
 ): SceneRuntime {
+  const mapData = externalMapData ?? generateMap(defaultSceneConfig.mapConfig);
+  const dogPursuer = createPursuer('dog-1', -4, -2, mapData, 5.0, 7.0);
+  const alpacaPursued = createPursued('alpaca', 'alpaca', 0, 3, mapData, 3.5);
+  const pursuers: PursuerState[] = externalPursuers ?? [dogPursuer];
+  const pursuedList: PursuedState[] = externalPursuedList ?? [alpacaPursued];
+  const scentState: ScentWorldState = externalScentState ?? {
+    trailPoints: [],
+    emitters: new Map()
+  };
+
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -148,13 +163,23 @@ export function createSceneRuntime(
 
     if (pursuers) {
       for (const pursuer of pursuers) {
+        if (pursuer.targetId !== null) {
+          const target = pursuedList?.find((p) => p.id === pursuer.targetId);
+          if (target) {
+            const otherPursued = (pursuedList ?? [])
+              .filter((p) => p.id !== pursuer.targetId)
+              .map((p) => ({ x: p.x, y: p.y }));
+            chaseTarget(pursuer, target.x, target.y, dt, mapData, otherPursued);
+          }
+        }
         updatePursuer(pursuer.id, pursuer);
       }
     }
 
     if (pursuedList && scentState) {
+      const pursuerPositions = (pursuers ?? []).map((p) => ({ x: p.x, y: p.y }));
       for (const pursued of pursuedList) {
-        movePursued_keyevent(pursued, keys, dt, mapData);
+        movePursued_keyevent(pursued, keys, dt, mapData, pursuerPositions);
         const profile = getAnimalProfile(pursued.animalType);
         emitTrailPoint(
           scentState,
@@ -296,6 +321,7 @@ export function createSceneRuntime(
     setRotationSpeed,
     setScentDecayRate,
     setEmitRate,
-    setPursuedSpeed
+    setPursuedSpeed,
+    alpacaId: alpacaPursued.id
   };
 }
