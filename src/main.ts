@@ -5,9 +5,7 @@ import type { ScentWorldState } from './types/scent';
 import type { PursuerState } from './types/pursuer';
 import type { PursuedState } from './types/pursued';
 import { createPursuer } from './services/pursuerService';
-import { createPursued, movePursued_keyevent } from './services/pursuedService';
-import { emitTrailPoint, emitTrailPointOnMove } from './services/scentService';
-import { getAnimalProfile } from './config/scentConfig';
+import { createPursued } from './services/pursuedService';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -28,11 +26,6 @@ const pursuers: PursuerState[] = [dogPursuer];
 const pursuedList: PursuedState[] = [alpacaPursued];
 
 const ALPACA_ID = alpacaPursued.id;
-const DOG_ID = dogPursuer.id;
-
-const keys = new Set<string>();
-window.addEventListener('keydown', (e) => keys.add(e.key));
-window.addEventListener('keyup', (e) => keys.delete(e.key));
 
 const runtime = createSceneRuntime(canvas, mapData, scentState, pursuers, pursuedList);
 
@@ -86,8 +79,7 @@ const speedValue = controlsPanel.querySelector<HTMLElement>('#speed-value')!;
 speedSlider.addEventListener('input', () => {
   const val = parseFloat(speedSlider.value);
   speedValue.textContent = val.toFixed(1);
-  const pursued = pursuedList.find((a) => a.id === ALPACA_ID);
-  if (pursued) pursued.speed = val;
+  runtime.setPursuedSpeed(ALPACA_ID, val);
 });
 
 const scaleSlider = controlsPanel.querySelector<HTMLInputElement>('#scale-slider')!;
@@ -126,49 +118,3 @@ window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
-runtime.setHeadFrameRanges(DOG_ID, 0, 20, 20, 60, 60, 80);
-
-let lastTime = performance.now();
-function animate() {
-  const now = performance.now();
-  const dt = (now - lastTime) / 1000;
-  lastTime = now;
-
-  for (const pursuer of pursuers) {
-    runtime.updatePursuer(pursuer.id, pursuer);
-  }
-
-  // Pursued: movement + scent
-  for (const pursued of pursuedList) {
-    if (pursued.id === ALPACA_ID) movePursued_keyevent(pursued, keys, dt, mapData);
-
-    const profile = getAnimalProfile(pursued.animalType);
-    emitTrailPoint(
-      scentState,
-      pursued.id,
-      pursued.animalType,
-      pursued.x,
-      pursued.y,
-      pursued.height,
-      dt * 1000, // dt는 초 단위이므로 ms로 변환
-      now,
-      profile
-    );
-
-    emitTrailPointOnMove(
-      scentState,
-      pursued.id,
-      pursued.animalType,
-      pursued.x,
-      pursued.y,
-      pursued.height,
-      now,
-      profile
-    );
-
-    runtime.updatePursued(pursued.id, pursued);
-  }
-
-  requestAnimationFrame(animate);
-}
-animate();

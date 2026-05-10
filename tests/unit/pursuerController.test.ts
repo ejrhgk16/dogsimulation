@@ -38,17 +38,13 @@ describe('createPursuerController', () => {
     const mapData = makeMapData();
     const controller = createPursuerController(scene, mapData);
     expect(controller).toHaveProperty('updatePursuer');
-    expect(controller).toHaveProperty('playAnimation');
     expect(controller).toHaveProperty('setScale');
     expect(controller).toHaveProperty('setRotationSpeed');
-    expect(controller).toHaveProperty('setHeadFrameRanges');
     expect(controller).toHaveProperty('getObject');
     expect(controller).toHaveProperty('getLoadedModel');
     expect(typeof controller.updatePursuer).toBe('function');
-    expect(typeof controller.playAnimation).toBe('function');
     expect(typeof controller.setScale).toBe('function');
     expect(typeof controller.setRotationSpeed).toBe('function');
-    expect(typeof controller.setHeadFrameRanges).toBe('function');
     expect(typeof controller.getObject).toBe('function');
     expect(typeof controller.getLoadedModel).toBe('function');
   });
@@ -81,59 +77,6 @@ describe('createPursuerController', () => {
     const pursuer = makePursuer();
     const controller = createPursuerController(scene, mapData, pursuer);
     expect(() => controller.updatePursuer(pursuer)).not.toThrow();
-  });
-
-  it('playAnimation does not throw with HeadDown', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const controller = createPursuerController(scene, mapData);
-    expect(() => controller.playAnimation('HeadDown')).not.toThrow();
-  });
-
-  it('playAnimation does not throw with HeadBobbing', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const controller = createPursuerController(scene, mapData);
-    expect(() => controller.playAnimation('HeadBobbing')).not.toThrow();
-  });
-
-  it('playAnimation does not throw with HeadRaise', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const controller = createPursuerController(scene, mapData);
-    expect(() => controller.playAnimation('HeadRaise')).not.toThrow();
-  });
-
-  it('playAnimation does not throw with unknown name', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const controller = createPursuerController(scene, mapData);
-    expect(() => controller.playAnimation('Unknown')).not.toThrow();
-  });
-
-  it('playAnimation does not throw with all head animation names when pursuer provided', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const pursuer = makePursuer();
-    const controller = createPursuerController(scene, mapData, pursuer);
-    expect(() => controller.playAnimation('HeadDown')).not.toThrow();
-    expect(() => controller.playAnimation('HeadBobbing')).not.toThrow();
-    expect(() => controller.playAnimation('HeadRaise')).not.toThrow();
-  });
-
-  it('setHeadFrameRanges does not throw without pursuer', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const controller = createPursuerController(scene, mapData);
-    expect(() => controller.setHeadFrameRanges(0, 10, 10, 60, 65, 70)).not.toThrow();
-  });
-
-  it('setHeadFrameRanges does not throw with pursuer provided', () => {
-    const scene = new Scene();
-    const mapData = makeMapData();
-    const pursuer = makePursuer();
-    const controller = createPursuerController(scene, mapData, pursuer);
-    expect(() => controller.setHeadFrameRanges(0, 10, 10, 60, 65, 70)).not.toThrow();
   });
 
   it('setScale does not throw when pursuer provided', () => {

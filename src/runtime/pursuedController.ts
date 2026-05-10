@@ -27,7 +27,7 @@ export function createPursuedController(
 ): PursuedController {
   let obj: Object3D | null = null;
   let loadedModel: LoadedModel | null = null;
-  let rotationSpeed = 8.0;
+  let rotationSpeed = pursued ? (ANIMAL_TYPES[pursued.animalType]?.rotationSpeed ?? 8.0) : 8.0;
   let currentScale = pursued ? (ANIMAL_TYPES[pursued.animalType]?.scale ?? 0.2) : 0.2;
 
   const updateState: UpdateState = {

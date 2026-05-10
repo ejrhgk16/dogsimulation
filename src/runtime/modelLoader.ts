@@ -1,6 +1,6 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { AnimationClip, AnimationMixer } from 'three';
-import type { Group, KeyframeTrack } from 'three';
+import type { Group } from 'three';
 
 const HEAD_BONES = [
   'Head',
@@ -27,9 +27,6 @@ export interface LoadedModel {
   mixer: AnimationMixer;
   animations: AnimationClip[];
   eatingClip?: AnimationClip;
-  headDownClip?: AnimationClip;
-  headBobbingClip?: AnimationClip;
-  headRaiseClip?: AnimationClip;
 }
 
 export function createSubClip(
@@ -38,7 +35,7 @@ export function createSubClip(
   startTime: number,
   endTime: number
 ): AnimationClip {
-  const tracks: KeyframeTrack[] = [];
+  const tracks: typeof source.tracks = [];
 
   for (const track of source.tracks) {
     if (!isHeadBoneTrack(track.name)) continue;
@@ -71,7 +68,7 @@ export function createSubClip(
       name: string,
       times: number[],
       values: number[]
-    ) => KeyframeTrack;
+    ) => typeof track;
 
     tracks.push(new TrackConstructor(track.name, subTimes, subValues));
   }
@@ -79,7 +76,7 @@ export function createSubClip(
   return new AnimationClip(name, endTime - startTime, tracks);
 }
 
-export function loadModel(path: string, animalType?: string): Promise<LoadedModel | null> {
+export function loadModel(path: string, _animalType?: string): Promise<LoadedModel | null> {
   const loader = new GLTFLoader();
   return new Promise((resolve) => {
     loader.load(
@@ -97,45 +94,6 @@ export function loadModel(path: string, animalType?: string): Promise<LoadedMode
         }
 
         const result: LoadedModel = { group: gltf.scene, mixer, animations: gltf.animations };
-
-        // Extract Eating animation sub-clips for head controls (dog only)
-        if (animalType === 'dog') {
-          const eatingClip = gltf.animations.find((clip: AnimationClip) => clip.name === 'Eating');
-          if (eatingClip) {
-            result.eatingClip = eatingClip;
-            const fps = 30;
-            // Based on actual Eating animation data:
-            // Frame 0: deep eating (Torso3=34.8°, Neck1=17.7°)
-            // Frame 10: neutral (Torso3=0.9°, Neck1=2.7°)
-            // Frames 15-60: moderate eating (Torso3=5.6°, Neck1=12.3°)
-            // Frame 65: neutral (Torso3=0.1°, Neck1=9.4°)
-            // Frame 80: deep eating (Torso3=34.8°, Neck1=17.7°)
-            const t1 = 0 / fps; // HeadDown start: deep eating
-            const t2 = 10 / fps; // HeadDown end / HeadBobbing start: neutral
-            const t3 = 60 / fps; // HeadBobbing end / HeadRaise start: moderate eating
-            const t4 = 70 / fps; // HeadRaise end: going back down
-            result.headDownClip = createSubClip(eatingClip, 'HeadDown', t1, t2);
-            result.headBobbingClip = createSubClip(eatingClip, 'HeadBobbing', t2, t3);
-            result.headRaiseClip = createSubClip(eatingClip, 'HeadRaise', t3, t4);
-
-            // Debug: verify subclip content
-            console.debug(
-              `[SubClips] HeadDown: ${result.headDownClip.tracks.length} tracks, HeadBobbing: ${result.headBobbingClip.tracks.length} tracks, HeadRaise: ${result.headRaiseClip.tracks.length} tracks`
-            );
-            // Show sample track names (max 5) to verify bone filter
-            console.debug(
-              `[BoneFilter] first 3 Eating track names: ${eatingClip.tracks
-                .slice(0, 3)
-                .map((t: KeyframeTrack) => t.name)
-                .join(' | ')}`
-            );
-            console.debug(
-              `[BoneFilter] matched by isHeadBoneTrack: ${
-                eatingClip.tracks.filter((t: KeyframeTrack) => isHeadBoneTrack(t.name)).length
-              }/${eatingClip.tracks.length}`
-            );
-          }
-        }
 
         resolve(result);
       },

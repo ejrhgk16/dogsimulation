@@ -4,9 +4,7 @@ import {
   DirectionalLight,
   MOUSE,
   PerspectiveCamera,
-  Raycaster,
   Scene,
-  Vector2,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -31,7 +29,10 @@ import { createPursuerController } from './pursuerController';
 import type { PursuerController } from './pursuerController';
 import { createPursuedController } from './pursuedController';
 import type { PursuedController } from './pursuedController';
-import { createRenderLoop } from './renderLoop';
+import { emitTrailPoint, emitTrailPointOnMove } from '../services/scentService';
+import { movePursued_keyevent } from '../services/pursuedService';
+import { getAnimalProfile } from '../config/scentConfig';
+// render loop inlined — no separate renderLoop
 
 export interface SceneRuntime {
   resize: () => void;
@@ -46,17 +47,7 @@ export interface SceneRuntime {
   setRotationSpeed: (id: string, radPerSec: number) => void;
   setScentDecayRate: (multiplier: number) => void;
   setEmitRate: (multiplier: number) => void;
-  playAnimation: (id: string, name: string) => void;
-  pickAnimal: (offsetX: number, offsetY: number) => string | null;
-  setHeadFrameRanges: (
-    id: string,
-    downStart: number,
-    downEnd: number,
-    bobStart: number,
-    bobEnd: number,
-    raiseStart: number,
-    raiseEnd: number
-  ) => void;
+  setPursuedSpeed: (id: string, speed: number) => void;
 }
 
 export function createSceneRuntime(
@@ -118,12 +109,35 @@ export function createSceneRuntime(
     scentVisualizer = createScentVisualizer(scene, DEFAULT_SCENT_VISUAL_CONFIG, ANIMAL_PROFILES);
   }
 
-  const renderLoop = createRenderLoop(renderer, scene, camera, controls, {
-    homePosition: new Vector3(0, 25, 35),
-    homeTarget: new Vector3(0, 0, 0)
+  // --- Inlined render loop state ---
+  const homePosition = new Vector3(0, 25, 35);
+  const homeTarget = new Vector3(0, 0, 0);
+  let isReturningToHome = false;
+  let homeResetDist = 0;
+  let shouldResetOnEnd = false;
+  let animationFrameId: number | null = null;
+  let lastFrameTime = performance.now();
+  const keys = new Set<string>();
+  window.addEventListener('keydown', (e) => keys.add(e.key));
+  window.addEventListener('keyup', (e) => keys.delete(e.key));
+  let onFrame: ((deltaTime: number, now: number) => void) | null = null;
+
+  renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (e.button === 2) shouldResetOnEnd = true;
   });
 
-  renderLoop.setOnFrame((dt: number, now: number) => {
+  controls.addEventListener('start', () => {
+    isReturningToHome = false;
+  });
+  controls.addEventListener('end', () => {
+    if (shouldResetOnEnd) {
+      homeResetDist = camera.position.distanceTo(controls.target);
+      isReturningToHome = true;
+      shouldResetOnEnd = false;
+    }
+  });
+
+  onFrame = (dt: number, now: number) => {
     for (const ctrl of controllers.values()) {
       const loadedModel = ctrl.getLoadedModel();
       if (loadedModel?.mixer) {
@@ -131,8 +145,44 @@ export function createSceneRuntime(
       }
     }
     updateScent(now);
-  });
 
+    if (pursuers) {
+      for (const pursuer of pursuers) {
+        updatePursuer(pursuer.id, pursuer);
+      }
+    }
+
+    if (pursuedList && scentState) {
+      for (const pursued of pursuedList) {
+        movePursued_keyevent(pursued, keys, dt, mapData);
+        const profile = getAnimalProfile(pursued.animalType);
+        emitTrailPoint(
+          scentState,
+          pursued.id,
+          pursued.animalType,
+          pursued.x,
+          pursued.y,
+          pursued.height,
+          dt * 1000,
+          now,
+          profile
+        );
+        emitTrailPointOnMove(
+          scentState,
+          pursued.id,
+          pursued.animalType,
+          pursued.x,
+          pursued.y,
+          pursued.height,
+          now,
+          profile
+        );
+        updatePursued(pursued.id, pursued);
+      }
+    }
+  };
+
+  // UI panel: scent 갱신 (내부 onFrame에서도 자동 호출)
   const updateScent = (now: number): void => {
     if (!scentState || !scentVisualizer) return;
     trimExpiredTrails(scentState, now, DEFAULT_SCENT_PARAMS);
@@ -157,12 +207,14 @@ export function createSceneRuntime(
     scentVisualizer?.setVisible(visible);
   };
 
+  // UI slider: 동물 스케일 조절
   const setAnimalScale = (id: string, scale: number): void => {
     controllers.get(id)?.setScale(scale);
     // Scale scent point size using first animal's scale (kept for backward compat)
     scentVisualizer?.setPointSize(scale * 0.2);
   };
 
+  // UI slider: 회전 보간 속도
   const setRotationSpeed = (id: string, radPerSec: number): void => {
     controllers.get(id)?.setRotationSpeed(radPerSec);
   };
@@ -175,79 +227,58 @@ export function createSceneRuntime(
     setEmitRateMultiplier(multiplier);
   };
 
-  const playAnimation = (id: string, name: string): void => {
-    const ctrl = controllers.get(id);
-    if (ctrl && 'playAnimation' in ctrl) {
-      (ctrl as PursuerController).playAnimation(name);
+  const setPursuedSpeed = (id: string, speed: number): void => {
+    if (pursuedList) {
+      const pursued = pursuedList.find((p) => p.id === id);
+      if (pursued) pursued.speed = speed;
     }
-  };
-
-  const setHeadFrameRanges = (
-    id: string,
-    downStart: number,
-    downEnd: number,
-    bobStart: number,
-    bobEnd: number,
-    raiseStart: number,
-    raiseEnd: number
-  ): void => {
-    const ctrl = controllers.get(id);
-    if (ctrl && 'setHeadFrameRanges' in ctrl) {
-      (ctrl as PursuerController).setHeadFrameRanges(
-        downStart,
-        downEnd,
-        bobStart,
-        bobEnd,
-        raiseStart,
-        raiseEnd
-      );
-    }
-  };
-
-  const pickAnimal = (offsetX: number, offsetY: number): string | null => {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (w === 0 || h === 0) return null;
-    const ndcX = (offsetX / w) * 2 - 1;
-    const ndcY = -(offsetY / h) * 2 + 1;
-    const raycaster = new Raycaster();
-    raycaster.setFromCamera(new Vector2(ndcX, ndcY), camera);
-
-    let nearestId: string | null = null;
-    let nearestDist = Infinity;
-
-    for (const [id, ctrl] of controllers) {
-      const obj = ctrl.getObject();
-      if (!obj) continue;
-
-      const hits = raycaster.intersectObjects([obj], true);
-      for (const hit of hits) {
-        if (hit.distance < nearestDist) {
-          nearestDist = hit.distance;
-          nearestId = id;
-        }
-      }
-    }
-
-    return nearestId;
   };
 
   const resetCamera = (): void => {
-    renderLoop.resetCamera();
+    homeResetDist = camera.position.distanceTo(controls.target);
+    isReturningToHome = true;
   };
 
   const resize = () => {
     const width = canvas.clientWidth || window.innerWidth;
     const height = canvas.clientHeight || window.innerHeight;
-    renderLoop.resize(width, height);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
   };
 
-  const start = () => {
-    renderLoop.start();
+  const render = (): void => {
+    if (isReturningToHome) {
+      const homeDir = new Vector3().subVectors(homePosition, homeTarget).normalize();
+      const idealPos = controls.target.clone().addScaledVector(homeDir, homeResetDist);
+      camera.position.lerp(idealPos, 0.03);
+      const currentDir = new Vector3().subVectors(camera.position, controls.target).normalize();
+      if (currentDir.dot(homeDir) > 0.9999) {
+        camera.position.copy(idealPos);
+        isReturningToHome = false;
+      }
+    }
+
+    const now = performance.now();
+    const dt = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+
+    onFrame?.(dt, now);
+
+    controls.update();
+    renderer.render(scene, camera);
+    animationFrameId = window.requestAnimationFrame(render);
   };
 
-  const stop = () => {
-    renderLoop.stop();
+  const start = (): void => {
+    if (animationFrameId !== null) return;
+    render();
+  };
+
+  const stop = (): void => {
+    if (animationFrameId === null) return;
+    window.cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
   };
 
   resize();
@@ -265,8 +296,6 @@ export function createSceneRuntime(
     setRotationSpeed,
     setScentDecayRate,
     setEmitRate,
-    playAnimation,
-    pickAnimal,
-    setHeadFrameRanges
+    setPursuedSpeed
   };
 }
