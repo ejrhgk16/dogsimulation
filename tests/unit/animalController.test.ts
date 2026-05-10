@@ -156,6 +156,16 @@ describe('createAnimalController', () => {
     expect(() => controller.playAnimation('HeadRaise')).not.toThrow();
   });
 
+  it('playAnimation does nothing for non-dog animal', () => {
+    const scene = new Scene();
+    const mapData = makeMapData();
+    const animal = makeAnimal('a1', 'pig');
+    const controller = createAnimalController(scene, mapData, animal);
+    expect(() => controller.playAnimation('HeadDown')).not.toThrow();
+    expect(() => controller.playAnimation('HeadBobbing')).not.toThrow();
+    expect(() => controller.playAnimation('HeadRaise')).not.toThrow();
+  });
+
   it('setHeadFrameRanges does not throw (no animal)', () => {
     const scene = new Scene();
     const mapData = makeMapData();
@@ -167,6 +177,32 @@ describe('createAnimalController', () => {
     const scene = new Scene();
     const mapData = makeMapData();
     const animal = makeAnimal();
+    const controller = createAnimalController(scene, mapData, animal);
+    expect(() => controller.setHeadFrameRanges(0, 10, 10, 60, 65, 70)).not.toThrow();
+  });
+
+  it('setHeadFrameRanges does nothing for non-dog animal', () => {
+    const scene = new Scene();
+    const mapData = makeMapData();
+    const animal = makeAnimal('a1', 'pig');
+    const controller = createAnimalController(scene, mapData, animal);
+    expect(() => controller.setHeadFrameRanges(0, 10, 10, 60, 65, 70)).not.toThrow();
+  });
+
+  it('playAnimation does nothing for alpaca animal', () => {
+    const scene = new Scene();
+    const mapData = makeMapData();
+    const animal = makeAnimal('a1', 'alpaca', 0, 0);
+    const controller = createAnimalController(scene, mapData, animal);
+    expect(() => controller.playAnimation('HeadDown')).not.toThrow();
+    expect(() => controller.playAnimation('HeadBobbing')).not.toThrow();
+    expect(() => controller.playAnimation('HeadRaise')).not.toThrow();
+  });
+
+  it('setHeadFrameRanges does nothing for alpaca animal', () => {
+    const scene = new Scene();
+    const mapData = makeMapData();
+    const animal = makeAnimal('a1', 'alpaca', 0, 0);
     const controller = createAnimalController(scene, mapData, animal);
     expect(() => controller.setHeadFrameRanges(0, 10, 10, 60, 65, 70)).not.toThrow();
   });

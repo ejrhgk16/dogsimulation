@@ -22,25 +22,11 @@ const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
 const alpacaAnimal = createAnimal('alpaca', 'alpaca', 0, 3, mapData, 3.5);
 const animals: AnimalState[] = [createAnimal('dog-1', 'dog', -4, -2, mapData, 5.0), alpacaAnimal];
 const ALPACA_ID = alpacaAnimal.id;
+const DOG_ID = 'dog-1';
 
 const keys = new Set<string>();
 window.addEventListener('keydown', (e) => keys.add(e.key));
 window.addEventListener('keyup', (e) => keys.delete(e.key));
-
-// Head animation keys
-window.addEventListener('keydown', (e) => {
-  switch (e.key) {
-    case '1':
-      runtime.playAnimation(ALPACA_ID, 'HeadDown');
-      break;
-    case '2':
-      runtime.playAnimation(ALPACA_ID, 'HeadBobbing');
-      break;
-    case '3':
-      runtime.playAnimation(ALPACA_ID, 'HeadRaise');
-      break;
-  }
-});
 
 const runtime = createSceneRuntime(canvas, mapData, scentState, animals);
 
@@ -134,21 +120,13 @@ window.addEventListener('resize', () => runtime.resize());
 
 runtime.resize();
 runtime.start();
-runtime.setHeadFrameRanges(ALPACA_ID, 0, 20, 20, 60, 60, 80);
+runtime.setHeadFrameRanges(DOG_ID, 0, 20, 20, 60, 60, 80);
 
-const prevKeys = new Set<string>();
 let lastTime = performance.now();
 function animate() {
   const now = performance.now();
   const dt = (now - lastTime) / 1000;
   lastTime = now;
-
-  // A/S/D head animation (press once, edge detection)
-  if (keys.has('a') && !prevKeys.has('a')) runtime.playAnimation(ALPACA_ID, 'HeadDown');
-  if (keys.has('s') && !prevKeys.has('s')) runtime.playAnimation(ALPACA_ID, 'HeadBobbing');
-  if (keys.has('d') && !prevKeys.has('d')) runtime.playAnimation(ALPACA_ID, 'HeadRaise');
-  prevKeys.clear();
-  keys.forEach((k) => prevKeys.add(k));
 
   for (const a of animals) {
     if (a.id === ALPACA_ID) moveAnimal_keyevent(a, keys, dt, mapData);

@@ -366,6 +366,14 @@ describe('sceneRuntime setHeadFrameRanges', () => {
     const runtime = createSceneRuntime(canvas, mapData);
     expect(() => runtime.setHeadFrameRanges('none', -1, 20, 20, 60, 60, 80)).not.toThrow();
   });
+
+  it('does not throw for alpaca animal', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'alpaca', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    expect(() => runtime.setHeadFrameRanges(animal.id, 0, 20, 20, 60, 60, 80)).not.toThrow();
+  });
 });
 
 describe('sceneRuntime playAnimation', () => {
@@ -434,6 +442,16 @@ describe('sceneRuntime playAnimation', () => {
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     const runtime = createSceneRuntime(canvas, mapData);
     expect(() => runtime.playAnimation('none', 'HeadDown')).not.toThrow();
+  });
+
+  it('does not throw for alpaca animal', () => {
+    const canvas = document.createElement('canvas');
+    const mapData = generateMap(defaultSceneConfig.mapConfig);
+    const animal = createAnimal('a1', 'alpaca', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    expect(() => runtime.playAnimation(animal.id, 'HeadDown')).not.toThrow();
+    expect(() => runtime.playAnimation(animal.id, 'HeadBobbing')).not.toThrow();
+    expect(() => runtime.playAnimation(animal.id, 'HeadRaise')).not.toThrow();
   });
 });
 

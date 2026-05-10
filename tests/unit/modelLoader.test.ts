@@ -47,7 +47,7 @@ describe('loadModel', () => {
     mockLoad.mockImplementation(() => {
       // no-op — never calls any callback
     });
-    const result = loadModel('/models/ShibaInu.gltf');
+    const result = loadModel('/models/ShibaInu.gltf', 'dog');
     expect(result).toBeInstanceOf(Promise);
   });
 
@@ -57,7 +57,7 @@ describe('loadModel', () => {
       onLoad(fakeGltf);
     });
 
-    const result = await loadModel('/models/ShibaInu.gltf');
+    const result = await loadModel('/models/ShibaInu.gltf', 'dog');
     expect(result).not.toBeNull();
     expect(result!.group).toBe(mockGroup);
     expect(result!.mixer).toBeDefined();
@@ -71,7 +71,7 @@ describe('loadModel', () => {
       onLoad(fakeGltf);
     });
 
-    const result = await loadModel('/models/ShibaInu.gltf');
+    const result = await loadModel('/models/ShibaInu.gltf', 'dog');
     expect(result).not.toBeNull();
     expect(result!.animations).toBe(fakeClips);
     // AnimationMixer constructor was called
@@ -92,7 +92,7 @@ describe('loadModel', () => {
       onLoad(fakeGltf);
     });
 
-    await loadModel('/models/ShibaInu.gltf');
+    await loadModel('/models/ShibaInu.gltf', 'dog');
     expect(debugSpy).toHaveBeenCalledWith('Model animations: [Walk, Idle]');
     debugSpy.mockRestore();
   });
@@ -104,7 +104,7 @@ describe('loadModel', () => {
       onLoad(fakeGltf);
     });
 
-    await loadModel('/models/ShibaInu.gltf');
+    await loadModel('/models/ShibaInu.gltf', 'dog');
     expect(debugSpy).toHaveBeenCalledWith('Model has no animations');
     debugSpy.mockRestore();
   });
@@ -117,13 +117,73 @@ describe('loadModel', () => {
       }
     );
 
-    const result = await loadModel('/models/bad.gltf');
+    const result = await loadModel('/models/bad.gltf', 'dog');
     expect(result).toBeNull();
     expect(consoleWarnSpy).toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
   });
 
-  it('extracts Eating sub-clips from loaded gltf animations', async () => {
+  it('extracts Eating sub-clips when animalType is dog', async () => {
+    const eatingClip: Record<string, unknown> = {
+      name: 'Eating',
+      duration: 2.667,
+      tracks: [
+        makeMockTrack(
+          'Head.position',
+          [0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 2.667],
+          [
+            0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0, 0.5, 0.3, 0, 0.4, 0.2, 0, 0.2, 0.1, 0, 0.1, 0.05, 0,
+            0, 0, 0
+          ]
+        )
+      ]
+    };
+    const fakeGltf = { scene: mockGroup, animations: [eatingClip] };
+    mockLoad.mockImplementation((_path: string, onLoad: (gltf: unknown) => void) => {
+      onLoad(fakeGltf);
+    });
+
+    const result = await loadModel('/models/ShibaInu.gltf', 'dog');
+    expect(result).not.toBeNull();
+    expect(result!.headDownClip).toBeDefined();
+    expect(result!.headDownClip!.name).toBe('HeadDown');
+    expect(result!.headDownClip!.duration).toBeCloseTo(0.333);
+    expect(result!.headBobbingClip).toBeDefined();
+    expect(result!.headBobbingClip!.name).toBe('HeadBobbing');
+    expect(result!.headBobbingClip!.duration).toBeCloseTo(1.667);
+    expect(result!.headRaiseClip).toBeDefined();
+    expect(result!.headRaiseClip!.name).toBe('HeadRaise');
+    expect(result!.headRaiseClip!.duration).toBeCloseTo(0.333);
+  });
+
+  it('does not extract Eating sub-clips for non-dog animalType', async () => {
+    const eatingClip: Record<string, unknown> = {
+      name: 'Eating',
+      duration: 2.667,
+      tracks: [
+        makeMockTrack(
+          'Head.position',
+          [0, 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 2.667],
+          [
+            0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0, 0.5, 0.3, 0, 0.4, 0.2, 0, 0.2, 0.1, 0, 0.1, 0.05, 0,
+            0, 0, 0
+          ]
+        )
+      ]
+    };
+    const fakeGltf = { scene: mockGroup, animations: [eatingClip] };
+    mockLoad.mockImplementation((_path: string, onLoad: (gltf: unknown) => void) => {
+      onLoad(fakeGltf);
+    });
+
+    const result = await loadModel('/models/alpaca.gltf', 'alpaca');
+    expect(result).not.toBeNull();
+    expect(result!.headDownClip).toBeUndefined();
+    expect(result!.headBobbingClip).toBeUndefined();
+    expect(result!.headRaiseClip).toBeUndefined();
+  });
+
+  it('does not extract Eating sub-clips without animalType', async () => {
     const eatingClip: Record<string, unknown> = {
       name: 'Eating',
       duration: 2.667,
@@ -145,15 +205,9 @@ describe('loadModel', () => {
 
     const result = await loadModel('/models/ShibaInu.gltf');
     expect(result).not.toBeNull();
-    expect(result!.headDownClip).toBeDefined();
-    expect(result!.headDownClip!.name).toBe('HeadDown');
-    expect(result!.headDownClip!.duration).toBeCloseTo(0.333);
-    expect(result!.headBobbingClip).toBeDefined();
-    expect(result!.headBobbingClip!.name).toBe('HeadBobbing');
-    expect(result!.headBobbingClip!.duration).toBeCloseTo(1.667);
-    expect(result!.headRaiseClip).toBeDefined();
-    expect(result!.headRaiseClip!.name).toBe('HeadRaise');
-    expect(result!.headRaiseClip!.duration).toBeCloseTo(0.333);
+    expect(result!.headDownClip).toBeUndefined();
+    expect(result!.headBobbingClip).toBeUndefined();
+    expect(result!.headRaiseClip).toBeUndefined();
   });
 
   it('logs Eating clip debug info when Eating animation found', async () => {
@@ -179,7 +233,7 @@ describe('loadModel', () => {
       onLoad(fakeGltf);
     });
 
-    await loadModel('/models/ShibaInu.gltf');
+    await loadModel('/models/ShibaInu.gltf', 'dog');
     expect(debugSpy).toHaveBeenCalledWith(
       '[SubClips] HeadDown: 2 tracks, HeadBobbing: 2 tracks, HeadRaise: 2 tracks'
     );
@@ -190,13 +244,13 @@ describe('loadModel', () => {
     debugSpy.mockRestore();
   });
 
-  it('does not add sub-clips when no Eating animation exists', async () => {
+  it('does not add sub-clips when no Eating animation exists (even for dog)', async () => {
     const fakeGltf = { scene: mockGroup, animations: [{ name: 'Walk' }] };
     mockLoad.mockImplementation((_path: string, onLoad: (gltf: unknown) => void) => {
       onLoad(fakeGltf);
     });
 
-    const result = await loadModel('/models/ShibaInu.gltf');
+    const result = await loadModel('/models/ShibaInu.gltf', 'dog');
     expect(result).not.toBeNull();
     expect(result!.headDownClip).toBeUndefined();
     expect(result!.headBobbingClip).toBeUndefined();

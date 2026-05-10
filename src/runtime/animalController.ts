@@ -70,7 +70,7 @@ export function createAnimalController(
 
     const modelPath = config?.modelPath;
     if (modelPath) {
-      loadModel(modelPath).then((loaded) => {
+      loadModel(modelPath, animal.animalType).then((loaded) => {
         if (loaded) {
           scene.remove(fallbackMesh);
           loaded.group.position.set(animal.x, 0, animal.y);
@@ -93,21 +93,23 @@ export function createAnimalController(
           animalWalkAction = walkClip ? loaded.mixer.clipAction(walkClip) : null;
           animalIdleAction = idleClip ? loaded.mixer.clipAction(idleClip) : null;
 
-          const headClips: Array<{
-            name: string;
-            clip: typeof loaded.headDownClip;
-          }> = [
-            { name: 'HeadDown', clip: loaded.headDownClip },
-            { name: 'HeadBobbing', clip: loaded.headBobbingClip },
-            { name: 'HeadRaise', clip: loaded.headRaiseClip }
-          ];
-          for (const { name, clip } of headClips) {
-            if (clip) {
-              const action = loaded.mixer.clipAction(clip);
-              action.setLoop(LoopOnce, 1);
-              action.clampWhenFinished = true;
-              action.weight = 999;
-              headActionsMap.set(name, action);
+          if (animal.animalType === 'dog') {
+            const headClips: Array<{
+              name: string;
+              clip: typeof loaded.headDownClip;
+            }> = [
+              { name: 'HeadDown', clip: loaded.headDownClip },
+              { name: 'HeadBobbing', clip: loaded.headBobbingClip },
+              { name: 'HeadRaise', clip: loaded.headRaiseClip }
+            ];
+            for (const { name, clip } of headClips) {
+              if (clip) {
+                const action = loaded.mixer.clipAction(clip);
+                action.setLoop(LoopOnce, 1);
+                action.clampWhenFinished = true;
+                action.weight = 999;
+                headActionsMap.set(name, action);
+              }
             }
           }
 
@@ -182,6 +184,7 @@ export function createAnimalController(
   };
 
   const playAnimation = (name: string): void => {
+    if (!animal || animal.animalType !== 'dog') return;
     if (name === 'HeadDown' && animal) {
       const terrainHeight = animal.height - ANIMAL_HEIGHT_OFFSET;
       if (terrainHeight > HEAD_DOWN_MAX_TERRAIN) {
@@ -266,6 +269,7 @@ export function createAnimalController(
     raiseStart: number,
     raiseEnd: number
   ): void => {
+    if (!animal || animal.animalType !== 'dog') return;
     if (!animalLoadedModel?.eatingClip) {
       pendingHeadRanges = [downStart, downEnd, bobStart, bobEnd, raiseStart, raiseEnd];
       return;
