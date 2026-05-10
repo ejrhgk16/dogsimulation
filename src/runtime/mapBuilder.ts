@@ -17,6 +17,7 @@ interface ObstaclePos {
   shape: ObstacleShape | undefined;
 }
 
+/** MapData 그리드 → 지형 삼각형 BufferGeometry 생성 */
 function createTerrainGeometry(mapData: MapData): BufferGeometry {
   const { grid, cellSize, width, depth } = mapData;
   const vertexCols = width + 1;
@@ -70,6 +71,7 @@ function createTerrainGeometry(mapData: MapData): BufferGeometry {
   return geometry;
 }
 
+/** 지형 메시 + 장애물 InstancedMesh 생성 */
 export function buildMap(
   mapData: MapData,
   _config: SceneConfig

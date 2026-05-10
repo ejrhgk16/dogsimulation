@@ -11,6 +11,7 @@ export interface ScentVisualizer {
   setPointSize(size: number): void;
 }
 
+/** 향기 입자 시각화 InstancedMesh 생성 */
 export function createScentVisualizer(
   scene: Scene,
   config: ScentVisualConfig,
@@ -30,6 +31,7 @@ export function createScentVisualizer(
   const tempColor = new Color();
   let pointSize = config.pointSize;
 
+  /** trailPoints를 구체 인스턴스로 렌더링 (나이에 따라 페이드·축소) */
   const update = (trailPoints: ScentPoint[], now: number): void => {
     const count = Math.min(trailPoints.length, MAX_INSTANCES);
     const offset = Math.max(0, trailPoints.length - MAX_INSTANCES);
@@ -73,16 +75,19 @@ export function createScentVisualizer(
     }
   };
 
+  /** 메시/지오메트리 정리 */
   const dispose = (): void => {
     scene.remove(mesh);
     geometry.dispose();
     material.dispose();
   };
 
+  /** 향기 입자 표시/숨김 */
   const setVisible = (visible: boolean): void => {
     mesh.visible = visible;
   };
 
+  /** 향기 입자 크기 변경 */
   const setPointSize = (size: number): void => {
     pointSize = size;
   };

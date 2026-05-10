@@ -1,4 +1,4 @@
-import { createSceneRuntime } from './runtime/sceneRuntime';
+import { SceneRuntime } from './runtime/sceneRuntime';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -8,7 +8,7 @@ canvas.className = 'scene-canvas';
 canvas.setAttribute('aria-label', 'Three.js scene viewport');
 app.appendChild(canvas);
 
-const runtime = createSceneRuntime(canvas);
+const runtime = new SceneRuntime(canvas);
 const ALPACA_ID = runtime.alpacaId;
 
 // Control panel

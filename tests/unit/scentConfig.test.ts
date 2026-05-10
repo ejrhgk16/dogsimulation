@@ -110,7 +110,7 @@ describe('getAnimalProfile', () => {
     expect(profile.scentSpreadSigma).toBe(DEFAULT_SCENT_PARAMS.scentSpreadSigma);
     expect(profile.tauDecayMin).toBe(DEFAULT_SCENT_PARAMS.tauDecayMin);
     expect(profile.tauDecayMax).toBe(DEFAULT_SCENT_PARAMS.tauDecayMax);
-    expect(profile.emitSpacing).toBe(DEFAULT_SCENT_PARAMS.emitSpacing);
+    expect(profile.emitSpacing).toBe(0.5);
   });
 });
 

@@ -3,6 +3,7 @@ import type { MapCell, MapData } from '../types/map';
 import type { MapConfig } from '../config/mapConfig';
 import { ANIMAL_HALF_EXTENT } from '../config/animalConfig';
 
+/** 시드 기반 선형 합동 난수 생성기 */
 function seededRandom(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -11,6 +12,7 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+/** MapConfig → MapData 그리드 생성 (지형·장애물 배치) */
 export function generateMap(config: MapConfig): MapData {
   const { width, depth, cellSize, baseHeight, hillHeight, obstacleRatio, seed } = config;
 
@@ -129,6 +131,7 @@ export function generateMap(config: MapConfig): MapData {
   return { grid, cellSize, width, depth };
 }
 
+/** 특정 좌표가 장애물 위인지 검사 (footprint 영역) */
 export function isObstacleInFootprint(
   mapData: MapData,
   cx: number,
@@ -158,6 +161,7 @@ export function isObstacleInFootprint(
   return false;
 }
 
+/** 버텍스 주변 4셀 평균 높이 계산 */
 function getVertexHeight(mapData: MapData, vRow: number, vCol: number): number {
   const { grid, width, depth } = mapData;
   let h = 0;
@@ -181,6 +185,7 @@ function getVertexHeight(mapData: MapData, vRow: number, vCol: number): number {
   return count > 0 ? h / count : 0;
 }
 
+/** 지형 법선 벡터 계산 (유한차분) */
 export function getTerrainNormal(
   mapData: MapData,
   x: number,
@@ -217,6 +222,7 @@ export function getTerrainNormal(
   return { nx, ny, nz };
 }
 
+/** 셀 코너 4개 이중선형 보간으로 높이 계산 */
 export function getHeightAt(mapData: MapData, x: number, z: number): number {
   const mapWidth = mapData.width * mapData.cellSize;
   const mapDepth = mapData.depth * mapData.cellSize;

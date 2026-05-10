@@ -20,6 +20,7 @@ export interface PursuedController {
   getLoadedModel: () => LoadedModel | null;
 }
 
+/** 피추적자 3D 컨트롤러 생성 (폴백박스 → GLTF 모델) */
 export function createPursuedController(
   scene: Scene,
   mapData: MapData,
@@ -82,6 +83,7 @@ export function createPursuedController(
     }
   }
 
+  /** 피추적자 위치/회전/애니메이션 갱신 */
   const updatePursued = (o: PursuedState): void => {
     if (!obj) return;
 
@@ -111,6 +113,7 @@ export function createPursuedController(
     );
   };
 
+  /** 모델 스케일 변경 */
   const setScale = (scale: number): void => {
     currentScale = scale;
     if (obj) {
@@ -118,6 +121,7 @@ export function createPursuedController(
     }
   };
 
+  /** 회전 속도 변경 */
   const setRotationSpeed = (radPerSec: number): void => {
     rotationSpeed = radPerSec;
   };

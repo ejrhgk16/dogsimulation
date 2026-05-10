@@ -18,6 +18,7 @@ export interface UpdateState {
   groundOffset: number;
 }
 
+/** GLTF 로딩 전 대체 박스 메시 생성 */
 export function createFallbackMesh(
   scene: Scene,
   x: number,
@@ -35,6 +36,7 @@ export function createFallbackMesh(
   return mesh;
 }
 
+/** GLTF 모델로 전환 (폴백 제거, 위치/스케일/애니메이션 설정) */
 export function setupLoadedModel(
   loaded: LoadedModel,
   scene: Scene,
@@ -70,6 +72,7 @@ export function setupLoadedModel(
   return { object: loaded.group, loadedModel: loaded, walkAction, idleAction, groundOffset };
 }
 
+/** 두 애니메이션 간 크로스페이드 전환 */
 export function crossFadeTo(nextAction: AnimationAction, prevAction: AnimationAction | null): void {
   nextAction.reset();
   nextAction.play();
@@ -78,6 +81,7 @@ export function crossFadeTo(nextAction: AnimationAction, prevAction: AnimationAc
   }
 }
 
+/** 지형 높이·법선 따라 오브젝트 위치+회전 업데이트 */
 export function updatePositionAndRotation(
   obj: Object3D,
   x: number,
@@ -117,6 +121,7 @@ export function updatePositionAndRotation(
   obj.quaternion.multiplyQuaternions(tiltQuat, yawQuat);
 }
 
+/** 이동/정지 상태에 따라 걷기/대기 애니메이션 전환 */
 export function updateWalkIdleAnimation(
   isMoving: boolean,
   walkAction: AnimationAction | null,

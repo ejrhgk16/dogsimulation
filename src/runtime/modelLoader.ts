@@ -18,6 +18,7 @@ const HEAD_BONES = [
   'Ear4.R'
 ];
 
+/** 본 이름이 머리 뼈대에 속하는지 확인 */
 function isHeadBoneTrack(trackName: string): boolean {
   return HEAD_BONES.some((bone) => trackName === bone || trackName.startsWith(bone + '.'));
 }
@@ -29,6 +30,7 @@ export interface LoadedModel {
   eatingClip?: AnimationClip;
 }
 
+/** 특정 시간 구간의 머리 애니메이션 트랙만 추출 */
 export function createSubClip(
   source: AnimationClip,
   name: string,
@@ -76,6 +78,7 @@ export function createSubClip(
   return new AnimationClip(name, endTime - startTime, tracks);
 }
 
+/** GLTF 모델 로드 + AnimationMixer 생성 */
 export function loadModel(path: string, _animalType?: string): Promise<LoadedModel | null> {
   const loader = new GLTFLoader();
   return new Promise((resolve) => {

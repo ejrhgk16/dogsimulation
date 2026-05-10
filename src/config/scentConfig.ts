@@ -87,7 +87,7 @@ export function getAnimalProfile(animalType: string): AnimalScentProfile {
     emitInterval: 250,
     emitProbability: 0.5,
     spreadRadius: 0.75,
-    emitSpacing: DEFAULT_SCENT_PARAMS.emitSpacing,
+    emitSpacing: 0.5,
     tauDecayMin: DEFAULT_SCENT_PARAMS.tauDecayMin,
     tauDecayMax: DEFAULT_SCENT_PARAMS.tauDecayMax
   };
