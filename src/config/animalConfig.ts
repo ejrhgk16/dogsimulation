@@ -2,16 +2,6 @@ import type { AnimalTypeConfig } from '../types/animal';
 
 export const ANIMAL_SCALE = 0.2;
 
-let _animalSpeed = 5.0;
-
-export function getAnimalSpeed(): number {
-  return _animalSpeed;
-}
-
-export function setAnimalSpeed(speed: number): void {
-  _animalSpeed = speed;
-}
-
 export const HEIGHT_SPEED_FACTOR = 0.3;
 
 export const ANIMAL_HEIGHT_OFFSET = ANIMAL_SCALE * 1.25;

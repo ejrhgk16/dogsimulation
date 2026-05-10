@@ -4,7 +4,9 @@ import {
   DirectionalLight,
   MOUSE,
   PerspectiveCamera,
+  Raycaster,
   Scene,
+  Vector2,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -25,6 +27,7 @@ import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
 import { createAnimalController } from './animalController';
+import type { AnimalController } from './animalController';
 import { createRenderLoop } from './renderLoop';
 
 export interface SceneRuntime {
@@ -32,15 +35,17 @@ export interface SceneRuntime {
   start: () => void;
   stop: () => void;
   updateScent: (now: number) => void;
-  updateAnimal: (animal: AnimalState) => void;
+  updateAnimal: (id: string, animal: AnimalState) => void;
   resetCamera: () => void;
   setScentVisible: (visible: boolean) => void;
-  setAnimalScale: (scale: number) => void;
-  setRotationSpeed: (radPerSec: number) => void;
+  setAnimalScale: (id: string, scale: number) => void;
+  setRotationSpeed: (id: string, radPerSec: number) => void;
   setScentDecayRate: (multiplier: number) => void;
   setEmitRate: (multiplier: number) => void;
-  playAnimation: (name: string) => void;
+  playAnimation: (id: string, name: string) => void;
+  pickAnimal: (offsetX: number, offsetY: number) => string | null;
   setHeadFrameRanges: (
+    id: string,
     downStart: number,
     downEnd: number,
     bobStart: number,
@@ -54,7 +59,7 @@ export function createSceneRuntime(
   canvas: HTMLCanvasElement,
   mapData: MapData,
   scentState?: ScentWorldState,
-  animal?: AnimalState
+  animals?: AnimalState[]
 ): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -88,8 +93,14 @@ export function createSceneRuntime(
   if (obstacleMeshes.shaped) scene.add(obstacleMeshes.shaped);
   if (obstacleMeshes.single) scene.add(obstacleMeshes.single);
 
-  // Animal controller and scent visualizer
-  const controller = createAnimalController(scene, mapData, animal);
+  // Animal controllers and scent visualizer
+  const controllers = new Map<string, AnimalController>();
+  if (animals) {
+    for (const a of animals) {
+      const ctrl = createAnimalController(scene, mapData, a);
+      controllers.set(a.id, ctrl);
+    }
+  }
 
   let scentVisualizer: ScentVisualizer | null = null;
   if (scentState) {
@@ -102,9 +113,11 @@ export function createSceneRuntime(
   });
 
   renderLoop.setOnFrame((dt: number, now: number) => {
-    const loadedModel = controller.getAnimalLoadedModel();
-    if (loadedModel?.mixer) {
-      loadedModel.mixer.update(dt);
+    for (const ctrl of controllers.values()) {
+      const loadedModel = ctrl.getAnimalLoadedModel();
+      if (loadedModel?.mixer) {
+        loadedModel.mixer.update(dt);
+      }
     }
     updateScent(now);
   });
@@ -115,21 +128,22 @@ export function createSceneRuntime(
     scentVisualizer.update(scentState.trailPoints, now);
   };
 
-  const updateAnimal = (o: AnimalState): void => {
-    controller.updateAnimal(o);
+  const updateAnimal = (id: string, o: AnimalState): void => {
+    controllers.get(id)?.updateAnimal(o);
   };
 
   const setScentVisible = (visible: boolean): void => {
     scentVisualizer?.setVisible(visible);
   };
 
-  const setAnimalScale = (scale: number): void => {
-    controller.setAnimalScale(scale);
+  const setAnimalScale = (id: string, scale: number): void => {
+    controllers.get(id)?.setAnimalScale(scale);
+    // Scale scent point size using first animal's scale (kept for backward compat)
     scentVisualizer?.setPointSize(scale * 0.2);
   };
 
-  const setRotationSpeed = (radPerSec: number): void => {
-    controller.setRotationSpeed(radPerSec);
+  const setRotationSpeed = (id: string, radPerSec: number): void => {
+    controllers.get(id)?.setRotationSpeed(radPerSec);
   };
 
   const setScentDecayRate = (multiplier: number): void => {
@@ -140,11 +154,12 @@ export function createSceneRuntime(
     setEmitRateMultiplier(multiplier);
   };
 
-  const playAnimation = (name: string): void => {
-    controller.playAnimation(name);
+  const playAnimation = (id: string, name: string): void => {
+    controllers.get(id)?.playAnimation(name);
   };
 
   const setHeadFrameRanges = (
+    id: string,
     downStart: number,
     downEnd: number,
     bobStart: number,
@@ -152,7 +167,37 @@ export function createSceneRuntime(
     raiseStart: number,
     raiseEnd: number
   ): void => {
-    controller.setHeadFrameRanges(downStart, downEnd, bobStart, bobEnd, raiseStart, raiseEnd);
+    controllers
+      .get(id)
+      ?.setHeadFrameRanges(downStart, downEnd, bobStart, bobEnd, raiseStart, raiseEnd);
+  };
+
+  const pickAnimal = (offsetX: number, offsetY: number): string | null => {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w === 0 || h === 0) return null;
+    const ndcX = (offsetX / w) * 2 - 1;
+    const ndcY = -(offsetY / h) * 2 + 1;
+    const raycaster = new Raycaster();
+    raycaster.setFromCamera(new Vector2(ndcX, ndcY), camera);
+
+    let nearestId: string | null = null;
+    let nearestDist = Infinity;
+
+    for (const [id, ctrl] of controllers) {
+      const obj = ctrl.getAnimalObject();
+      if (!obj) continue;
+
+      const hits = raycaster.intersectObjects([obj], true);
+      for (const hit of hits) {
+        if (hit.distance < nearestDist) {
+          nearestDist = hit.distance;
+          nearestId = id;
+        }
+      }
+    }
+
+    return nearestId;
   };
 
   const resetCamera = (): void => {
@@ -188,6 +233,7 @@ export function createSceneRuntime(
     setScentDecayRate,
     setEmitRate,
     playAnimation,
+    pickAnimal,
     setHeadFrameRanges
   };
 }

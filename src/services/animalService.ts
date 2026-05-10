@@ -1,6 +1,6 @@
 import type { AnimalState } from '../types/animal';
 import type { MapData } from '../types/map';
-import { getAnimalSpeed, HEIGHT_SPEED_FACTOR, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
+import { HEIGHT_SPEED_FACTOR, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import { isObstacleInFootprint, getHeightAt } from './mapService';
 
 export function createAnimal(
@@ -8,7 +8,8 @@ export function createAnimal(
   animalType: string,
   x: number,
   y: number,
-  mapData: MapData
+  mapData: MapData,
+  speed: number = 5.0
 ): AnimalState {
   const height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
   return {
@@ -17,6 +18,7 @@ export function createAnimal(
     x,
     y,
     height,
+    speed,
     directionX: 1,
     directionY: 0,
     rotationAngle: Math.atan2(1, 0)
@@ -48,7 +50,7 @@ export function moveAnimal(
     animal.directionY = 0;
   }
 
-  const speed = getAnimalSpeed() * dt;
+  const speed = animal.speed * dt;
 
   // Tentative new position
   const newX = animal.x + dx * speed;

@@ -10,6 +10,7 @@ export interface AnimalState {
   x: number;
   y: number; // z좌표 (맵 좌표)
   height: number; // worldY (고도)
+  speed: number; // 이동 속도
   directionX: number;
   directionY: number;
   rotationAngle: number; // radians, 현재 회전각
