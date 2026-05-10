@@ -23,7 +23,7 @@ vi.mock('three', async (importOriginal) => {
 import { createSceneRuntime } from '../../src/runtime/sceneRuntime';
 import type { ScentWorldState } from '../../src/types/scent';
 import { generateMap } from '../../src/services/mapService';
-import { createAnimal } from '../../src/services/animalService';
+import { createPursued } from '../../src/services/pursuedService';
 import { defaultSceneConfig } from '../../src/config/sceneConfig';
 import { emitTrailPointOnMove } from '../../src/services/scentService';
 import {
@@ -127,37 +127,37 @@ describe('sceneRuntime scent integration', () => {
     it('updateAnimal does not throw when animal provided', () => {
       const canvas = document.createElement('canvas');
       const mapData = generateMap(defaultSceneConfig.mapConfig);
-      const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-      const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
-      expect(() => runtime.updateAnimal(animal.id, animal)).not.toThrow();
+      const animal = createPursued('a1', 'dog', 0, 0, mapData);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
+      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
     });
 
     it('updateAnimal handles direction change without error', () => {
       const canvas = document.createElement('canvas');
       const mapData = generateMap(defaultSceneConfig.mapConfig);
-      const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-      const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+      const animal = createPursued('a1', 'dog', 0, 0, mapData);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
       animal.directionX = 0;
       animal.directionY = -1;
-      expect(() => runtime.updateAnimal(animal.id, animal)).not.toThrow();
+      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
     });
 
     it('updateAnimal works with fallback mesh when no model loaded', () => {
       const canvas = document.createElement('canvas');
       const mapData = generateMap(defaultSceneConfig.mapConfig);
-      const animal = createAnimal('a1', 'pig', 0, 0, mapData);
-      const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
-      expect(() => runtime.updateAnimal(animal.id, animal)).not.toThrow();
+      const animal = createPursued('a1', 'pig', 0, 0, mapData);
+      const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
+      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
     });
 
     it('updateAnimal positions fallback at height using scale-based offset', () => {
       const canvas = document.createElement('canvas');
       const mapData = generateMap(defaultSceneConfig.mapConfig);
-      const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+      const animal = createPursued('a1', 'dog', 0, 0, mapData);
       // height should include ANIMAL_HEIGHT_OFFSET on top of terrain height
       expect(animal.height - ANIMAL_HEIGHT_OFFSET).toBeGreaterThanOrEqual(0);
-      const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
-      expect(() => runtime.updateAnimal(animal.id, animal)).not.toThrow();
+      const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
+      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
     });
   });
 
@@ -221,8 +221,8 @@ describe('sceneRuntime setAnimalScale', () => {
   it('setAnimalScale does not throw with animal provided', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.setAnimalScale(animal.id, 0.5)).not.toThrow();
   });
 
@@ -236,8 +236,8 @@ describe('sceneRuntime setAnimalScale', () => {
   it('setAnimalScale accepts value 0.1 and 1.0 edge cases', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.setAnimalScale(animal.id, 0.1)).not.toThrow();
     expect(() => runtime.setAnimalScale(animal.id, 1.0)).not.toThrow();
   });
@@ -245,18 +245,18 @@ describe('sceneRuntime setAnimalScale', () => {
   it('setAnimalScale does not throw with scentState present', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    const runtime = createSceneRuntime(canvas, mapData, scentState, [animal]);
+    const runtime = createSceneRuntime(canvas, mapData, scentState, [], [animal]);
     expect(() => runtime.setAnimalScale(animal.id, 0.5)).not.toThrow();
   });
 
   it('setAnimalScale does not throw with scentState and scale 0.1', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
     const scentState: ScentWorldState = { trailPoints: [], emitters: new Map() };
-    const runtime = createSceneRuntime(canvas, mapData, scentState, [animal]);
+    const runtime = createSceneRuntime(canvas, mapData, scentState, [], [animal]);
     expect(() => runtime.setAnimalScale(animal.id, 0.1)).not.toThrow();
   });
 
@@ -355,8 +355,8 @@ describe('sceneRuntime setHeadFrameRanges', () => {
   it('accepts default values with animal provided without throw', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.setHeadFrameRanges(animal.id, 0, 20, 20, 60, 60, 80)).not.toThrow();
   });
 
@@ -370,8 +370,8 @@ describe('sceneRuntime setHeadFrameRanges', () => {
   it('does not throw for alpaca animal', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'alpaca', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'alpaca', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.setHeadFrameRanges(animal.id, 0, 20, 20, 60, 60, 80)).not.toThrow();
   });
 });
@@ -402,16 +402,16 @@ describe('sceneRuntime playAnimation', () => {
   it('playAnimation does not throw when animal provided', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.playAnimation(animal.id, 'HeadDown')).not.toThrow();
   });
 
   it('playAnimation does not throw with all head animation names', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.playAnimation(animal.id, 'HeadDown')).not.toThrow();
     expect(() => runtime.playAnimation(animal.id, 'HeadBobbing')).not.toThrow();
     expect(() => runtime.playAnimation(animal.id, 'HeadRaise')).not.toThrow();
@@ -421,18 +421,18 @@ describe('sceneRuntime playAnimation', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
     // Flat terrain → animal.height = ANIMAL_HEIGHT_OFFSET → terrainHeight = 0 ≤ 0.5
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.playAnimation(animal.id, 'HeadDown')).not.toThrow();
   });
 
   it('HeadDown on high terrain (height > HEAD_DOWN_MAX_TERRAIN) redirects to HeadRaise without throw', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
     // Simulate high terrain: set height above HEAD_DOWN_MAX_TERRAIN + ANIMAL_HEIGHT_OFFSET
     animal.height = 1.0;
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     // Should redirect to HeadRaise internally, still no throw
     expect(() => runtime.playAnimation(animal.id, 'HeadDown')).not.toThrow();
   });
@@ -447,8 +447,8 @@ describe('sceneRuntime playAnimation', () => {
   it('does not throw for alpaca animal', () => {
     const canvas = document.createElement('canvas');
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'alpaca', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'alpaca', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.playAnimation(animal.id, 'HeadDown')).not.toThrow();
     expect(() => runtime.playAnimation(animal.id, 'HeadBobbing')).not.toThrow();
     expect(() => runtime.playAnimation(animal.id, 'HeadRaise')).not.toThrow();
@@ -485,8 +485,8 @@ describe('sceneRuntime pickAnimal', () => {
     Object.defineProperty(canvas, 'clientWidth', { value: 800 });
     Object.defineProperty(canvas, 'clientHeight', { value: 600 });
     const mapData = generateMap(defaultSceneConfig.mapConfig);
-    const animal = createAnimal('a1', 'dog', 0, 0, mapData);
-    const runtime = createSceneRuntime(canvas, mapData, undefined, [animal]);
+    const animal = createPursued('a1', 'dog', 0, 0, mapData);
+    const runtime = createSceneRuntime(canvas, mapData, undefined, [], [animal]);
     expect(() => runtime.pickAnimal(100, 100)).not.toThrow();
   });
 });

@@ -1,4 +1,8 @@
-import type { AnimalTypeConfig } from '../types/animal';
+export interface AnimalTypeConfig {
+  modelPath: string;
+  color: number;
+  scale: number;
+}
 
 export const ANIMAL_SCALE = 0.2;
 

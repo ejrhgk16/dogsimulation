@@ -13,7 +13,8 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData } from '../types/map';
 import type { ScentWorldState } from '../types/scent';
-import type { AnimalState } from '../types/animal';
+import type { PursuerState } from '../types/pursuer';
+import type { PursuedState } from '../types/pursued';
 import {
   ANIMAL_PROFILES,
   DEFAULT_SCENT_PARAMS,
@@ -26,8 +27,10 @@ import { buildMap } from './mapBuilder';
 import { trimExpiredTrails } from '../services/scentService';
 import { createScentVisualizer } from './scentVisualizer';
 import type { ScentVisualizer } from './scentVisualizer';
-import { createAnimalController } from './animalController';
-import type { AnimalController } from './animalController';
+import { createPursuerController } from './pursuerController';
+import type { PursuerController } from './pursuerController';
+import { createPursuedController } from './pursuedController';
+import type { PursuedController } from './pursuedController';
 import { createRenderLoop } from './renderLoop';
 
 export interface SceneRuntime {
@@ -35,7 +38,8 @@ export interface SceneRuntime {
   start: () => void;
   stop: () => void;
   updateScent: (now: number) => void;
-  updateAnimal: (id: string, animal: AnimalState) => void;
+  updatePursuer: (id: string, pursuer: PursuerState) => void;
+  updatePursued: (id: string, pursued: PursuedState) => void;
   resetCamera: () => void;
   setScentVisible: (visible: boolean) => void;
   setAnimalScale: (id: string, scale: number) => void;
@@ -59,7 +63,8 @@ export function createSceneRuntime(
   canvas: HTMLCanvasElement,
   mapData: MapData,
   scentState?: ScentWorldState,
-  animals?: AnimalState[]
+  pursuers?: PursuerState[],
+  pursuedList?: PursuedState[]
 ): SceneRuntime {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -94,11 +99,17 @@ export function createSceneRuntime(
   if (obstacleMeshes.single) scene.add(obstacleMeshes.single);
 
   // Animal controllers and scent visualizer
-  const controllers = new Map<string, AnimalController>();
-  if (animals) {
-    for (const a of animals) {
-      const ctrl = createAnimalController(scene, mapData, a);
-      controllers.set(a.id, ctrl);
+  const controllers = new Map<string, PursuerController | PursuedController>();
+  if (pursuers) {
+    for (const p of pursuers) {
+      const ctrl = createPursuerController(scene, mapData, p);
+      controllers.set(p.id, ctrl);
+    }
+  }
+  if (pursuedList) {
+    for (const p of pursuedList) {
+      const ctrl = createPursuedController(scene, mapData, p);
+      controllers.set(p.id, ctrl);
     }
   }
 
@@ -114,7 +125,7 @@ export function createSceneRuntime(
 
   renderLoop.setOnFrame((dt: number, now: number) => {
     for (const ctrl of controllers.values()) {
-      const loadedModel = ctrl.getAnimalLoadedModel();
+      const loadedModel = ctrl.getLoadedModel();
       if (loadedModel?.mixer) {
         loadedModel.mixer.update(dt);
       }
@@ -128,8 +139,18 @@ export function createSceneRuntime(
     scentVisualizer.update(scentState.trailPoints, now);
   };
 
-  const updateAnimal = (id: string, o: AnimalState): void => {
-    controllers.get(id)?.updateAnimal(o);
+  const updatePursuer = (id: string, o: PursuerState): void => {
+    const ctrl = controllers.get(id);
+    if (ctrl && 'updatePursuer' in ctrl) {
+      (ctrl as PursuerController).updatePursuer(o);
+    }
+  };
+
+  const updatePursued = (id: string, o: PursuedState): void => {
+    const ctrl = controllers.get(id);
+    if (ctrl && 'updatePursued' in ctrl) {
+      (ctrl as PursuedController).updatePursued(o);
+    }
   };
 
   const setScentVisible = (visible: boolean): void => {
@@ -137,7 +158,7 @@ export function createSceneRuntime(
   };
 
   const setAnimalScale = (id: string, scale: number): void => {
-    controllers.get(id)?.setAnimalScale(scale);
+    controllers.get(id)?.setScale(scale);
     // Scale scent point size using first animal's scale (kept for backward compat)
     scentVisualizer?.setPointSize(scale * 0.2);
   };
@@ -155,7 +176,10 @@ export function createSceneRuntime(
   };
 
   const playAnimation = (id: string, name: string): void => {
-    controllers.get(id)?.playAnimation(name);
+    const ctrl = controllers.get(id);
+    if (ctrl && 'playAnimation' in ctrl) {
+      (ctrl as PursuerController).playAnimation(name);
+    }
   };
 
   const setHeadFrameRanges = (
@@ -167,9 +191,17 @@ export function createSceneRuntime(
     raiseStart: number,
     raiseEnd: number
   ): void => {
-    controllers
-      .get(id)
-      ?.setHeadFrameRanges(downStart, downEnd, bobStart, bobEnd, raiseStart, raiseEnd);
+    const ctrl = controllers.get(id);
+    if (ctrl && 'setHeadFrameRanges' in ctrl) {
+      (ctrl as PursuerController).setHeadFrameRanges(
+        downStart,
+        downEnd,
+        bobStart,
+        bobEnd,
+        raiseStart,
+        raiseEnd
+      );
+    }
   };
 
   const pickAnimal = (offsetX: number, offsetY: number): string | null => {
@@ -185,7 +217,7 @@ export function createSceneRuntime(
     let nearestDist = Infinity;
 
     for (const [id, ctrl] of controllers) {
-      const obj = ctrl.getAnimalObject();
+      const obj = ctrl.getObject();
       if (!obj) continue;
 
       const hits = raycaster.intersectObjects([obj], true);
@@ -225,7 +257,8 @@ export function createSceneRuntime(
     start,
     stop,
     updateScent,
-    updateAnimal,
+    updatePursuer,
+    updatePursued,
     resetCamera,
     setScentVisible,
     setAnimalScale,
