@@ -72,7 +72,7 @@ function createTerrainGeometry(mapData: MapData): BufferGeometry {
 }
 
 /** 지형 메시 + 장애물 InstancedMesh 생성 */
-export function buildMap(
+export function buildMapRender(
   mapData: MapData,
   _config: SceneConfig
 ): {

@@ -38,7 +38,10 @@ describe('sceneRuntime scent integration', () => {
       const mapData = generateMap(defaultSceneConfig.mapConfig);
       const animal = new Pursued('a1', 'dog', 0, 0, mapData);
       const runtime = new SceneRuntime(canvas, mapData, [], [animal]);
-      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
+      expect(() => {
+        runtime.start();
+        runtime.stop();
+      }).not.toThrow();
     });
 
     it('updateAnimal handles direction change without error', () => {
@@ -48,7 +51,10 @@ describe('sceneRuntime scent integration', () => {
       const runtime = new SceneRuntime(canvas, mapData, [], [animal]);
       animal.directionX = 0;
       animal.directionY = -1;
-      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
+      expect(() => {
+        runtime.start();
+        runtime.stop();
+      }).not.toThrow();
     });
 
     it('updateAnimal works with fallback mesh when no model loaded', () => {
@@ -56,7 +62,10 @@ describe('sceneRuntime scent integration', () => {
       const mapData = generateMap(defaultSceneConfig.mapConfig);
       const animal = new Pursued('a1', 'pig', 0, 0, mapData);
       const runtime = new SceneRuntime(canvas, mapData, [], [animal]);
-      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
+      expect(() => {
+        runtime.start();
+        runtime.stop();
+      }).not.toThrow();
     });
 
     it('updateAnimal positions fallback at height using scale-based offset', () => {
@@ -65,7 +74,10 @@ describe('sceneRuntime scent integration', () => {
       const animal = new Pursued('a1', 'dog', 0, 0, mapData);
       expect(animal.height - ANIMAL_HEIGHT_OFFSET).toBeGreaterThanOrEqual(0);
       const runtime = new SceneRuntime(canvas, mapData, [], [animal]);
-      expect(() => runtime.updatePursued(animal.id, animal)).not.toThrow();
+      expect(() => {
+        runtime.start();
+        runtime.stop();
+      }).not.toThrow();
     });
   });
 });

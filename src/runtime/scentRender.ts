@@ -2,9 +2,9 @@ import { SphereGeometry, MeshStandardMaterial, InstancedMesh, Object3D, Color } 
 import type { Scene } from 'three';
 import type { ScentPoint, ScentVisualConfig, AnimalScentProfile } from '../types/scent';
 
-export const MAX_INSTANCES = 10000;
+export const SCENT_RENDER_MAX_INSTANCES = 10000;
 
-export interface ScentVisualizer {
+export interface ScentRender {
   update(trailPoints: ScentPoint[], now: number): void;
   dispose(): void;
   setVisible(visible: boolean): void;
@@ -12,18 +12,18 @@ export interface ScentVisualizer {
 }
 
 /** 향기 입자 시각화 InstancedMesh 생성 */
-export function createScentVisualizer(
+export function createScentRender(
   scene: Scene,
   config: ScentVisualConfig,
   profileMap: Record<string, AnimalScentProfile>
-): ScentVisualizer {
+): ScentRender {
   const geometry = new SphereGeometry(1, 8, 8);
   const material = new MeshStandardMaterial({
     transparent: true,
     depthWrite: false
   });
 
-  const mesh = new InstancedMesh(geometry, material, MAX_INSTANCES);
+  const mesh = new InstancedMesh(geometry, material, SCENT_RENDER_MAX_INSTANCES);
   mesh.frustumCulled = false;
   scene.add(mesh);
 
@@ -33,8 +33,8 @@ export function createScentVisualizer(
 
   /** trailPoints를 구체 인스턴스로 렌더링 (나이에 따라 페이드·축소) */
   const update = (trailPoints: ScentPoint[], now: number): void => {
-    const count = Math.min(trailPoints.length, MAX_INSTANCES);
-    const offset = Math.max(0, trailPoints.length - MAX_INSTANCES);
+    const count = Math.min(trailPoints.length, SCENT_RENDER_MAX_INSTANCES);
+    const offset = Math.max(0, trailPoints.length - SCENT_RENDER_MAX_INSTANCES);
 
     for (let i = 0; i < count; i++) {
       const point = trailPoints[offset + i];
@@ -59,8 +59,8 @@ export function createScentVisualizer(
       mesh.setColorAt(i, tempColor);
     }
 
-    // Hide remaining instances (point count < MAX_INSTANCES)
-    for (let i = count; i < MAX_INSTANCES; i++) {
+    // Hide remaining instances (point count < SCENT_RENDER_MAX_INSTANCES)
+    for (let i = count; i < SCENT_RENDER_MAX_INSTANCES; i++) {
       tempObject.position.set(0, 0, 0);
       tempObject.scale.set(0, 0, 0);
       tempObject.updateMatrix();

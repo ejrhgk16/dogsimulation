@@ -1,13 +1,17 @@
+import type { Object3D, Scene } from 'three';
 import { Box3, BoxGeometry, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
-import type { Object3D, AnimationAction, Scene } from 'three';
+import type { AnimationAction } from 'three';
 import type { MapData } from '../types/map';
+import type { PursuerState } from '../types/pursuer';
+import type { PursuedState } from '../types/pursued';
 import type { LoadedModel } from './modelLoader';
-import { ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
+import { loadModel } from './modelLoader';
+import { ANIMAL_TYPES, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import { getTerrainNormal } from '../services/mapService';
 
-export const CROSSFADE_DURATION = 0.2;
+const CROSSFADE_DURATION = 0.2;
 
-export interface UpdateState {
+interface UpdateState {
   prevX: number;
   prevY: number;
   currentAngle: number;
@@ -18,8 +22,16 @@ export interface UpdateState {
   groundOffset: number;
 }
 
+export interface AnimalRender {
+  update: (state: PursuerState | PursuedState) => void;
+  setScale: (scale: number) => void;
+  setRotationSpeed: (radPerSec: number) => void;
+  getObject: () => Object3D | null;
+  getLoadedModel: () => LoadedModel | null;
+}
+
 /** GLTF 로딩 전 대체 박스 메시 생성 */
-export function createFallbackMesh(
+function createFallbackMesh(
   scene: Scene,
   x: number,
   height: number,
@@ -37,7 +49,7 @@ export function createFallbackMesh(
 }
 
 /** GLTF 모델로 전환 (폴백 제거, 위치/스케일/애니메이션 설정) */
-export function setupLoadedModel(
+function setupLoadedModel(
   loaded: LoadedModel,
   scene: Scene,
   fallbackMesh: Object3D,
@@ -73,7 +85,7 @@ export function setupLoadedModel(
 }
 
 /** 두 애니메이션 간 크로스페이드 전환 */
-export function crossFadeTo(nextAction: AnimationAction, prevAction: AnimationAction | null): void {
+function crossFadeTo(nextAction: AnimationAction, prevAction: AnimationAction | null): void {
   nextAction.reset();
   nextAction.play();
   if (prevAction) {
@@ -82,7 +94,7 @@ export function crossFadeTo(nextAction: AnimationAction, prevAction: AnimationAc
 }
 
 /** 지형 높이·법선 따라 오브젝트 위치+회전 업데이트 */
-export function updatePositionAndRotation(
+function updatePositionAndRotation(
   obj: Object3D,
   x: number,
   y: number,
@@ -122,7 +134,7 @@ export function updatePositionAndRotation(
 }
 
 /** 이동/정지 상태에 따라 걷기/대기 애니메이션 전환 */
-export function updateWalkIdleAnimation(
+function updateWalkIdleAnimation(
   isMoving: boolean,
   walkAction: AnimationAction | null,
   idleAction: AnimationAction | null,
@@ -139,4 +151,121 @@ export function updateWalkIdleAnimation(
     return 'idle';
   }
   return currentAnimName;
+}
+
+/** 동물 3D 컨트롤러 생성 (폴백박스 → GLTF 모델) */
+export function createAnimalRender(
+  scene: Scene,
+  mapData: MapData,
+  animalType: string,
+  state?: PursuerState | PursuedState
+): AnimalRender {
+  let obj: Object3D | null = null;
+  let loadedModel: LoadedModel | null = null;
+  const config = ANIMAL_TYPES[animalType];
+  let rotationSpeed = config?.rotationSpeed ?? 8.0;
+  const initialScale = config?.scale ?? 0.2;
+  let currentScale = initialScale;
+
+  const updateState: UpdateState = {
+    prevX: state?.x ?? 0,
+    prevY: state?.y ?? 0,
+    currentAngle: 0,
+    lastRotationTime: performance.now(),
+    currentAnimName: null,
+    walkAction: null,
+    idleAction: null,
+    groundOffset: 0
+  };
+
+  if (state) {
+    const color = config?.color ?? 0xff9933;
+    const fallbackMesh = createFallbackMesh(
+      scene,
+      state.x,
+      state.height,
+      state.y,
+      currentScale,
+      color
+    );
+    obj = fallbackMesh;
+
+    const modelPath = config?.modelPath;
+    if (modelPath) {
+      loadModel(modelPath, animalType).then((loaded) => {
+        if (loaded) {
+          const result = setupLoadedModel(
+            loaded,
+            scene,
+            fallbackMesh,
+            state.x,
+            state.height,
+            state.y,
+            currentScale
+          );
+          obj = result.object;
+          loadedModel = result.loadedModel;
+          updateState.walkAction = result.walkAction;
+          updateState.idleAction = result.idleAction;
+          updateState.groundOffset = result.groundOffset;
+
+          if (updateState.idleAction) {
+            updateState.idleAction.play();
+            updateState.currentAnimName = 'idle';
+          }
+        }
+      });
+    }
+  }
+
+  /** 동물 위치/회전/애니메이션 갱신 */
+  const update = (o: PursuerState | PursuedState): void => {
+    if (!obj) return;
+
+    updatePositionAndRotation(
+      obj,
+      o.x,
+      o.y,
+      o.height,
+      o.directionX,
+      o.directionY,
+      mapData,
+      updateState,
+      rotationSpeed
+    );
+
+    if (!loadedModel) return;
+
+    const isMoving = o.x !== updateState.prevX || o.y !== updateState.prevY;
+    updateState.prevX = o.x;
+    updateState.prevY = o.y;
+
+    updateState.currentAnimName = updateWalkIdleAnimation(
+      isMoving,
+      updateState.walkAction,
+      updateState.idleAction,
+      updateState.currentAnimName
+    );
+  };
+
+  /** 모델 스케일 변경 */
+  const setScale = (scale: number): void => {
+    currentScale = scale;
+    if (obj) {
+      obj.scale.set(scale, scale, scale);
+    }
+  };
+
+  /** 회전 속도 변경 */
+  const setRotationSpeed = (radPerSec: number): void => {
+    rotationSpeed = radPerSec;
+  };
+
+  return {
+    update,
+    setScale,
+    setRotationSpeed,
+    getObject: () => obj,
+    getLoadedModel: () => loadedModel
+  };
 }

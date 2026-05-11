@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Scene } from 'three';
-import { createScentVisualizer, MAX_INSTANCES } from '../../src/runtime/scentVisualizer';
+import { createScentRender, SCENT_RENDER_MAX_INSTANCES } from '../../src/runtime/scentRender';
 import type { ScentVisualConfig, AnimalScentProfile, ScentPoint } from '../../src/types/scent';
 
 const mockConfig: ScentVisualConfig = {
@@ -27,25 +27,25 @@ const mockProfileMap: Record<string, AnimalScentProfile> = {
   }
 };
 
-describe('createScentVisualizer', () => {
-  it('returns ScentVisualizer interface with update and dispose', () => {
+describe('createScentRender', () => {
+  it('returns ScentRender interface with update and dispose', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
-    expect(visualizer).toHaveProperty('update');
-    expect(visualizer).toHaveProperty('dispose');
-    expect(typeof visualizer.update).toBe('function');
-    expect(typeof visualizer.dispose).toBe('function');
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
+    expect(render).toHaveProperty('update');
+    expect(render).toHaveProperty('dispose');
+    expect(typeof render.update).toBe('function');
+    expect(typeof render.dispose).toBe('function');
   });
 
   it('handles empty trailPoints in update without throwing', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
-    expect(() => visualizer.update([], 1000)).not.toThrow();
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
+    expect(() => render.update([], 1000)).not.toThrow();
   });
 
   it('handles trailPoints with content in update without throwing', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -57,27 +57,27 @@ describe('createScentVisualizer', () => {
         tauDecay: 8000
       }
     ];
-    expect(() => visualizer.update(points, 500)).not.toThrow();
+    expect(() => render.update(points, 500)).not.toThrow();
   });
 
   it('dispose removes mesh from scene', () => {
     const scene = new Scene();
     const initialCount = scene.children.length;
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     expect(scene.children.length).toBe(initialCount + 1);
-    visualizer.dispose();
+    render.dispose();
     expect(scene.children.length).toBe(initialCount);
   });
 
   it('dispose does not throw when called', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
-    expect(() => visualizer.dispose()).not.toThrow();
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
+    expect(() => render.dispose()).not.toThrow();
   });
 
   it('handles multiple update calls sequentially', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -90,22 +90,22 @@ describe('createScentVisualizer', () => {
       }
     ];
     expect(() => {
-      visualizer.update(points, 100);
-      visualizer.update(points, 500);
-      visualizer.update(points, 5000);
+      render.update(points, 100);
+      render.update(points, 500);
+      render.update(points, 5000);
     }).not.toThrow();
   });
 
   it('provides setPointSize method', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
-    expect(visualizer).toHaveProperty('setPointSize');
-    expect(typeof visualizer.setPointSize).toBe('function');
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
+    expect(render).toHaveProperty('setPointSize');
+    expect(typeof render.setPointSize).toBe('function');
   });
 
   it('setPointSize affects fresh point (ratio=0) scale', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -118,8 +118,8 @@ describe('createScentVisualizer', () => {
       }
     ];
     // age = 0 → ratio = 0 → scale = pointSize * 1.0
-    visualizer.setPointSize(0.5);
-    visualizer.update(points, 25000);
+    render.setPointSize(0.5);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     const scaleX = matrix[0];
@@ -128,7 +128,7 @@ describe('createScentVisualizer', () => {
 
   it('setPointSize(0.1) gives scale 0.1 for fresh point', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -140,8 +140,8 @@ describe('createScentVisualizer', () => {
         tauDecay: 8000
       }
     ];
-    visualizer.setPointSize(0.1);
-    visualizer.update(points, 100);
+    render.setPointSize(0.1);
+    render.update(points, 100);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     const scaleX = matrix[0];
@@ -150,7 +150,7 @@ describe('createScentVisualizer', () => {
 
   it('setPointSize change persists across multiple updates', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -163,8 +163,8 @@ describe('createScentVisualizer', () => {
       }
     ];
     // Set to 0.3, update with age=25000 → ratio≈0.956
-    visualizer.setPointSize(0.3);
-    visualizer.update(points, 25000);
+    render.setPointSize(0.3);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     const scaleX = matrix[0];
@@ -177,44 +177,44 @@ describe('createScentVisualizer', () => {
 
   it('provides setVisible method that toggles mesh visibility', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
-    expect(visualizer).toHaveProperty('setVisible');
-    expect(typeof visualizer.setVisible).toBe('function');
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
+    expect(render).toHaveProperty('setVisible');
+    expect(typeof render.setVisible).toBe('function');
   });
 
   it('sets frustumCulled to false on InstancedMesh', () => {
     const scene = new Scene();
-    createScentVisualizer(scene, mockConfig, mockProfileMap);
+    createScentRender(scene, mockConfig, mockProfileMap);
     const mesh = scene.children[scene.children.length - 1] as any;
     expect(mesh.frustumCulled).toBe(false);
   });
 
   it('setVisible hides mesh when called with false', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const mesh = scene.children[scene.children.length - 1] as any;
     expect(mesh.visible).toBe(true);
-    visualizer.setVisible(false);
+    render.setVisible(false);
     expect(mesh.visible).toBe(false);
   });
 
   it('setVisible shows mesh when called with true after hiding', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const mesh = scene.children[scene.children.length - 1] as any;
-    visualizer.setVisible(false);
+    render.setVisible(false);
     expect(mesh.visible).toBe(false);
-    visualizer.setVisible(true);
+    render.setVisible(true);
     expect(mesh.visible).toBe(true);
   });
 
-  it('exports MAX_INSTANCES as 10000', () => {
-    expect(MAX_INSTANCES).toBe(10000);
+  it('exports SCENT_RENDER_MAX_INSTANCES as 10000', () => {
+    expect(SCENT_RENDER_MAX_INSTANCES).toBe(10000);
   });
 
   it('handles unknown animalType color gracefully', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'unknown-1',
@@ -226,7 +226,7 @@ describe('createScentVisualizer', () => {
         tauDecay: 8000
       }
     ];
-    expect(() => visualizer.update(points, 100)).not.toThrow();
+    expect(() => render.update(points, 100)).not.toThrow();
   });
 
   function getMesh(scene: Scene): any {
@@ -236,7 +236,7 @@ describe('createScentVisualizer', () => {
 
   it('reduces scale based on exponential decay at age=25000 (tauDecay=8000)', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -250,7 +250,7 @@ describe('createScentVisualizer', () => {
     ];
     // age = 25000, tauDecay = 8000 (from point, matches profile)
     // decayFactor = exp(-25000/8000) ≈ 0.04394, ratio = 0.95606
-    visualizer.update(points, 25000);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     // element [0] in 4x4 column-major matrix = m11 = scaleX
@@ -262,7 +262,7 @@ describe('createScentVisualizer', () => {
 
   it('reduces color brightness based on exponential decay at age=25000 (tauDecay=8000)', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -277,7 +277,7 @@ describe('createScentVisualizer', () => {
     // age = 25000, tauDecay = 8000 (from point)
     // decayFactor ≈ 0.04394, ratio ≈ 0.95606
     // brightness multiplier = 1 - 0.95606 * 0.6 ≈ 0.42636
-    visualizer.update(points, 25000);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     expect(mesh.instanceColor).toBeDefined();
     // Dog color 0xff9933 in linear space → r≈1.0, g≈0.3185, b≈0.0331
@@ -292,7 +292,7 @@ describe('createScentVisualizer', () => {
 
   it('keeps full scale for fresh point (ratio=0)', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -305,7 +305,7 @@ describe('createScentVisualizer', () => {
       }
     ];
     // age = 25000 - 25000 = 0, ratio = 0.0
-    visualizer.update(points, 25000);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     const scaleX = matrix[0];
@@ -315,7 +315,7 @@ describe('createScentVisualizer', () => {
 
   it('keeps full brightness for fresh point (ratio=0)', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -328,7 +328,7 @@ describe('createScentVisualizer', () => {
       }
     ];
     // age = 0, ratio = 0.0, no multiplyScalar applied
-    visualizer.update(points, 25000);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     expect(mesh.instanceColor).toBeDefined();
     // Dog color 0xff9933 in linear space → r≈1.0, g≈0.3185, b≈0.0331
@@ -342,7 +342,7 @@ describe('createScentVisualizer', () => {
 
   it('interpolates brightness based on exponential decay at age=12500 (tauDecay=8000)', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = [
       {
         animalId: 'dog-1',
@@ -357,7 +357,7 @@ describe('createScentVisualizer', () => {
     // age = 12500, tauDecay = 8000 (from point)
     // decayFactor = exp(-12500/8000) ≈ 0.2096, ratio ≈ 0.7904
     // brightness multiplier = 1 - 0.7904 * 0.6 ≈ 0.5258
-    visualizer.update(points, 12500);
+    render.update(points, 12500);
     const mesh = getMesh(scene);
     // Dog color 0xff9933 → r=1.0 * 0.5258 ≈ 0.526
     const r = mesh.instanceColor.getX(0);
@@ -366,7 +366,7 @@ describe('createScentVisualizer', () => {
 
   it('uses per-point tauDecay over profile tauDecay for scale', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     // Point with tauDecay=16000 (double profile's 8000)
     const points: ScentPoint[] = [
       {
@@ -381,7 +381,7 @@ describe('createScentVisualizer', () => {
     ];
     // age = 25000, tauDecay = 16000 (per-point)
     // decayFactor = exp(-25000/16000) ≈ 0.2096, ratio ≈ 0.7904
-    visualizer.update(points, 25000);
+    render.update(points, 25000);
     const mesh = getMesh(scene);
     const matrix = mesh.instanceMatrix.array;
     const scaleX = matrix[0];
@@ -392,9 +392,9 @@ describe('createScentVisualizer', () => {
     expect(scaleX).toBeCloseTo(expectedScale, 5);
   });
 
-  it('handles more points than MAX_INSTANCES', () => {
+  it('handles more points than SCENT_RENDER_MAX_INSTANCES', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     const points: ScentPoint[] = Array.from({ length: 3000 }, (_, i) => ({
       animalId: `dog-${i}`,
       animalType: 'dog',
@@ -404,12 +404,12 @@ describe('createScentVisualizer', () => {
       t: 0,
       tauDecay: 8000
     }));
-    expect(() => visualizer.update(points, 100)).not.toThrow();
+    expect(() => render.update(points, 100)).not.toThrow();
   });
 
   it('computes height as point.height for fresh point', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     // Fresh point: age=0 → decayFactor=1 → ratio=0 → height = point.height
     const points: ScentPoint[] = [
       {
@@ -422,14 +422,14 @@ describe('createScentVisualizer', () => {
         tauDecay: 8000
       }
     ];
-    expect(() => visualizer.update(points, 100)).not.toThrow();
+    expect(() => render.update(points, 100)).not.toThrow();
     // height is set via position.y in the mesh, which we can't easily read
     // just verify no error is thrown
   });
 
   it('computes height as minHeight for very old point', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     // Very old point: age→∞ → decayFactor→0 → ratio→1 → height → minHeight
     const points: ScentPoint[] = [
       {
@@ -442,12 +442,12 @@ describe('createScentVisualizer', () => {
         tauDecay: 100
       }
     ];
-    expect(() => visualizer.update(points, 100000)).not.toThrow();
+    expect(() => render.update(points, 100000)).not.toThrow();
   });
 
   it('interpolates height correctly at decayFactor=0.5', () => {
     const scene = new Scene();
-    const visualizer = createScentVisualizer(scene, mockConfig, mockProfileMap);
+    const render = createScentRender(scene, mockConfig, mockProfileMap);
     // decayFactor = exp(-age/tauDecay) = 0.5 → age = tauDecay * ln(2)
     // ratio = 1 - 0.5 = 0.5
     // height = 2.0 * (1 - 0.5) + 0.05 * 0.5 = 1.0 + 0.025 = 1.025
@@ -464,6 +464,6 @@ describe('createScentVisualizer', () => {
       }
     ];
     const age = 8000 * Math.LN2;
-    expect(() => visualizer.update(points, age)).not.toThrow();
+    expect(() => render.update(points, age)).not.toThrow();
   });
 });

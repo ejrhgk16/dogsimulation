@@ -20,13 +20,11 @@ import {
   setEmitRateMultiplier
 } from '../config/scentConfig';
 import { defaultSceneConfig } from '../config/sceneConfig';
-import { buildMap } from './mapBuilder';
-import { createScentVisualizer } from './scentVisualizer';
-import type { ScentVisualizer } from './scentVisualizer';
-import { createPursuerController } from './pursuerController';
-import type { PursuerController } from './pursuerController';
-import { createPursuedController } from './pursuedController';
-import type { PursuedController } from './pursuedController';
+import { buildMapRender } from './mapRender';
+import { createScentRender } from './scentRender';
+import type { ScentRender } from './scentRender';
+import { createAnimalRender } from './animalRender';
+import type { AnimalRender } from './animalRender';
 
 /** 씬/카메라/렌더러/컨트롤 초기화, 추적자·피추적자·향기 객체 생성 */
 export class SceneRuntime {
@@ -39,8 +37,8 @@ export class SceneRuntime {
   private pursuedList: Pursued[];
   private mapData: MapData;
 
-  private controllers: Map<string, PursuerController | PursuedController>;
-  private scentVisualizer: ScentVisualizer | null;
+  private controllers: Map<string, AnimalRender>;
+  private scentRender: ScentRender | null;
 
   private isReturningToHome = false;
   private homeResetDist = 0;
@@ -93,7 +91,7 @@ export class SceneRuntime {
     const directionalLight = new DirectionalLight(0xfff4ea, 1.2);
     directionalLight.position.set(5, 10, 4);
 
-    const { terrainMesh, obstacleMeshes } = buildMap(this.mapData, defaultSceneConfig);
+    const { terrainMesh, obstacleMeshes } = buildMapRender(this.mapData, defaultSceneConfig);
 
     this.scene.add(ambientLight, directionalLight, terrainMesh);
     if (obstacleMeshes.shaped) this.scene.add(obstacleMeshes.shaped);
@@ -101,17 +99,13 @@ export class SceneRuntime {
 
     this.controllers = new Map();
     for (const p of this.pursuers) {
-      this.controllers.set(p.id, createPursuerController(this.scene, this.mapData, p));
+      this.controllers.set(p.id, createAnimalRender(this.scene, this.mapData, 'dog', p));
     }
     for (const p of this.pursuedList) {
-      this.controllers.set(p.id, createPursuedController(this.scene, this.mapData, p));
+      this.controllers.set(p.id, createAnimalRender(this.scene, this.mapData, p.animalType, p));
     }
 
-    this.scentVisualizer = createScentVisualizer(
-      this.scene,
-      DEFAULT_SCENT_VISUAL_CONFIG,
-      ANIMAL_PROFILES
-    );
+    this.scentRender = createScentRender(this.scene, DEFAULT_SCENT_VISUAL_CONFIG, ANIMAL_PROFILES);
 
     window.addEventListener('keydown', (e) => this.keys.add(e.key));
     window.addEventListener('keyup', (e) => this.keys.delete(e.key));
@@ -166,13 +160,13 @@ export class SceneRuntime {
 
   /** 향기 시각화 표시/숨김 */
   setScentVisible(visible: boolean): void {
-    this.scentVisualizer?.setVisible(visible);
+    this.scentRender?.setVisible(visible);
   }
 
   /** 동물 모델 스케일 변경 */
   setAnimalScale(id: string, scale: number): void {
     this.controllers.get(id)?.setScale(scale);
-    this.scentVisualizer?.setPointSize(scale * 0.2);
+    this.scentRender?.setPointSize(scale * 0.2);
   }
 
   /** 동물 회전 속도 설정 (rad/s) */
@@ -194,22 +188,6 @@ export class SceneRuntime {
   setPursuedSpeed(id: string, speed: number): void {
     const pursued = this.pursuedList.find((p) => p.id === id);
     if (pursued) pursued.speed = speed;
-  }
-
-  /** 추적자 컨트롤러 상태 갱신 */
-  updatePursuer(id: string, pursuer: Pursuer): void {
-    const ctrl = this.controllers.get(id);
-    if (ctrl && 'updatePursuer' in ctrl) {
-      (ctrl as PursuerController).updatePursuer(pursuer);
-    }
-  }
-
-  /** 피추적자 컨트롤러 상태 갱신 */
-  updatePursued(id: string, pursued: Pursued): void {
-    const ctrl = this.controllers.get(id);
-    if (ctrl && 'updatePursued' in ctrl) {
-      (ctrl as PursuedController).updatePursued(pursued);
-    }
   }
 
   /** 프레임 루프: 카메라 복귀 → 시간 계산 → onFrame → render */
@@ -255,7 +233,7 @@ export class SceneRuntime {
           pursuer.chase(target, dt, this.mapData, others);
         }
       }
-      this.updatePursuer(pursuer.id, pursuer);
+      this.controllers.get(pursuer.id)?.update(pursuer);
     }
 
     for (const pursued of this.pursuedList) {
@@ -266,10 +244,10 @@ export class SceneRuntime {
         this.pursuers.map((p) => ({ x: p.x, y: p.y }))
       );
       pursued.emitScent(now);
-      this.updatePursued(pursued.id, pursued);
+      this.controllers.get(pursued.id)?.update(pursued);
     }
 
     const allTrails = this.pursuedList.flatMap((p) => p.trailPoints);
-    this.scentVisualizer?.update(allTrails, now);
+    this.scentRender?.update(allTrails, now);
   }
 }
