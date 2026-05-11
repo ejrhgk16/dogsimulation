@@ -9,3 +9,5 @@ worktrees
 docs
 .opencode
 AGENTS.md
+tools/
+tests/
