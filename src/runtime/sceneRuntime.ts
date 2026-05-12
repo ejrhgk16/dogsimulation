@@ -265,6 +265,7 @@ export class SceneRuntime {
     contactsCount: number;
     x: number;
     y: number;
+    height: number;
   }> {
     return this.pursuers.map((p) => ({
       id: p.id,
@@ -279,7 +280,8 @@ export class SceneRuntime {
       castSide: p.castSide,
       contactsCount: p.lastContacts.length,
       x: p.x,
-      y: p.y
+      y: p.y,
+      height: p.height
     }));
   }
 
@@ -362,7 +364,9 @@ export class SceneRuntime {
       this.sensorTriangle = new Mesh(triGeo, triMat);
       this.debugGroup.add(this.sensorTriangle);
 
-      const sensorRingGeo = new RingGeometry(0.8, 1.0, 32);
+      const sensorRadius =
+        this.pursuers[0]?.trackingParams.sensorRadius ?? DEFAULT_TRACKING_PARAMS.sensorRadius;
+      const sensorRingGeo = new RingGeometry(Math.max(0, sensorRadius - 0.15), sensorRadius, 32);
       sensorRingGeo.rotateX(-Math.PI / 2);
       const sensorRingMat = new MeshBasicMaterial({
         color: 0x88ccff,

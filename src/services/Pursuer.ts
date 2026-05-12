@@ -124,8 +124,10 @@ export class Pursuer {
     // If less than 2 points, keep existing estimatedHeading
 
     this.sigma = this.updateSigma(lastContactDistance, this.lostTime, patchiness);
-    this.searchRadius =
-      this.trackingParams.initialRadius + this.trackingParams.kRadius * this.lostTime;
+    this.searchRadius = Math.min(
+      this.trackingParams.initialRadius + this.trackingParams.kRadius * this.lostTime,
+      this.trackingParams.lostRadius * 2
+    );
 
     if (this.state === 'track' && !detected) {
       this.state = 'surge';
@@ -133,6 +135,8 @@ export class Pursuer {
       this.state = 'cast';
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
+      this.trailMemory = [];
+      this.estimatedHeading = this.rotationAngle;
     }
 
     const sigma = this.sigma;
@@ -324,9 +328,13 @@ export class Pursuer {
 
   private buildDogScentSample(trailPoints: readonly ScentPoint[], now: number): ScentSample {
     const sensors = this.getDogSensorPositions();
-    const center = sampleScentDetail(sensors.center, trailPoints, now, DEFAULT_SCENT_PARAMS);
-    const left = sampleScentDetail(sensors.left, trailPoints, now, DEFAULT_SCENT_PARAMS);
-    const right = sampleScentDetail(sensors.right, trailPoints, now, DEFAULT_SCENT_PARAMS);
+    const params = {
+      ...DEFAULT_SCENT_PARAMS,
+      sensorRadius: this.trackingParams.sensorRadius
+    };
+    const center = sampleScentDetail(sensors.center, trailPoints, now, params);
+    const left = sampleScentDetail(sensors.left, trailPoints, now, params);
+    const right = sampleScentDetail(sensors.right, trailPoints, now, params);
 
     // Estimate heading from trailMemory
     let trailHeading = this.estimatedHeading;
@@ -340,17 +348,30 @@ export class Pursuer {
       }
     }
 
-    // 각 센서별 center 대비 신선도 advantage (-1~1)
-    const leftAdv = isFinite(left.avgAge)
-      ? (center.avgAge - left.avgAge) / Math.max(center.avgAge, left.avgAge, 1e-3)
-      : 0;
-    const rightAdv = isFinite(right.avgAge)
-      ? (center.avgAge - right.avgAge) / Math.max(center.avgAge, right.avgAge, 1e-3)
-      : 0;
+    const ages = [
+      { side: -1, age: left.avgAge },
+      { side: 0, age: center.avgAge },
+      { side: 1, age: right.avgAge }
+    ].filter((a) => isFinite(a.age));
+
+    let netBias = 0;
+    let confidence = 0;
+
+    if (ages.length >= 2) {
+      ages.sort((a, b) => a.age - b.age);
+      const freshest = ages[0];
+      const second = ages[1];
+      const diff = (second.age - freshest.age) / Math.max(second.age, freshest.age, 1e-3);
+      netBias = freshest.side * diff;
+      confidence = Math.abs(netBias);
+    } else if (ages.length === 1) {
+      netBias = ages[0].side;
+      confidence = 1;
+    }
 
     const maxTurn = Math.PI / 6;
-    const netBias = this.clamp(rightAdv - leftAdv, -1, 1);
-    const confidence = Math.abs(netBias);
+    const signalDirection = trailHeading + maxTurn * netBias;
+    const totalSignal = Math.max(center.totalSignal, left.totalSignal, right.totalSignal);
 
     if (confidence < 1e-3) {
       if (isFinite(center.avgAge)) {
@@ -368,15 +389,15 @@ export class Pursuer {
         }
       }
       return {
-        totalSignal: center.totalSignal,
+        totalSignal,
         signalDirection: trailHeading,
         directionConfidence: 0
       };
     }
 
     return {
-      totalSignal: center.totalSignal,
-      signalDirection: trailHeading + maxTurn * netBias,
+      totalSignal,
+      signalDirection,
       directionConfidence: confidence
     };
   }

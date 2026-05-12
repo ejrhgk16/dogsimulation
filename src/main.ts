@@ -206,6 +206,9 @@ debugPanel.innerHTML = `
     <div class="debug-row"><span>trailSig</span><span id="dv-lastTrailSignal">-</span></div>
     <div class="debug-row"><span>castSide</span><span id="dv-castSide">-</span></div>
     <div class="debug-row"><span>contacts</span><span id="dv-contactsCount">-</span></div>
+    <div class="debug-row"><span>x</span><span id="dv-x">-</span></div>
+    <div class="debug-row"><span>y</span><span id="dv-y">-</span></div>
+    <div class="debug-row"><span>height</span><span id="dv-height">-</span></div>
   </fieldset>
 `;
 app.appendChild(debugPanel);
@@ -219,7 +222,10 @@ const debugKeys = [
   'lostTime',
   'lastTrailSignal',
   'castSide',
-  'contactsCount'
+  'contactsCount',
+  'x',
+  'y',
+  'height'
 ] as const;
 
 function formatDebug(value: number | string): string {

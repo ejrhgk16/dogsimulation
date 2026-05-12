@@ -4,6 +4,7 @@ import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 
 export interface ScentSamplerParams {
   tauDecayMin: number;
+  sensorRadius: number;
 }
 
 export interface ScentSampleDetail {
@@ -43,6 +44,7 @@ export function sampleScentDetail(
     const dx = pos.x - point.x;
     const dy = pos.y - point.y;
     const distSq = dx * dx + dy * dy;
+    if (Math.sqrt(distSq) > params.sensorRadius) continue;
     const tauDecay = point.tauDecay ?? params.tauDecayMin;
     const timeDecay = Math.exp(-(now - point.t) / tauDecay);
     const distDecay = Math.exp(-distSq / twoSigmaSq);
