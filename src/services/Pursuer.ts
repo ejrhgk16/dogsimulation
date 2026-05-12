@@ -95,6 +95,18 @@ export class Pursuer {
       this.lostTime = 0;
       this.searchRadius = 0;
       this.state = 'track';
+      console.log(
+        '[TRACK] estH:',
+        this.estimatedHeading.toFixed(2),
+        'sigD:',
+        sample.signalDirection.toFixed(2),
+        'conf:',
+        sample.directionConfidence.toFixed(3),
+        'tMem:',
+        this.trailMemory.length,
+        'sig:',
+        sample.totalSignal.toFixed(3)
+      );
       this.lastContacts.push({
         x: this.x,
         y: this.y,
@@ -142,11 +154,28 @@ export class Pursuer {
     const sigma = this.sigma;
     let moveSpeed: number;
 
+    // Fallback: when trailMemory is empty but tracking/surging, use current facing
+    if ((this.state === 'track' || this.state === 'surge') && this.trailMemory.length < 2) {
+      this.estimatedHeading = this.rotationAngle;
+    }
+
     if (this.state === 'track') {
       this.targetHeading = this.blendHeading(
         this.estimatedHeading,
         sample.signalDirection,
         sample.directionConfidence
+      );
+      console.log(
+        '[HEADING] rot:',
+        this.rotationAngle.toFixed(2),
+        'est:',
+        this.estimatedHeading.toFixed(2),
+        'sig:',
+        sample.signalDirection.toFixed(2),
+        'tgt:',
+        this.targetHeading.toFixed(2),
+        'conf:',
+        sample.directionConfidence.toFixed(3)
       );
       moveSpeed = this.dynamicSpeed(sigma);
     } else if (this.state === 'surge') {
@@ -316,8 +345,8 @@ export class Pursuer {
     const sensorOffset = ANIMAL_HALF_EXTENT * 2;
     const cx = this.x + Math.cos(this.rotationAngle) * sensorOffset;
     const cy = this.y + Math.sin(this.rotationAngle) * sensorOffset;
-    const latX = Math.cos(this.rotationAngle + Math.PI / 2) * this.trackingParams.sensorRadius;
-    const latY = Math.sin(this.rotationAngle + Math.PI / 2) * this.trackingParams.sensorRadius;
+    const latX = Math.cos(this.rotationAngle - Math.PI / 2) * this.trackingParams.sensorRadius;
+    const latY = Math.sin(this.rotationAngle - Math.PI / 2) * this.trackingParams.sensorRadius;
 
     return {
       center: { x: cx, y: cy },
@@ -336,8 +365,8 @@ export class Pursuer {
     const left = sampleScentDetail(sensors.left, trailPoints, now, params);
     const right = sampleScentDetail(sensors.right, trailPoints, now, params);
 
-    // Estimate heading from trailMemory
-    let trailHeading = this.estimatedHeading;
+    // Estimate heading from trailMemory, fallback to current facing when empty
+    let trailHeading = this.trailMemory.length >= 2 ? this.estimatedHeading : this.rotationAngle;
     if (this.trailMemory.length >= 2) {
       const prev = this.trailMemory[this.trailMemory.length - 2];
       const last = this.trailMemory[this.trailMemory.length - 1];
