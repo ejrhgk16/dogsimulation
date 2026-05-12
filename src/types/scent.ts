@@ -42,6 +42,30 @@ export interface ScentVisualConfig {
   animalColorMap: Record<string, number>;
 }
 
+export interface TrackingParams {
+  sensorRadius: number;
+  detectThreshold: number;
+  tauMemory: number;
+  sigmaBase: number;
+  sigmaMin: number;
+  sigmaMax: number;
+  lambda: number;
+  xi: number;
+  kLost: number;
+  kPatch: number;
+  initialRadius: number;
+  kRadius: number;
+  castAngleMax: number;
+  castTurnTolerance: number;
+  lostRadius: number;
+  lostTurnRate: number;
+  surgeDuration: number;
+  maxContacts: number;
+  minSpeed: number;
+  maxSpeed: number;
+  kSpeedSigma: number;
+}
+
 export interface ScentWorldState {
   trailPoints: ScentPoint[];
   emitters: Map<string, EmitAccumulator>;

@@ -1,4 +1,5 @@
 import type { MapData } from '../types/map';
+import type { ContactPoint, TrackState } from '../types/pursuer';
 import {
   ANIMAL_HEIGHT_OFFSET,
   ANIMAL_HALF_EXTENT,
@@ -17,6 +18,15 @@ export class Pursuer {
   directionY: number;
   rotationAngle: number;
   targetId: string | null;
+  state: TrackState;
+  lastContacts: ContactPoint[];
+  lostTime: number;
+  searchRadius: number;
+  sigma: number;
+  estimatedHeading: number;
+  targetHeading: number;
+  castSide: number;
+  lastTrailSignal: number;
 
   /** 추적자 생성 (위치/속도/추적속도 초기화) */
   constructor(id: string, x: number, y: number, mapData: MapData, speed = 5.0, chaseSpeed = 7.0) {
@@ -30,6 +40,15 @@ export class Pursuer {
     this.directionY = 0;
     this.rotationAngle = Math.atan2(1, 0);
     this.targetId = null;
+    this.state = 'track';
+    this.lastContacts = [];
+    this.lostTime = 0;
+    this.searchRadius = 0;
+    this.sigma = 0;
+    this.estimatedHeading = Math.atan2(1, 0);
+    this.targetHeading = Math.atan2(1, 0);
+    this.castSide = 1;
+    this.lastTrailSignal = 0;
   }
 
   /** 목표 방향으로 추적 이동 */
