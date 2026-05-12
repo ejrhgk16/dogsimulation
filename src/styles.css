@@ -91,3 +91,111 @@ body {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+#tracking-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  z-index: 1000;
+  max-height: 95vh;
+  overflow-y: auto;
+  min-width: 240px;
+}
+
+#tracking-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0;
+}
+
+#tracking-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#tracking-panel label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 1px 0;
+}
+
+#tracking-panel label > span:first-child {
+  width: 100px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+#tracking-panel input[type='range'] {
+  width: 80px;
+  accent-color: #45cc88;
+  cursor: pointer;
+  margin: 0 2px;
+}
+
+#tracking-panel .slider-value {
+  display: inline-block;
+  width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+
+#debug-panel {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  z-index: 1000;
+  min-width: 240px;
+}
+
+#debug-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0;
+}
+
+#debug-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#debug-panel .debug-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+#debug-panel .debug-row span:first-child {
+  width: 100px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+}
+
+#debug-panel .debug-row span:last-child {
+  display: inline-block;
+  width: 34px;
+  text-align: right;
+  color: #45cc88;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}

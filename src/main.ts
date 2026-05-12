@@ -46,6 +46,7 @@ controlsPanel.innerHTML = `
       <input type="range" id="emit-rate-slider" min="0.1" max="2.0" step="0.1" value="1.0" />
       <span class="slider-value" id="emit-rate-value">1.0x</span>
     </label>
+    <button id="track-btn" type="button">추적 시작</button>
   </fieldset>
 `;
 
@@ -95,6 +96,148 @@ emitRateSlider.addEventListener('input', () => {
   emitRateValue.textContent = val.toFixed(1) + 'x';
   runtime.setEmitRate(val);
 });
+
+const trackBtn = controlsPanel.querySelector<HTMLButtonElement>('#track-btn')!;
+let tracking = false;
+trackBtn.addEventListener('click', () => {
+  if (!tracking) {
+    runtime.startTracking();
+    trackBtn.textContent = '추적 중지';
+  } else {
+    runtime.stopTracking();
+    trackBtn.textContent = '추적 시작';
+  }
+  tracking = !tracking;
+});
+
+// Tracking parameters panel
+const trackingPanel = document.createElement('div');
+trackingPanel.id = 'tracking-panel';
+trackingPanel.innerHTML = `
+  <fieldset>
+    <legend>Tracking Params</legend>
+    <label><span>detectThreshold</span><input type="range" id="tp-detectThreshold" min="0.01" max="2" step="0.01" value="0.25" /><span class="slider-value" id="tpv-detectThreshold">0.25</span></label>
+    <label><span>tauMemory</span><input type="range" id="tp-tauMemory" min="0.1" max="10" step="0.1" value="3.0" /><span class="slider-value" id="tpv-tauMemory">3.0</span></label>
+    <label><span>sigmaBase</span><input type="range" id="tp-sigmaBase" min="0.01" max="0.5" step="0.01" value="0.08" /><span class="slider-value" id="tpv-sigmaBase">0.08</span></label>
+    <label><span>sigmaMin</span><input type="range" id="tp-sigmaMin" min="0.01" max="0.5" step="0.01" value="0.05" /><span class="slider-value" id="tpv-sigmaMin">0.05</span></label>
+    <label><span>sigmaMax</span><input type="range" id="tp-sigmaMax" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-sigmaMax">1.2</span></label>
+    <label><span>lambda</span><input type="range" id="tp-lambda" min="1" max="100" step="1" value="25" /><span class="slider-value" id="tpv-lambda">25</span></label>
+    <label><span>xi</span><input type="range" id="tp-xi" min="1" max="200" step="1" value="50" /><span class="slider-value" id="tpv-xi">50</span></label>
+    <label><span>kLost</span><input type="range" id="tp-kLost" min="0" max="1" step="0.01" value="0.12" /><span class="slider-value" id="tpv-kLost">0.12</span></label>
+    <label><span>kPatch</span><input type="range" id="tp-kPatch" min="0" max="2" step="0.01" value="0.4" /><span class="slider-value" id="tpv-kPatch">0.40</span></label>
+    <label><span>initialRadius</span><input type="range" id="tp-initialRadius" min="1" max="50" step="0.5" value="8" /><span class="slider-value" id="tpv-initialRadius">8.0</span></label>
+    <label><span>kRadius</span><input type="range" id="tp-kRadius" min="1" max="100" step="0.5" value="20" /><span class="slider-value" id="tpv-kRadius">20.0</span></label>
+    <label><span>castAngleMax</span><input type="range" id="tp-castAngleMax" min="0.1" max="3.14" step="0.01" value="1.0" /><span class="slider-value" id="tpv-castAngleMax">1.00</span></label>
+    <label><span>castTurnTolerance</span><input type="range" id="tp-castTurnTolerance" min="0.01" max="0.5" step="0.01" value="0.08" /><span class="slider-value" id="tpv-castTurnTolerance">0.08</span></label>
+    <label><span>lostRadius</span><input type="range" id="tp-lostRadius" min="10" max="200" step="1" value="80" /><span class="slider-value" id="tpv-lostRadius">80</span></label>
+    <label><span>lostTurnRate</span><input type="range" id="tp-lostTurnRate" min="0.1" max="3" step="0.1" value="0.8" /><span class="slider-value" id="tpv-lostTurnRate">0.8</span></label>
+    <label><span>surgeDuration</span><input type="range" id="tp-surgeDuration" min="0.1" max="3" step="0.1" value="0.5" /><span class="slider-value" id="tpv-surgeDuration">0.5</span></label>
+    <label><span>maxContacts</span><input type="range" id="tp-maxContacts" min="2" max="20" step="1" value="6" /><span class="slider-value" id="tpv-maxContacts">6</span></label>
+    <label><span>minSpeed</span><input type="range" id="tp-minSpeed" min="0.5" max="10" step="0.5" value="1" /><span class="slider-value" id="tpv-minSpeed">1.0</span></label>
+    <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
+    <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
+    <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1" /><span class="slider-value" id="tpv-sensorRadius">1.0</span></label>
+    <label>
+      <input type="checkbox" id="toggle-debug" />
+      Debug Visuals
+    </label>
+  </fieldset>
+`;
+
+app.appendChild(trackingPanel);
+
+const tpKeys = [
+  'sensorRadius',
+  'detectThreshold',
+  'tauMemory',
+  'sigmaBase',
+  'sigmaMin',
+  'sigmaMax',
+  'lambda',
+  'xi',
+  'kLost',
+  'kPatch',
+  'initialRadius',
+  'kRadius',
+  'castAngleMax',
+  'castTurnTolerance',
+  'lostRadius',
+  'lostTurnRate',
+  'surgeDuration',
+  'maxContacts',
+  'minSpeed',
+  'maxSpeed',
+  'kSpeedSigma'
+] as const;
+
+function formatTp(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  if (value < 0.1 || value >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
+for (const key of tpKeys) {
+  const slider = trackingPanel.querySelector<HTMLInputElement>(`#tp-${key}`)!;
+  const display = trackingPanel.querySelector<HTMLElement>(`#tpv-${key}`)!;
+  slider.addEventListener('input', () => {
+    const val = parseFloat(slider.value);
+    display.textContent = formatTp(val);
+    runtime.setTrackingParam(key, val);
+  });
+}
+
+const debugCheckbox = trackingPanel.querySelector<HTMLInputElement>('#toggle-debug')!;
+debugCheckbox.addEventListener('change', () => {
+  runtime.setDebugVisible(debugCheckbox.checked);
+});
+
+// Debug values panel
+const debugPanel = document.createElement('div');
+debugPanel.id = 'debug-panel';
+debugPanel.innerHTML = `
+  <fieldset>
+    <legend>Debug Live</legend>
+    <div class="debug-row"><span>state</span><span id="dv-state">-</span></div>
+    <div class="debug-row"><span>sigma</span><span id="dv-sigma">-</span></div>
+    <div class="debug-row"><span>estHeading</span><span id="dv-estimatedHeading">-</span></div>
+    <div class="debug-row"><span>tgtHeading</span><span id="dv-targetHeading">-</span></div>
+    <div class="debug-row"><span>searchR</span><span id="dv-searchRadius">-</span></div>
+    <div class="debug-row"><span>lostTime</span><span id="dv-lostTime">-</span></div>
+    <div class="debug-row"><span>trailSig</span><span id="dv-lastTrailSignal">-</span></div>
+    <div class="debug-row"><span>castSide</span><span id="dv-castSide">-</span></div>
+    <div class="debug-row"><span>contacts</span><span id="dv-contactsCount">-</span></div>
+  </fieldset>
+`;
+app.appendChild(debugPanel);
+
+const debugKeys = [
+  'state',
+  'sigma',
+  'estimatedHeading',
+  'targetHeading',
+  'searchRadius',
+  'lostTime',
+  'lastTrailSignal',
+  'castSide',
+  'contactsCount'
+] as const;
+
+function formatDebug(value: number | string): string {
+  if (typeof value === 'string') return value;
+  if (Number.isInteger(value)) return String(value);
+  if (Math.abs(value) < 0.001) return '0';
+  return value.toFixed(3);
+}
+
+setInterval(() => {
+  const states = runtime.getPursuerStates();
+  if (states.length === 0) return;
+  const s = states[0];
+  for (const key of debugKeys) {
+    const el = debugPanel.querySelector<HTMLElement>(`#dv-${key}`);
+    if (el) el.textContent = formatDebug(s[key as keyof typeof s] as number | string);
+  }
+}, 250);
 
 window.addEventListener('resize', () => runtime.resize());
 

@@ -1,15 +1,26 @@
 import {
   AmbientLight,
+  BufferGeometry,
   Color,
   DirectionalLight,
+  DoubleSide,
+  Float32BufferAttribute,
+  Group,
+  Line,
+  LineBasicMaterial,
   MOUSE,
+  Mesh,
+  MeshBasicMaterial,
   PerspectiveCamera,
+  RingGeometry,
   Scene,
+  SphereGeometry,
   Vector3,
   WebGLRenderer
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData } from '../types/map';
+import type { TrackingParams } from '../types/scent';
 import { generateMap } from '../services/mapService';
 import { Pursuer } from '../services/Pursuer';
 import { Pursued } from '../services/Pursued';
@@ -19,6 +30,7 @@ import {
   setTauDecayMultiplier,
   setEmitRateMultiplier
 } from '../config/scentConfig';
+import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { defaultSceneConfig } from '../config/sceneConfig';
 import { buildMapRender } from './mapRender';
 import { createScentRender } from './scentRender';
@@ -47,6 +59,16 @@ export class SceneRuntime {
   private lastFrameTime = performance.now();
   private keys = new Set<string>();
 
+  private debugVisible = false;
+  private debugGroup: Group | null = null;
+  private sensorSpheres: Mesh[] = [];
+  private searchRing: Mesh | null = null;
+  private headingArrow: Line | null = null;
+  private targetHeadingArrow: Line | null = null;
+  private sensorTriangle: Mesh | null = null;
+  private sensorRings: Mesh[] = [];
+  private debugInitialRadius = 0;
+
   private readonly homePosition = new Vector3(0, 25, 35);
   private readonly homeTarget = new Vector3(0, 0, 0);
 
@@ -60,7 +82,15 @@ export class SceneRuntime {
   ) {
     this.mapData = externalMapData ?? generateMap(defaultSceneConfig.mapConfig);
 
-    const dogPursuer = new Pursuer('dog-1', -4, -2, this.mapData, 5.0, 7.0);
+    const dogPursuer = new Pursuer(
+      'dog-1',
+      -4,
+      -2,
+      this.mapData,
+      5.0,
+      7.0,
+      DEFAULT_TRACKING_PARAMS
+    );
     const alpacaPursued = new Pursued('alpaca', 'alpaca', 0, 3, this.mapData, 3.5);
     this.pursuers = externalPursuers ?? [dogPursuer];
     this.pursuedList = externalPursuedList ?? [alpacaPursued];
@@ -163,6 +193,21 @@ export class SceneRuntime {
     this.scentRender?.setVisible(visible);
   }
 
+  /** 디버그 시각화 표시/숨김 */
+  setDebugVisible(visible: boolean): void {
+    this.debugVisible = visible;
+    if (!visible && this.debugGroup) {
+      this.scene.remove(this.debugGroup);
+      this.debugGroup = null;
+      this.sensorSpheres = [];
+      this.searchRing = null;
+      this.headingArrow = null;
+      this.targetHeadingArrow = null;
+      this.sensorTriangle = null;
+      this.sensorRings = [];
+    }
+  }
+
   /** 동물 모델 스케일 변경 */
   setAnimalScale(id: string, scale: number): void {
     this.controllers.get(id)?.setScale(scale);
@@ -188,6 +233,54 @@ export class SceneRuntime {
   setPursuedSpeed(id: string, speed: number): void {
     const pursued = this.pursuedList.find((p) => p.id === id);
     if (pursued) pursued.speed = speed;
+  }
+
+  /** 모든 추적자 추적 시작 */
+  startTracking(): void {
+    for (const p of this.pursuers) p.isTracking = true;
+  }
+
+  /** 개별 추적 파라미터 조절 */
+  setTrackingParam<K extends keyof TrackingParams>(key: K, value: TrackingParams[K]): void {
+    for (const p of this.pursuers) p.updateTrackingParam(key, value);
+  }
+
+  /** 모든 추적자 추적 중지 */
+  stopTracking(): void {
+    for (const p of this.pursuers) p.isTracking = false;
+  }
+
+  /** 추적자 디버그 상태 스냅샷 반환 */
+  getPursuerStates(): ReadonlyArray<{
+    id: string;
+    state: string;
+    sigma: number;
+    estimatedHeading: number;
+    targetHeading: number;
+    rotationAngle: number;
+    searchRadius: number;
+    lostTime: number;
+    lastTrailSignal: number;
+    castSide: number;
+    contactsCount: number;
+    x: number;
+    y: number;
+  }> {
+    return this.pursuers.map((p) => ({
+      id: p.id,
+      state: p.state,
+      sigma: p.sigma,
+      estimatedHeading: p.estimatedHeading,
+      targetHeading: p.targetHeading,
+      rotationAngle: p.rotationAngle,
+      searchRadius: p.searchRadius,
+      lostTime: p.lostTime,
+      lastTrailSignal: p.lastTrailSignal,
+      castSide: p.castSide,
+      contactsCount: p.lastContacts.length,
+      x: p.x,
+      y: p.y
+    }));
   }
 
   /** 프레임 루프: 카메라 복귀 → 시간 계산 → onFrame → render */
@@ -218,21 +311,87 @@ export class SceneRuntime {
 
   /** 매 프레임 실행: 애니메이션 업데이트 → 추적/이동 로직 */
   private onFrame(dt: number, now: number): void {
+    if (this.debugVisible && !this.debugGroup) {
+      this.debugGroup = new Group();
+      this.scene.add(this.debugGroup);
+
+      const sphereGeo = new SphereGeometry(0.15, 8, 8);
+      const leftMat = new MeshBasicMaterial({ color: 0xff4444 });
+      const centerMat = new MeshBasicMaterial({ color: 0xffffff });
+      const rightMat = new MeshBasicMaterial({ color: 0x4488ff });
+      this.sensorSpheres = [
+        new Mesh(sphereGeo, leftMat),
+        new Mesh(sphereGeo, centerMat),
+        new Mesh(sphereGeo, rightMat)
+      ];
+      for (const s of this.sensorSpheres) this.debugGroup.add(s);
+
+      this.debugInitialRadius =
+        this.pursuers[0]?.trackingParams.initialRadius ?? DEFAULT_TRACKING_PARAMS.initialRadius;
+      const ringGeo = new RingGeometry(this.debugInitialRadius, this.debugInitialRadius + 0.1, 64);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new MeshBasicMaterial({
+        color: 0xffff00,
+        transparent: true,
+        opacity: 0.4,
+        side: DoubleSide
+      });
+      this.searchRing = new Mesh(ringGeo, ringMat);
+      this.debugGroup.add(this.searchRing);
+
+      const headingGeo = new BufferGeometry();
+      headingGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3));
+      const headingMat = new LineBasicMaterial({ color: 0xffaa00 });
+      this.headingArrow = new Line(headingGeo, headingMat);
+      this.debugGroup.add(this.headingArrow);
+
+      const targetGeo = new BufferGeometry();
+      targetGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3));
+      const targetMat = new LineBasicMaterial({ color: 0xff6600 });
+      this.targetHeadingArrow = new Line(targetGeo, targetMat);
+      this.debugGroup.add(this.targetHeadingArrow);
+
+      const triGeo = new BufferGeometry();
+      triGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3));
+      const triMat = new MeshBasicMaterial({
+        color: 0x44aaff,
+        transparent: true,
+        opacity: 0.4,
+        side: DoubleSide
+      });
+      this.sensorTriangle = new Mesh(triGeo, triMat);
+      this.debugGroup.add(this.sensorTriangle);
+
+      const sensorRingGeo = new RingGeometry(0.8, 1.0, 32);
+      sensorRingGeo.rotateX(-Math.PI / 2);
+      const sensorRingMat = new MeshBasicMaterial({
+        color: 0x88ccff,
+        transparent: true,
+        opacity: 0.35,
+        side: DoubleSide
+      });
+      this.sensorRings = [
+        new Mesh(sensorRingGeo, sensorRingMat),
+        new Mesh(sensorRingGeo, sensorRingMat.clone()),
+        new Mesh(sensorRingGeo, sensorRingMat.clone())
+      ];
+      for (const r of this.sensorRings) this.debugGroup.add(r);
+    }
+
     for (const ctrl of this.controllers.values()) {
       const model = ctrl.getLoadedModel();
       if (model?.mixer) model.mixer.update(dt);
     }
 
+    const allTrails = this.pursuedList.flatMap((p) => p.trailPoints);
+
     for (const pursuer of this.pursuers) {
-      if (pursuer.targetId !== null) {
-        const target = this.pursuedList.find((p) => p.id === pursuer.targetId);
-        if (target) {
-          const others = this.pursuedList
-            .filter((p) => p.id !== pursuer.targetId)
-            .map((p) => ({ x: p.x, y: p.y }));
-          pursuer.chase(target, dt, this.mapData, others);
-        }
+      if (!pursuer.isTracking) {
+        this.controllers.get(pursuer.id)?.update(pursuer);
+        continue;
       }
+      const others = this.pursuedList.map((p) => ({ x: p.x, y: p.y }));
+      pursuer.updateDogState(allTrails, now, dt, this.mapData, others);
       this.controllers.get(pursuer.id)?.update(pursuer);
     }
 
@@ -247,7 +406,63 @@ export class SceneRuntime {
       this.controllers.get(pursued.id)?.update(pursued);
     }
 
-    const allTrails = this.pursuedList.flatMap((p) => p.trailPoints);
     this.scentRender?.update(allTrails, now);
+
+    if (this.debugVisible && this.debugGroup) {
+      for (const pursuer of this.pursuers) {
+        const baseY = pursuer.height + 0.06;
+        this.debugGroup.position.set(pursuer.x, baseY, pursuer.y);
+
+        const sensors = pursuer.getDogSensorPositions();
+        const lx = sensors.center.x - pursuer.x;
+        const ly = sensors.center.y - pursuer.y;
+        const lLeftX = sensors.left.x - pursuer.x;
+        const lLeftY = sensors.left.y - pursuer.y;
+        const lRightX = sensors.right.x - pursuer.x;
+        const lRightY = sensors.right.y - pursuer.y;
+
+        this.sensorSpheres[0]?.position.set(lLeftX, -0.01, lLeftY);
+        this.sensorSpheres[1]?.position.set(lx, -0.01, ly);
+        this.sensorSpheres[2]?.position.set(lRightX, -0.01, lRightY);
+
+        for (let i = 0; i < this.sensorRings.length; i++) {
+          const sp = this.sensorSpheres[i];
+          if (sp && this.sensorRings[i]) {
+            this.sensorRings[i].position.copy(sp.position);
+            this.sensorRings[i].position.y += 0.01;
+          }
+        }
+
+        if (this.searchRing) {
+          const scale =
+            this.debugInitialRadius > 0 ? pursuer.searchRadius / this.debugInitialRadius : 1;
+          this.searchRing.scale.setScalar(scale);
+        }
+
+        if (this.headingArrow) {
+          const hdx = Math.cos(pursuer.estimatedHeading) * 3;
+          const hdz = Math.sin(pursuer.estimatedHeading) * 3;
+          const hPos = this.headingArrow.geometry.attributes.position;
+          hPos.setXYZ(1, hdx, 0, hdz);
+          hPos.needsUpdate = true;
+        }
+
+        if (this.targetHeadingArrow) {
+          const tdx = Math.cos(pursuer.targetHeading) * 3;
+          const tdz = Math.sin(pursuer.targetHeading) * 3;
+          const tPos = this.targetHeadingArrow.geometry.attributes.position;
+          tPos.setXYZ(1, tdx, 0, tdz);
+          tPos.needsUpdate = true;
+        }
+
+        if (this.sensorTriangle) {
+          const triPos = this.sensorTriangle.geometry.attributes.position;
+          triPos.setXYZ(0, lx, 0, ly);
+          triPos.setXYZ(1, lLeftX, 0, lLeftY);
+          triPos.setXYZ(2, lRightX, 0, lRightY);
+          triPos.needsUpdate = true;
+        }
+      }
+    }
   }
 }

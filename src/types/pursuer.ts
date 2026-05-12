@@ -32,6 +32,7 @@ export interface PursuerState {
   targetId: string | null;
   state: TrackState;
   lastContacts: ContactPoint[];
+  trailMemory: { x: number; y: number }[];
   lostTime: number;
   searchRadius: number;
   sigma: number;

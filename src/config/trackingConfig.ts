@@ -1,7 +1,7 @@
 import type { TrackingParams } from '../types/scent';
 
 export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
-  sensorRadius: 12,
+  sensorRadius: 1,
   detectThreshold: 0.25,
   tauMemory: 3.0,
   sigmaBase: 0.08,
@@ -19,7 +19,7 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   lostTurnRate: 0.8,
   surgeDuration: 0.5,
   maxContacts: 6,
-  minSpeed: 8,
-  maxSpeed: 40,
+  minSpeed: 1,
+  maxSpeed: 5,
   kSpeedSigma: 1.2
 };
