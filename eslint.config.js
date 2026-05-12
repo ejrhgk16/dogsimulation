@@ -5,11 +5,11 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '.agents/**']
+    ignores: ['dist/**', 'node_modules/**', '.agents/**', 'tests/**', 'tools/**']
   },
   eslint.configs.recommended,
   {
-    files: ['src/**/*.ts', 'tests/**/*.ts'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -34,7 +34,7 @@ export default [
     }
   },
   {
-    files: ['tools/**/*.mjs', 'tests/**/*.mjs', 'eslint.config.js'],
+    files: ['eslint.config.js'],
     languageOptions: {
       globals: {
         console: 'readonly',
