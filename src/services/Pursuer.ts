@@ -317,8 +317,8 @@ export class Pursuer {
 
     return {
       center: { x: cx, y: cy },
-      left: { x: cx - latX, y: cy - latY },
-      right: { x: cx + latX, y: cy + latY }
+      left: { x: cx + latX, y: cy + latY },
+      right: { x: cx - latX, y: cy - latY }
     };
   }
 
@@ -327,30 +327,6 @@ export class Pursuer {
     const center = sampleScentDetail(sensors.center, trailPoints, now, DEFAULT_SCENT_PARAMS);
     const left = sampleScentDetail(sensors.left, trailPoints, now, DEFAULT_SCENT_PARAMS);
     const right = sampleScentDetail(sensors.right, trailPoints, now, DEFAULT_SCENT_PARAMS);
-
-    // Find freshest sensor (lowest avgAge) and push to trailMemory
-    const validSamples: Array<{ x: number; y: number; avgAge: number }> = [];
-    if (isFinite(center.avgAge))
-      validSamples.push({ x: sensors.center.x, y: sensors.center.y, avgAge: center.avgAge });
-    if (isFinite(left.avgAge))
-      validSamples.push({ x: sensors.left.x, y: sensors.left.y, avgAge: left.avgAge });
-    if (isFinite(right.avgAge))
-      validSamples.push({ x: sensors.right.x, y: sensors.right.y, avgAge: right.avgAge });
-
-    if (validSamples.length > 0) {
-      const shouldPush =
-        this.trailMemory.length === 0 ||
-        Math.hypot(
-          this.x - this.trailMemory[this.trailMemory.length - 1].x,
-          this.y - this.trailMemory[this.trailMemory.length - 1].y
-        ) > 0.1;
-      if (shouldPush) {
-        this.trailMemory.push({ x: this.x, y: this.y });
-        if (this.trailMemory.length > 5) {
-          this.trailMemory.shift();
-        }
-      }
-    }
 
     // Estimate heading from trailMemory
     let trailHeading = this.estimatedHeading;
@@ -364,33 +340,43 @@ export class Pursuer {
       }
     }
 
-    if (!isFinite(left.avgAge) || !isFinite(right.avgAge)) {
-      return {
-        totalSignal: center.totalSignal,
-        signalDirection: trailHeading,
-        directionConfidence: 0
-      };
-    }
+    // 각 센서별 center 대비 신선도 advantage (-1~1)
+    const leftAdv = isFinite(left.avgAge)
+      ? (center.avgAge - left.avgAge) / Math.max(center.avgAge, left.avgAge, 1e-3)
+      : 0;
+    const rightAdv = isFinite(right.avgAge)
+      ? (center.avgAge - right.avgAge) / Math.max(center.avgAge, right.avgAge, 1e-3)
+      : 0;
 
-    const ageDelta = left.avgAge - right.avgAge;
-    const epsilon = 1e-3;
-
-    if (Math.abs(ageDelta) < epsilon) {
-      return {
-        totalSignal: center.totalSignal,
-        signalDirection: trailHeading,
-        directionConfidence: 0
-      };
-    }
-
-    const maxAge = Math.max(left.avgAge, right.avgAge);
-    const ratio = this.clamp(ageDelta / Math.max(maxAge, 1e-3), -1, 1);
-    const confidence = Math.abs(ratio);
     const maxTurn = Math.PI / 6;
+    const netBias = this.clamp(rightAdv - leftAdv, -1, 1);
+    const confidence = Math.abs(netBias);
+
+    if (confidence < 1e-3) {
+      if (isFinite(center.avgAge)) {
+        const shouldPush =
+          this.trailMemory.length === 0 ||
+          Math.hypot(
+            this.x - this.trailMemory[this.trailMemory.length - 1].x,
+            this.y - this.trailMemory[this.trailMemory.length - 1].y
+          ) > 0.1;
+        if (shouldPush) {
+          this.trailMemory.push({ x: this.x, y: this.y });
+          if (this.trailMemory.length > 5) {
+            this.trailMemory.shift();
+          }
+        }
+      }
+      return {
+        totalSignal: center.totalSignal,
+        signalDirection: trailHeading,
+        directionConfidence: 0
+      };
+    }
 
     return {
       totalSignal: center.totalSignal,
-      signalDirection: trailHeading + maxTurn * ratio,
+      signalDirection: trailHeading + maxTurn * netBias,
       directionConfidence: confidence
     };
   }
