@@ -95,18 +95,7 @@ export class Pursuer {
       this.lostTime = 0;
       this.searchRadius = 0;
       this.state = 'track';
-      console.log(
-        '[TRACK] estH:',
-        this.estimatedHeading.toFixed(2),
-        'sigD:',
-        sample.signalDirection.toFixed(2),
-        'conf:',
-        sample.directionConfidence.toFixed(3),
-        'tMem:',
-        this.trailMemory.length,
-        'sig:',
-        sample.totalSignal.toFixed(3)
-      );
+
       this.lastContacts.push({
         x: this.x,
         y: this.y,
