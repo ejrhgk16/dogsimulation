@@ -449,8 +449,10 @@ export class SceneRuntime {
         }
 
         // Rotate fan meshes to face the dog's direction
+        // Match model visual: atan2(directionX, directionY) = π/2 - heading
+        const visualAngle = Math.atan2(pursuer.directionX, pursuer.directionY);
         for (const mesh of this.sensorFanMeshes) {
-          mesh.rotation.y = pursuer.rotationAngle;
+          mesh.rotation.y = visualAngle;
         }
 
         if (this.searchRing) {
