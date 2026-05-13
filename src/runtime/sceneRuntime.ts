@@ -448,11 +448,10 @@ export class SceneRuntime {
           this.lastSensorFanAngle = currentAngle;
         }
 
-        // Rotate fan meshes to face the dog's direction
-        // Match model visual: atan2(directionX, directionY) = π/2 - heading
-        const visualAngle = Math.atan2(pursuer.directionX, pursuer.directionY);
+        // Fan rotation: -rotationAngle to match Three.js Y+ (X→-Z) with game X→+Z
         for (const mesh of this.sensorFanMeshes) {
-          mesh.rotation.y = visualAngle;
+          mesh.rotation.y = -pursuer.rotationAngle;
+          mesh.position.set(0, 0, 0);
         }
 
         if (this.searchRing) {

@@ -346,7 +346,11 @@ export class Pursuer {
     const halfFan = fanAngle / 2;
     const sectorWidth = fanAngle / 3;
     const maxRadius = this.trackingParams.sensorRadius;
-    const origin = { x: this.x, y: this.y };
+    const offset = ANIMAL_HALF_EXTENT * 2;
+    const origin = {
+      x: this.x + Math.cos(this.rotationAngle) * offset,
+      y: this.y + Math.sin(this.rotationAngle) * offset
+    };
     const facing = this.rotationAngle;
 
     const params = {
