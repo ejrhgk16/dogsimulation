@@ -1,5 +1,5 @@
 import type { MapData } from '../types/map';
-import type { ContactPoint, TrackState, SensorPositions, ScentSample } from '../types/pursuer';
+import type { ContactPoint, TrackState, ScentSample } from '../types/pursuer';
 import type { TrackingParams, ScentPoint } from '../types/scent';
 import {
   ANIMAL_HEIGHT_OFFSET,
@@ -8,7 +8,7 @@ import {
 } from '../config/animalConfig';
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
-import { sampleScentDetail, getLastContactDistance, estimatePatchiness } from './scentSampler';
+import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
 import { getHeightAt, isObstacleInFootprint } from './mapService';
 
 const TWO_PI = 2 * Math.PI;
@@ -341,29 +341,48 @@ export class Pursuer {
     return this.clamp(tp.maxSpeed * Math.exp(-tp.kSpeedSigma * sigma), tp.minSpeed, tp.maxSpeed);
   }
 
-  getDogSensorPositions(): SensorPositions {
-    const sensorOffset = ANIMAL_HALF_EXTENT * 2;
-    const cx = this.x + Math.cos(this.rotationAngle) * sensorOffset;
-    const cy = this.y + Math.sin(this.rotationAngle) * sensorOffset;
-    const latX = Math.cos(this.rotationAngle - Math.PI / 2) * this.trackingParams.sensorRadius;
-    const latY = Math.sin(this.rotationAngle - Math.PI / 2) * this.trackingParams.sensorRadius;
-
-    return {
-      center: { x: cx, y: cy },
-      left: { x: cx + latX, y: cy + latY },
-      right: { x: cx - latX, y: cy - latY }
-    };
-  }
-
   private buildDogScentSample(trailPoints: readonly ScentPoint[], now: number): ScentSample {
-    const sensors = this.getDogSensorPositions();
+    const fanAngle = this.trackingParams.sensorFanAngle;
+    const halfFan = fanAngle / 2;
+    const sectorWidth = fanAngle / 3;
+    const maxRadius = this.trackingParams.sensorRadius;
+    const origin = { x: this.x, y: this.y };
+    const facing = this.rotationAngle;
+
     const params = {
       ...DEFAULT_SCENT_PARAMS,
-      sensorRadius: this.trackingParams.sensorRadius
+      sensorRadius: maxRadius
     };
-    const center = sampleScentDetail(sensors.center, trailPoints, now, params);
-    const left = sampleScentDetail(sensors.left, trailPoints, now, params);
-    const right = sampleScentDetail(sensors.right, trailPoints, now, params);
+    const center = sampleScentInSector(
+      origin,
+      facing,
+      -sectorWidth / 2,
+      sectorWidth / 2,
+      maxRadius,
+      trailPoints,
+      now,
+      params
+    );
+    const left = sampleScentInSector(
+      origin,
+      facing,
+      -halfFan,
+      -sectorWidth / 2,
+      maxRadius,
+      trailPoints,
+      now,
+      params
+    );
+    const right = sampleScentInSector(
+      origin,
+      facing,
+      sectorWidth / 2,
+      halfFan,
+      maxRadius,
+      trailPoints,
+      now,
+      params
+    );
 
     // Estimate heading from trailMemory, fallback to current facing when empty
     let trailHeading = this.trailMemory.length >= 2 ? this.estimatedHeading : this.rotationAngle;

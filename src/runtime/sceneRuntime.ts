@@ -14,7 +14,8 @@ import {
   PerspectiveCamera,
   RingGeometry,
   Scene,
-  SphereGeometry,
+  Shape,
+  ShapeGeometry,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -62,13 +63,13 @@ export class SceneRuntime {
 
   private debugVisible = false;
   private debugGroup: Group | null = null;
-  private sensorSpheres: Mesh[] = [];
   private searchRing: Mesh | null = null;
   private headingArrow: Line | null = null;
   private targetHeadingArrow: Line | null = null;
-  private sensorTriangle: Mesh | null = null;
-  private sensorRings: Mesh[] = [];
   private debugInitialRadius = 0;
+  private sensorFanMeshes: Mesh[] = [];
+  private lastSensorRadius = 0;
+  private lastSensorFanAngle = 0;
 
   private readonly homePosition = new Vector3(0, 25, 35);
   private readonly homeTarget = new Vector3(0, 0, 0);
@@ -200,12 +201,10 @@ export class SceneRuntime {
     if (!visible && this.debugGroup) {
       this.scene.remove(this.debugGroup);
       this.debugGroup = null;
-      this.sensorSpheres = [];
       this.searchRing = null;
       this.headingArrow = null;
       this.targetHeadingArrow = null;
-      this.sensorTriangle = null;
-      this.sensorRings = [];
+      this.sensorFanMeshes = [];
     }
   }
 
@@ -323,17 +322,7 @@ export class SceneRuntime {
       this.debugGroup = new Group();
       this.scene.add(this.debugGroup);
 
-      const sphereGeo = new SphereGeometry(0.15, 8, 8);
-      const leftMat = new MeshBasicMaterial({ color: 0xff4444 });
-      const centerMat = new MeshBasicMaterial({ color: 0xffffff });
-      const rightMat = new MeshBasicMaterial({ color: 0x4488ff });
-      this.sensorSpheres = [
-        new Mesh(sphereGeo, leftMat),
-        new Mesh(sphereGeo, centerMat),
-        new Mesh(sphereGeo, rightMat)
-      ];
-      for (const s of this.sensorSpheres) this.debugGroup.add(s);
-
+      // searchRing
       this.debugInitialRadius =
         this.pursuers[0]?.trackingParams.initialRadius ?? DEFAULT_TRACKING_PARAMS.initialRadius;
       const ringGeo = new RingGeometry(this.debugInitialRadius, this.debugInitialRadius + 0.1, 64);
@@ -347,45 +336,53 @@ export class SceneRuntime {
       this.searchRing = new Mesh(ringGeo, ringMat);
       this.debugGroup.add(this.searchRing);
 
+      // headingArrow
       const headingGeo = new BufferGeometry();
       headingGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3));
       const headingMat = new LineBasicMaterial({ color: 0xffaa00 });
       this.headingArrow = new Line(headingGeo, headingMat);
       this.debugGroup.add(this.headingArrow);
 
+      // targetHeadingArrow
       const targetGeo = new BufferGeometry();
       targetGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3));
       const targetMat = new LineBasicMaterial({ color: 0xff6600 });
       this.targetHeadingArrow = new Line(targetGeo, targetMat);
       this.debugGroup.add(this.targetHeadingArrow);
 
-      const triGeo = new BufferGeometry();
-      triGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3));
-      const triMat = new MeshBasicMaterial({
-        color: 0x44aaff,
-        transparent: true,
-        opacity: 0.4,
-        side: DoubleSide
-      });
-      this.sensorTriangle = new Mesh(triGeo, triMat);
-      this.debugGroup.add(this.sensorTriangle);
-
+      // sensorFanMeshes — 3 fan sectors (left=red, center=white, right=blue)
+      const fanAngle =
+        this.pursuers[0]?.trackingParams.sensorFanAngle ?? DEFAULT_TRACKING_PARAMS.sensorFanAngle;
       const sensorRadius =
         this.pursuers[0]?.trackingParams.sensorRadius ?? DEFAULT_TRACKING_PARAMS.sensorRadius;
-      const sensorRingGeo = new RingGeometry(Math.max(0, sensorRadius - 0.15), sensorRadius, 32);
-      sensorRingGeo.rotateX(-Math.PI / 2);
-      const sensorRingMat = new MeshBasicMaterial({
-        color: 0x88ccff,
-        transparent: true,
-        opacity: 0.35,
-        side: DoubleSide
-      });
-      this.sensorRings = [
-        new Mesh(sensorRingGeo, sensorRingMat),
-        new Mesh(sensorRingGeo, sensorRingMat.clone()),
-        new Mesh(sensorRingGeo, sensorRingMat.clone())
+      this.lastSensorFanAngle = fanAngle;
+      this.lastSensorRadius = sensorRadius;
+      const halfFan = fanAngle / 2;
+      const sectorWidth = fanAngle / 3;
+      const fanColors = [0xff4444, 0xffffff, 0x4488ff];
+      const fanSectors = [
+        { start: -halfFan, end: -sectorWidth / 2 },
+        { start: -sectorWidth / 2, end: sectorWidth / 2 },
+        { start: sectorWidth / 2, end: halfFan }
       ];
-      for (const r of this.sensorRings) this.debugGroup.add(r);
+      this.sensorFanMeshes = [];
+      for (let i = 0; i < 3; i++) {
+        const shape = new Shape();
+        shape.moveTo(0, 0);
+        shape.absarc(0, 0, sensorRadius, fanSectors[i].start, fanSectors[i].end, false);
+        shape.lineTo(0, 0);
+        const geo = new ShapeGeometry(shape);
+        geo.rotateX(-Math.PI / 2);
+        const mat = new MeshBasicMaterial({
+          color: fanColors[i],
+          transparent: true,
+          opacity: 0.3,
+          side: DoubleSide
+        });
+        const mesh = new Mesh(geo, mat);
+        this.sensorFanMeshes.push(mesh);
+        this.debugGroup.add(mesh);
+      }
     }
 
     for (const ctrl of this.controllers.values()) {
@@ -423,24 +420,37 @@ export class SceneRuntime {
         const baseY = pursuer.height + 0.06;
         this.debugGroup.position.set(pursuer.x, baseY, pursuer.y);
 
-        const sensors = pursuer.getDogSensorPositions();
-        const lx = sensors.center.x - pursuer.x;
-        const ly = sensors.center.y - pursuer.y;
-        const lLeftX = sensors.left.x - pursuer.x;
-        const lLeftY = sensors.left.y - pursuer.y;
-        const lRightX = sensors.right.x - pursuer.x;
-        const lRightY = sensors.right.y - pursuer.y;
-
-        this.sensorSpheres[0]?.position.set(lLeftX, -0.01, lLeftY);
-        this.sensorSpheres[1]?.position.set(lx, -0.01, ly);
-        this.sensorSpheres[2]?.position.set(lRightX, -0.01, lRightY);
-
-        for (let i = 0; i < this.sensorRings.length; i++) {
-          const sp = this.sensorSpheres[i];
-          if (sp && this.sensorRings[i]) {
-            this.sensorRings[i].position.copy(sp.position);
-            this.sensorRings[i].position.y += 0.01;
+        // Recreate fan geometries if sensor radius or angle changed
+        const currentRadius = pursuer.trackingParams.sensorRadius;
+        const currentAngle = pursuer.trackingParams.sensorFanAngle;
+        if (
+          Math.abs(currentRadius - this.lastSensorRadius) > 0.001 ||
+          Math.abs(currentAngle - this.lastSensorFanAngle) > 0.001
+        ) {
+          const halfFan = currentAngle / 2;
+          const sectorWidth = currentAngle / 3;
+          const fanSectors = [
+            { start: -halfFan, end: -sectorWidth / 2 },
+            { start: -sectorWidth / 2, end: sectorWidth / 2 },
+            { start: sectorWidth / 2, end: halfFan }
+          ];
+          for (let i = 0; i < this.sensorFanMeshes.length; i++) {
+            this.sensorFanMeshes[i].geometry.dispose();
+            const shape = new Shape();
+            shape.moveTo(0, 0);
+            shape.absarc(0, 0, currentRadius, fanSectors[i].start, fanSectors[i].end, false);
+            shape.lineTo(0, 0);
+            const newGeo = new ShapeGeometry(shape);
+            newGeo.rotateX(-Math.PI / 2);
+            this.sensorFanMeshes[i].geometry = newGeo;
           }
+          this.lastSensorRadius = currentRadius;
+          this.lastSensorFanAngle = currentAngle;
+        }
+
+        // Rotate fan meshes to face the dog's direction
+        for (const mesh of this.sensorFanMeshes) {
+          mesh.rotation.y = pursuer.rotationAngle;
         }
 
         if (this.searchRing) {
@@ -463,14 +473,6 @@ export class SceneRuntime {
           const tPos = this.targetHeadingArrow.geometry.attributes.position;
           tPos.setXYZ(1, tdx, 0, tdz);
           tPos.needsUpdate = true;
-        }
-
-        if (this.sensorTriangle) {
-          const triPos = this.sensorTriangle.geometry.attributes.position;
-          triPos.setXYZ(0, lx, 0, ly);
-          triPos.setXYZ(1, lLeftX, 0, lLeftY);
-          triPos.setXYZ(2, lRightX, 0, lRightY);
-          triPos.needsUpdate = true;
         }
       }
     }

@@ -42,6 +42,8 @@ export interface ScentVisualConfig {
 
 export interface TrackingParams {
   sensorRadius: number;
+  /** 부채꼴 센서의 총 각도 (라디안). 기본값은 Math.PI / 2 (90°). */
+  sensorFanAngle: number;
   detectThreshold: number;
   tauMemory: number;
   sigmaBase: number;

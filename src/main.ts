@@ -150,6 +150,7 @@ trackingPanel.innerHTML = `
     <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
     <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
     <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1" /><span class="slider-value" id="tpv-sensorRadius">1.0</span></label>
+    <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="180" step="5" value="90" /><span class="slider-value" id="tpv-sensorFanAngle">90°</span></label>
     <label>
       <input type="checkbox" id="toggle-debug" />
       Debug Visuals
@@ -161,6 +162,7 @@ app.appendChild(trackingPanel);
 
 const tpKeys = [
   'sensorRadius',
+  'sensorFanAngle',
   'detectThreshold',
   'tauMemory',
   'sigmaBase',
@@ -183,7 +185,8 @@ const tpKeys = [
   'kSpeedSigma'
 ] as const;
 
-function formatTp(value: number): string {
+function formatTp(value: number, key?: string): string {
+  if (key === 'sensorFanAngle') return Math.round((value * 180) / Math.PI) + '°';
   if (Number.isInteger(value)) return String(value);
   if (value < 0.1 || value >= 10) return value.toFixed(1);
   return value.toFixed(2);
@@ -194,8 +197,14 @@ for (const key of tpKeys) {
   const display = trackingPanel.querySelector<HTMLElement>(`#tpv-${key}`)!;
   slider.addEventListener('input', () => {
     const val = parseFloat(slider.value);
-    display.textContent = formatTp(val);
-    runtime.setTrackingParam(key, val);
+    if (key === 'sensorFanAngle') {
+      const rad = (val * Math.PI) / 180;
+      display.textContent = formatTp(rad, key);
+      runtime.setTrackingParam(key, rad);
+    } else {
+      display.textContent = formatTp(val);
+      runtime.setTrackingParam(key, val);
+    }
   });
 }
 

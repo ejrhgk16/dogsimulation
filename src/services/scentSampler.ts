@@ -59,6 +59,53 @@ export function sampleScentDetail(
 }
 
 /**
+ * Sample scent within a sector (fan-shaped region).
+ * Filters trail points by angle relative to facingAngle, then applies
+ * same time decay, distance decay, and avgAge logic as sampleScentDetail.
+ */
+export function sampleScentInSector(
+  origin: { x: number; y: number },
+  facingAngle: number,
+  sectorMinAngle: number,
+  sectorMaxAngle: number,
+  maxRadius: number,
+  trailPoints: readonly ScentPoint[],
+  now: number,
+  params: ScentSamplerParams
+): ScentSampleDetail {
+  const spreadSigma = DEFAULT_SCENT_PARAMS.scentSpreadSigma;
+  const twoSigmaSq = 2 * spreadSigma * spreadSigma;
+  let total = 0;
+  let weightedAgeSum = 0;
+
+  for (const point of trailPoints) {
+    const dx = point.x - origin.x;
+    const dy = point.y - origin.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Distance cutoffs
+    if (dist > maxRadius) continue;
+    if (dist > params.sensorRadius) continue;
+
+    // Angle filter: compute angle relative to facing direction
+    const pointAngle = Math.atan2(dy, dx) - facingAngle;
+    const normalizedAngle = Math.atan2(Math.sin(pointAngle), Math.cos(pointAngle));
+    if (normalizedAngle < sectorMinAngle || normalizedAngle > sectorMaxAngle) continue;
+
+    const tauDecay = point.tauDecay ?? params.tauDecay;
+    const timeDecay = Math.exp(-(now - point.t) / tauDecay);
+    const distDecay = Math.exp(-(dx * dx + dy * dy) / twoSigmaSq);
+    const contribution = timeDecay * distDecay;
+    total += contribution;
+    weightedAgeSum += contribution * (now - point.t);
+  }
+
+  const avgAge = total > 1e-9 ? weightedAgeSum / total : Number.POSITIVE_INFINITY;
+
+  return { totalSignal: total, avgAge };
+}
+
+/**
  * Returns the Euclidean distance between the last two contacts.
  * Returns 0 if fewer than 2 contacts.
  */

@@ -2,6 +2,7 @@ import type { TrackingParams } from '../types/scent';
 
 export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   sensorRadius: 1,
+  sensorFanAngle: Math.PI / 2,
   detectThreshold: 0.25,
   tauMemory: 3.0,
   sigmaBase: 0.08,
