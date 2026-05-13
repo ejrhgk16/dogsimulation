@@ -23,8 +23,6 @@ export interface EmitAccumulator {
 export interface ScentParams {
   tauDecay: number;
   scentSpreadSigma: number;
-  tauDecayMin: number;
-  tauDecayMax: number;
   emitSpacing: number;
 }
 

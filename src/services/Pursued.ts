@@ -218,9 +218,7 @@ export class Pursued {
       y: y + Math.sin(angle) * radius,
       height,
       t: now,
-      tauDecay:
-        (profile.tauDecayMin + Math.random() * (profile.tauDecayMax - profile.tauDecayMin)) *
-        getTauDecayMultiplier()
+      tauDecay: profile.tauDecay * getTauDecayMultiplier()
     });
   }
 

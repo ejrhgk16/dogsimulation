@@ -42,6 +42,11 @@ controlsPanel.innerHTML = `
       <span class="slider-value" id="tau-decay-value">1.0x</span>
     </label>
     <label>
+      <span>PtSize</span>
+      <input type="range" id="ptsize-slider" min="0.1" max="5.0" step="0.1" value="1.0" />
+      <span class="slider-value" id="ptsize-value">1.0x</span>
+    </label>
+    <label>
       <span>EmitRate</span>
       <input type="range" id="emit-rate-slider" min="0.1" max="2.0" step="0.1" value="1.0" />
       <span class="slider-value" id="emit-rate-value">1.0x</span>
@@ -87,6 +92,14 @@ tauDecaySlider.addEventListener('input', () => {
   const val = parseFloat(tauDecaySlider.value);
   tauDecayValue.textContent = val.toFixed(1) + 'x';
   runtime.setScentDecayRate(val);
+});
+
+const ptsizeSlider = controlsPanel.querySelector<HTMLInputElement>('#ptsize-slider')!;
+const ptsizeValue = controlsPanel.querySelector<HTMLElement>('#ptsize-value')!;
+ptsizeSlider.addEventListener('input', () => {
+  const val = parseFloat(ptsizeSlider.value);
+  ptsizeValue.textContent = val.toFixed(1) + 'x';
+  runtime.setScentPointSize(val);
 });
 
 const emitRateSlider = controlsPanel.querySelector<HTMLInputElement>('#emit-rate-slider')!;

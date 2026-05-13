@@ -28,7 +28,8 @@ import {
   ANIMAL_PROFILES,
   DEFAULT_SCENT_VISUAL_CONFIG,
   setTauDecayMultiplier,
-  setEmitRateMultiplier
+  setEmitRateMultiplier,
+  setScentPointSizeMultiplier
 } from '../config/scentConfig';
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { defaultSceneConfig } from '../config/sceneConfig';
@@ -211,7 +212,6 @@ export class SceneRuntime {
   /** 동물 모델 스케일 변경 */
   setAnimalScale(id: string, scale: number): void {
     this.controllers.get(id)?.setScale(scale);
-    this.scentRender?.setPointSize(scale * 0.2);
   }
 
   /** 동물 회전 속도 설정 (rad/s) */
@@ -227,6 +227,12 @@ export class SceneRuntime {
   /** 향기 방출률 배수 설정 */
   setEmitRate(multiplier: number): void {
     setEmitRateMultiplier(multiplier);
+  }
+
+  /** 향기 입자 크기 배수 설정 */
+  setScentPointSize(multiplier: number): void {
+    setScentPointSizeMultiplier(multiplier);
+    this.scentRender?.setPointSize(DEFAULT_SCENT_VISUAL_CONFIG.pointSize * multiplier);
   }
 
   /** 피추적자 이동 속도 설정 */
