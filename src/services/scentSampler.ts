@@ -2,19 +2,25 @@ import type { ScentPoint } from '../types/scent';
 import type { ContactPoint } from '../types/pursuer';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 
+/** 향기 샘플링 파라미터 */
 export interface ScentSamplerParams {
+  /** 시간감쇠 시정수 (클수록 오래 지속) */
   tauDecay: number;
+  /** 센서 감지 반경 */
   sensorRadius: number;
 }
 
+/** 단일 지점 향기 샘플링 결과 */
 export interface ScentSampleDetail {
+  /** 누적 신호 강도 */
   totalSignal: number;
+  /** 거리 가중 평균 연령 */
   avgAge: number;
 }
 
 /**
- * Sample scent intensity at a given position.
- * Sums contributions from all trail points with time decay and distance decay.
+ * 특정 위치에서 향기 신호 강도만 반환.
+ * 모든 trail point의 시간감쇠+거리감쇠 기여도를 합산.
  */
 export function sampleScentAt(
   pos: { x: number; y: number },
@@ -26,8 +32,8 @@ export function sampleScentAt(
 }
 
 /**
- * Sample scent intensity AND average age at a given position.
- * Returns signal strength and distance-weighted average age of contributing points.
+ * 특정 위치에서 향기 신호 강도와 평균 연령을 반환.
+ * 센서 반경 내 trail point만 고려, 거리 가중 평균 age 산출.
  */
 export function sampleScentDetail(
   pos: { x: number; y: number },
@@ -59,9 +65,9 @@ export function sampleScentDetail(
 }
 
 /**
- * Sample scent within a sector (fan-shaped region).
- * Filters trail points by angle relative to facingAngle, then applies
- * same time decay, distance decay, and avgAge logic as sampleScentDetail.
+ * 부채꼴 섹터 내 향기 샘플링.
+ * facingAngle 기준 상대각도로 trail point 필터링 후
+ * 시간감쇠+거리감쇠+평균연령 계산 (sampleScentDetail와 동일 로직).
  */
 export function sampleScentInSector(
   origin: { x: number; y: number },
@@ -83,11 +89,11 @@ export function sampleScentInSector(
     const dy = point.y - origin.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // Distance cutoffs
+    // 거리 차단
     if (dist > maxRadius) continue;
     if (dist > params.sensorRadius) continue;
 
-    // Angle filter: compute angle relative to facing direction
+    // 각도 필터: facing 방향 기준 상대각도 [-π, π] 정규화
     const pointAngle = Math.atan2(dy, dx) - facingAngle;
     const normalizedAngle = Math.atan2(Math.sin(pointAngle), Math.cos(pointAngle));
     if (normalizedAngle < sectorMinAngle || normalizedAngle > sectorMaxAngle) continue;
@@ -106,8 +112,8 @@ export function sampleScentInSector(
 }
 
 /**
- * Returns the Euclidean distance between the last two contacts.
- * Returns 0 if fewer than 2 contacts.
+ * 마지막 두 접촉점 사이 유클리드 거리 반환.
+ * 접촉점 2개 미만이면 0.
  */
 export function getLastContactDistance(contacts: readonly ContactPoint[]): number {
   if (contacts.length < 2) return 0;
@@ -121,9 +127,8 @@ export function getLastContactDistance(contacts: readonly ContactPoint[]): numbe
 }
 
 /**
- * Estimates patchiness from recent contact time gaps.
- * Uses at most the last 3 gaps (last 4 contacts).
- * Returns normalized coefficient of variation in [0, 1].
+ * 최근 접촉 시간 간격으로 불균일도(patchiness) 추정.
+ * 최대 3개 간격(최근 4개 접촉점) 사용, 변동계수(CV) 정규화값 [0,1] 반환.
  */
 export function estimatePatchiness(contacts: readonly ContactPoint[], _now: number): number {
   const windowSize = Math.min(contacts.length, 4);

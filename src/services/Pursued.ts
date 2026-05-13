@@ -20,22 +20,36 @@ function randomGaussian(): number {
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
+/** 피추적자(알파카) — 키보드 이동·scent 방출 담당 */
 export class Pursued {
   id: string;
+  /** 동물 타입 (profile 식별자) */
   animalType: string;
+  /** 현재 위치 X */
   x: number;
+  /** 현재 위치 Y */
   y: number;
+  /** 지형 반영 현재 높이 */
   height: number;
+  /** 이동 속도 */
   speed: number;
+  /** 방향 X 성분 */
   directionX: number;
+  /** 방향 Y 성분 */
   directionY: number;
+  /** 바라보는 각도 */
   rotationAngle: number;
 
   // Scent
+  /** 방출된 향기 포인트 목록 */
   trailPoints: ScentPoint[] = [];
+  /** 마지막 방출 시간 (시간 기반 스로틀) */
   private lastEmitTime = -Infinity;
+  /** 마지막 방출 이후 누적 이동거리 (거리 기반 스로틀) */
   private distanceSinceLast = 0;
+  /** 마지막 방출 X 좌표 */
   private lastScentX: number;
+  /** 마지막 방출 Y 좌표 */
   private lastScentY: number;
 
   /** 피추적자 생성 (위치/속도/방향 초기화) */
@@ -202,6 +216,7 @@ export class Pursued {
     }
   }
 
+  /** 향기 포인트 생성 (위치·약간의 랜덤 오프셋 적용) */
   private pushScentPoint(
     x: number,
     y: number,

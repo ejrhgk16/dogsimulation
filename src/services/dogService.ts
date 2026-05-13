@@ -1,3 +1,4 @@
+/** 개(Dog) 기본 데이터 구조 */
 export interface Dog {
   id: string;
   name: string;
@@ -5,6 +6,7 @@ export interface Dog {
   speed: number;
 }
 
+/** 새 Dog 인스턴스 생성 */
 export function createDog(
   id: string,
   name: string,
@@ -14,6 +16,7 @@ export function createDog(
   return { id, name, position: { ...position }, speed };
 }
 
+/** 방향·속도·deltaTime 기반으로 Dog 위치 이동 */
 export function moveDog(
   dog: Dog,
   direction: { x: number; y: number; z: number },
@@ -29,6 +32,7 @@ export function moveDog(
   };
 }
 
+/** Dog 속도를 min~max 범위로 제한 */
 export function clampSpeed(dog: Dog, min: number, max: number): Dog {
   return {
     ...dog,

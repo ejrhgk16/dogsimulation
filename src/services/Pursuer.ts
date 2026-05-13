@@ -14,28 +14,50 @@ import { getHeightAt, isObstacleInFootprint } from './mapService';
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
 
+/** 추적자(강아지) — 센서 감지·상태머신·조향·이동 담당 */
 export class Pursuer {
   id: string;
+  /** 현재 위치 X */
   x: number;
+  /** 현재 위치 Y */
   y: number;
+  /** 지형 높이 반영 현재 높이 */
   height: number;
+  /** 기본 이동 속도 */
   speed: number;
+  /** 추적 활성 시 최대 속도 */
   chaseSpeed: number;
+  /** 이동 방향 X 성분 (cos) */
   directionX: number;
+  /** 이동 방향 Y 성분 (sin) */
   directionY: number;
+  /** 현재 바라보는 각도 (게임각, 0=동, CCW) */
   rotationAngle: number;
+  /** 추적 대상 ID (없으면 null) */
   targetId: string | null;
+  /** 추적 상태 (track/surge/cast/lost) */
   state: TrackState;
+  /** 최근 접촉점 기록 */
   lastContacts: ContactPoint[];
+  /** 지나온 경로 (몸통 위치) */
   trailMemory: { x: number; y: number }[];
+  /** 마지막 감지 이후 경과 시간 */
   lostTime: number;
+  /** cast/lost 탐색 반경 */
   searchRadius: number;
+  /** 추적 불확실도 (sigma) */
   sigma: number;
+  /** trailMemory 기반 추정 이동 방향 */
   estimatedHeading: number;
+  /** 조향 목표 방향 */
   targetHeading: number;
+  /** cast 상태 좌우 스윕 방향 (+1 또는 -1) */
   castSide: number;
+  /** 마지막 프레임 감지 신호 */
   lastTrailSignal: number;
+  /** 추적 파라미터 (UI 연동) */
   trackingParams: TrackingParams;
+  /** 추적 활성 여부 */
   isTracking: boolean;
 
   /** 추적자 생성 (위치/속도/추적속도 초기화) */
@@ -296,16 +318,19 @@ export class Pursuer {
     return false;
   }
 
+  /** 값을 min~max 범위로 제한 */
   private clamp(value: number, min: number, max: number): number {
     if (value < min) return min;
     if (value > max) return max;
     return value;
   }
 
+  /** 두 각도 간 최단 차이 [-π, π] 반환 */
   private shortestAngleDiff(target: number, current: number): number {
     return ((((target - current) % TWO_PI) + THREE_PI) % TWO_PI) - Math.PI;
   }
 
+  /** sigma 업데이트: 접촉거리·lost시간·patchiness 반영 */
   private updateSigma(lastContactDistance: number, lostTime: number, patchiness: number): number {
     const tp = this.trackingParams;
     const sigmaTrail = Math.sqrt(
@@ -321,15 +346,18 @@ export class Pursuer {
     );
   }
 
+  /** 기준 heading에 signalDirection을 confidence 가중치로 blend */
   private blendHeading(baseHeading: number, signalDirection: number, confidence: number): number {
     return baseHeading + confidence * this.shortestAngleDiff(signalDirection, baseHeading);
   }
 
+  /** sigma 기반 동적 속도 계산 (불확실성 높을수록 느리게) */
   private dynamicSpeed(sigma: number): number {
     const tp = this.trackingParams;
     return this.clamp(tp.maxSpeed * Math.exp(-tp.kSpeedSigma * sigma), tp.minSpeed, tp.maxSpeed);
   }
 
+  /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
   private buildDogScentSample(trailPoints: readonly ScentPoint[], now: number): ScentSample {
     const fanAngle = this.trackingParams.sensorFanAngle;
     const halfFan = fanAngle / 2;
