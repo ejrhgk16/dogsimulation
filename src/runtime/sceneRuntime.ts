@@ -71,6 +71,12 @@ export class SceneRuntime {
   private lastSensorRadius = 0;
   private lastSensorFanAngle = 0;
 
+  private castDebugGroup: Group | null = null;
+  private castCenterLine: Line | null = null;
+  private castLeftLine: Line | null = null;
+  private castRightLine: Line | null = null;
+  private castArcLine: Line | null = null;
+
   private readonly homePosition = new Vector3(0, 25, 35);
   private readonly homeTarget = new Vector3(0, 0, 0);
 
@@ -197,6 +203,11 @@ export class SceneRuntime {
       this.headingArrow = null;
       this.targetHeadingArrow = null;
       this.sensorFanMeshes = [];
+      this.castDebugGroup = null;
+      this.castCenterLine = null;
+      this.castLeftLine = null;
+      this.castRightLine = null;
+      this.castArcLine = null;
     }
   }
 
@@ -259,6 +270,9 @@ export class SceneRuntime {
     lostTime: number;
     lastTrailSignal: number;
     castSide: number;
+    castOriginX: number;
+    castOriginY: number;
+    castBoundaryAngle: number;
     contactsCount: number;
     x: number;
     y: number;
@@ -275,6 +289,9 @@ export class SceneRuntime {
       lostTime: p.lostTime,
       lastTrailSignal: p.lastTrailSignal,
       castSide: p.castSide,
+      castOriginX: p.castOriginX,
+      castOriginY: p.castOriginY,
+      castBoundaryAngle: p.castBoundaryAngle,
       contactsCount: p.lastContacts.length,
       x: p.x,
       y: p.y,
@@ -375,6 +392,33 @@ export class SceneRuntime {
         this.sensorFanMeshes.push(mesh);
         this.debugGroup.add(mesh);
       }
+
+      // castDebugGroup — cast sector visualization
+      this.castDebugGroup = new Group();
+      this.debugGroup.add(this.castDebugGroup);
+
+      const createCastLine = (color: number): Line => {
+        const g = new BufferGeometry();
+        g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+        const m = new LineBasicMaterial({ color });
+        return new Line(g, m);
+      };
+      this.castCenterLine = createCastLine(0xffffff);
+      this.castLeftLine = createCastLine(0x00ffff);
+      this.castRightLine = createCastLine(0x00ffff);
+      this.castDebugGroup.add(this.castCenterLine);
+      this.castDebugGroup.add(this.castLeftLine);
+      this.castDebugGroup.add(this.castRightLine);
+
+      const arcSegments = 32;
+      const arcPositions = new Float32Array((arcSegments + 1) * 3);
+      const arcGeo = new BufferGeometry();
+      arcGeo.setAttribute('position', new Float32BufferAttribute(arcPositions, 3));
+      const arcMat = new LineBasicMaterial({ color: 0xffff00 });
+      this.castArcLine = new Line(arcGeo, arcMat);
+      this.castDebugGroup.add(this.castArcLine);
+
+      this.castDebugGroup.visible = false;
     }
 
     for (const ctrl of this.controllers.values()) {
@@ -466,6 +510,85 @@ export class SceneRuntime {
           const tPos = this.targetHeadingArrow.geometry.attributes.position;
           tPos.setXYZ(1, tdx, 0, tdz);
           tPos.needsUpdate = true;
+        }
+
+        // cast sector visualization
+        if (
+          this.castDebugGroup &&
+          this.castCenterLine &&
+          this.castLeftLine &&
+          this.castRightLine &&
+          this.castArcLine
+        ) {
+          if (pursuer.state === 'cast') {
+            this.castDebugGroup.visible = true;
+
+            const castAngle = pursuer.castBoundaryAngle;
+            const r = Math.hypot(pursuer.x - pursuer.castOriginX, pursuer.y - pursuer.castOriginY);
+            const radius = Math.max(r, 0.5);
+
+            // Place castDebugGroup at castOrigin relative to debugGroup (which is at pursuer position)
+            const offsetX = pursuer.castOriginX - pursuer.x;
+            const offsetZ = pursuer.castOriginY - pursuer.y;
+            this.castDebugGroup.position.set(offsetX, 0, offsetZ);
+
+            const heading = pursuer.estimatedHeading;
+
+            // Helper: set 2-point line geometry
+            const setLinePoints = (
+              line: Line,
+              x0: number,
+              z0: number,
+              x1: number,
+              z1: number
+            ): void => {
+              const pos = line.geometry.attributes.position;
+              pos.setXYZ(0, x0, 0, z0);
+              pos.setXYZ(1, x1, 0, z1);
+              pos.needsUpdate = true;
+            };
+
+            // Center line (estimatedHeading)
+            setLinePoints(
+              this.castCenterLine,
+              0,
+              0,
+              Math.cos(heading) * radius,
+              Math.sin(heading) * radius
+            );
+
+            // Left wing (estimatedHeading - castAngle)
+            const leftAngle = heading - castAngle;
+            setLinePoints(
+              this.castLeftLine,
+              0,
+              0,
+              Math.cos(leftAngle) * radius,
+              Math.sin(leftAngle) * radius
+            );
+
+            // Right wing (estimatedHeading + castAngle)
+            const rightAngle = heading + castAngle;
+            setLinePoints(
+              this.castRightLine,
+              0,
+              0,
+              Math.cos(rightAngle) * radius,
+              Math.sin(rightAngle) * radius
+            );
+
+            // Arc line
+            const arcPos = this.castArcLine.geometry.attributes.position;
+            const arcSegments = 32;
+            for (let i = 0; i <= arcSegments; i++) {
+              const t = i / arcSegments;
+              const a = heading - castAngle + 2 * castAngle * t;
+              arcPos.setXYZ(i, Math.cos(a) * radius, 0, Math.sin(a) * radius);
+            }
+            arcPos.needsUpdate = true;
+          } else {
+            this.castDebugGroup.visible = false;
+          }
         }
       }
     }

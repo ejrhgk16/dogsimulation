@@ -29,6 +29,10 @@ export class Pursuer {
   directionY: number;
   /** 현재 바라보는 각도 (게임각, 0=동, CCW) */
   rotationAngle: number;
+  /** cast 진입 시점 x 좌표 (원점) */
+  castOriginX: number;
+  /** cast 진입 시점 y 좌표 (원점) */
+  castOriginY: number;
   /** 추적 대상 ID (없으면 null) */
   targetId: string | null;
   /** 추적 상태 (track/surge/cast/lost) */
@@ -57,6 +61,12 @@ export class Pursuer {
   isTracking: boolean;
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
+  private _baseBoundary: number = 0;
+  private readonly _castMargin: number = 0.3;
+
+  get castBoundaryAngle(): number {
+    return this._baseBoundary;
+  }
 
   /** 추적자 생성 (위치/추적 파라미터 초기화) */
   constructor(id: string, x: number, y: number, mapData: MapData, trackingParams?: TrackingParams) {
@@ -67,6 +77,8 @@ export class Pursuer {
     this.directionX = 1;
     this.directionY = 0;
     this.rotationAngle = Math.atan2(1, 0);
+    this.castOriginX = x;
+    this.castOriginY = y;
     this.targetId = null;
     this.state = 'track';
     this.lastContacts = [];
@@ -123,8 +135,8 @@ export class Pursuer {
     const lastContactDistance = getLastContactDistance(this.lastContacts);
     const patchiness = estimatePatchiness(this.lastContacts, now);
 
-    // Update estimatedHeading from trailMemory
-    if (this.trailMemory.length >= 2) {
+    // Update estimatedHeading from trailMemory (frozen during cast)
+    if (this.state !== 'cast' && this.trailMemory.length >= 2) {
       const prev = this.trailMemory[this.trailMemory.length - 2];
       const last = this.trailMemory[this.trailMemory.length - 1];
       const dx = last.x - prev.x;
@@ -142,8 +154,26 @@ export class Pursuer {
 
     if (this.state === 'track' && !detected) {
       this.state = 'surge';
-    } else if (this.state === 'surge' && this.lostTime > this.trackingParams.surgeDuration) {
-      this.state = 'cast';
+    } else if (this.state === 'surge') {
+      let rFromContact = 0;
+      if (this.lastContacts.length > 0) {
+        const last = this.lastContacts[this.lastContacts.length - 1];
+        rFromContact = Math.hypot(this.x - last.x, this.y - last.y);
+      }
+      const effectiveSigma = this.sigma + this.trackingParams.kRadial * rFromContact;
+      if (effectiveSigma * this.trackingParams.theta0 > this.trackingParams.sensorFanAngle / 2) {
+        this.state = 'cast';
+        this.castOriginX = this.x;
+        this.castOriginY = this.y;
+        this._baseBoundary = Math.min(
+          effectiveSigma * this.trackingParams.theta0,
+          this.trackingParams.castAngleMax
+        );
+        this.targetHeading =
+          this.estimatedHeading + this.castSide * (this._baseBoundary + this._castMargin);
+        this.rotationAngle = this.targetHeading;
+        console.log('[CAST BOUNDARY] new:', this._baseBoundary.toFixed(3));
+      }
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
       this.trailMemory = [];
@@ -164,18 +194,7 @@ export class Pursuer {
         sample.signalDirection,
         sample.directionConfidence
       );
-      console.log(
-        '[HEADING] rot:',
-        this.rotationAngle.toFixed(2),
-        'est:',
-        this.estimatedHeading.toFixed(2),
-        'sig:',
-        sample.signalDirection.toFixed(2),
-        'tgt:',
-        this.targetHeading.toFixed(2),
-        'conf:',
-        sample.directionConfidence.toFixed(3)
-      );
+
       moveSpeed = this.dynamicSpeed(sigma);
     } else if (this.state === 'surge') {
       this.targetHeading = this.blendHeading(
@@ -185,17 +204,44 @@ export class Pursuer {
       );
       moveSpeed = this.dynamicSpeed(sigma) * 0.8;
     } else if (this.state === 'cast') {
-      const castAngle = Math.min(sigma, this.trackingParams.castAngleMax);
-      this.targetHeading = this.estimatedHeading + this.castSide * castAngle;
+      const relativeAngle = Math.atan2(this.y - this.castOriginY, this.x - this.castOriginX);
+      const angleFromCenter = this.shortestAngleDiff(relativeAngle, this.estimatedHeading);
+
+      console.log(
+        '[CAST BOUNDARY] boundary:',
+        this._baseBoundary.toFixed(3),
+        'theta:',
+        angleFromCenter.toFixed(3),
+        'r:',
+        Math.hypot(this.x - this.castOriginX, this.y - this.castOriginY).toFixed(1),
+        'side:',
+        this.castSide,
+        'heading:',
+        this.targetHeading.toFixed(3)
+      );
+
+      if (this.castSide * angleFromCenter > this._baseBoundary) {
+        const oldSide = this.castSide;
+        this.castSide *= -1;
+        this.targetHeading =
+          this.estimatedHeading + this.castSide * (this._baseBoundary + this._castMargin);
+        this.rotationAngle = this.targetHeading;
+        console.log(
+          '[CAST FLIP] side:',
+          oldSide,
+          '→',
+          this.castSide,
+          'theta:',
+          angleFromCenter.toFixed(3),
+          'heading:',
+          this.targetHeading.toFixed(3)
+        );
+      }
+
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
     } else {
       this.targetHeading += this.trackingParams.lostTurnRate * dt;
       moveSpeed = this.trackingParams.minSpeed;
-    }
-
-    const diff = this.shortestAngleDiff(this.rotationAngle, this.targetHeading);
-    if (Math.abs(diff) < this.trackingParams.castTurnTolerance) {
-      this.castSide *= -1;
     }
 
     this.directionX = Math.cos(this.targetHeading);

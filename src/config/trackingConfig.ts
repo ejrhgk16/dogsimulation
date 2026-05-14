@@ -22,5 +22,7 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   maxContacts: 6,
   minSpeed: 1,
   maxSpeed: 5,
-  kSpeedSigma: 1.2
+  kSpeedSigma: 1.2,
+  theta0: 4,
+  kRadial: 0.01
 };

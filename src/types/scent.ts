@@ -64,6 +64,10 @@ export interface TrackingParams {
   minSpeed: number;
   maxSpeed: number;
   kSpeedSigma: number;
+  /** sector envelope multiplier (Θ₀ >> 1, 논문 Fig.3A). cast sweep 반각 = sigma * theta0 */
+  theta0: number;
+  /** radial distance contribution weight to sigma. sigma += kRadial * r */
+  kRadial: number;
 }
 
 export interface ScentWorldState {

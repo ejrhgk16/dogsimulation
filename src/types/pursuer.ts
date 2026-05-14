@@ -27,6 +27,8 @@ export interface PursuerState {
   directionX: number; // normalized direction
   directionY: number; // normalized direction
   rotationAngle: number; // radians
+  castOriginX: number; // cast 진입 시점 x 좌표 (원점)
+  castOriginY: number; // cast 진입 시점 y 좌표 (원점)
   targetId: string | null;
   state: TrackState;
   lastContacts: ContactPoint[];
