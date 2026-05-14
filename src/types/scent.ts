@@ -68,6 +68,10 @@ export interface TrackingParams {
   theta0: number;
   /** radial distance contribution weight to sigma. sigma += kRadial * r */
   kRadial: number;
+  /** lostTime 누적 속도 배율 (기본값 1.0). lostTime += delta * lostTimeScale */
+  lostTimeScale: number;
+  /** cast 상태 조향 속도 계수 (기본값 8). cast sweep 각속도 배율 */
+  castTurnRate: number;
 }
 
 export interface ScentWorldState {

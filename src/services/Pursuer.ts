@@ -129,7 +129,7 @@ export class Pursuer {
         this.lastContacts.splice(0, this.lastContacts.length - this.trackingParams.maxContacts);
       }
     } else {
-      this.lostTime += dt;
+      this.lostTime += dt * this.trackingParams.lostTimeScale;
     }
 
     const lastContactDistance = getLastContactDistance(this.lastContacts);
@@ -260,7 +260,7 @@ export class Pursuer {
     this.y = newY;
     this.height = newHeight;
     const angleDiff = this.shortestAngleDiff(this.targetHeading, this.rotationAngle);
-    this.rotationAngle += angleDiff * Math.min(1, 8 * dt);
+    this.rotationAngle += angleDiff * Math.min(1, this.trackingParams.castTurnRate * dt);
   }
 
   /** 장애물·충돌·경사 고려 실제 이동 계산 */
