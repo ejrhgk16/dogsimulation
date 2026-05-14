@@ -5,7 +5,7 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   sensorFanAngle: Math.PI / 2,
   detectThreshold: 0.25,
   tauMemory: 3.0,
-  sigmaBase: 0.08,
+  sigmaBase: 0.05,
   sigmaMin: 0.05,
   sigmaMax: 1.2,
   lambda: 25,

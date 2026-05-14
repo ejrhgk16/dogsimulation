@@ -23,10 +23,6 @@ export class Pursuer {
   y: number;
   /** 지형 높이 반영 현재 높이 */
   height: number;
-  /** 기본 이동 속도 */
-  speed: number;
-  /** 추적 활성 시 최대 속도 */
-  chaseSpeed: number;
   /** 이동 방향 X 성분 (cos) */
   directionX: number;
   /** 이동 방향 Y 성분 (sin) */
@@ -59,23 +55,15 @@ export class Pursuer {
   trackingParams: TrackingParams;
   /** 추적 활성 여부 */
   isTracking: boolean;
+  /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
+  private _prevXi: number;
 
-  /** 추적자 생성 (위치/속도/추적속도 초기화) */
-  constructor(
-    id: string,
-    x: number,
-    y: number,
-    mapData: MapData,
-    speed = 5.0,
-    chaseSpeed = 7.0,
-    trackingParams?: TrackingParams
-  ) {
+  /** 추적자 생성 (위치/추적 파라미터 초기화) */
+  constructor(id: string, x: number, y: number, mapData: MapData, trackingParams?: TrackingParams) {
     this.id = id;
     this.x = x;
     this.y = y;
     this.height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
-    this.speed = speed;
-    this.chaseSpeed = chaseSpeed;
     this.directionX = 1;
     this.directionY = 0;
     this.rotationAngle = Math.atan2(1, 0);
@@ -92,6 +80,7 @@ export class Pursuer {
     this.castSide = Math.random() < 0.5 ? 1 : -1;
     this.lastTrailSignal = 0;
     this.isTracking = false;
+    this._prevXi = this.trackingParams.xi;
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -144,7 +133,6 @@ export class Pursuer {
         this.estimatedHeading = Math.atan2(dy, dx);
       }
     }
-    // If less than 2 points, keep existing estimatedHeading
 
     this.sigma = this.updateSigma(lastContactDistance, this.lostTime, patchiness);
     this.searchRadius = Math.min(
@@ -330,13 +318,24 @@ export class Pursuer {
     return ((((target - current) % TWO_PI) + THREE_PI) % TWO_PI) - Math.PI;
   }
 
-  /** sigma 업데이트: 접촉거리·lost시간·patchiness 반영 */
+  /** sigma 업데이트: 동적 xi + GWLC regime 보간 + lost·patch 반영 */
   private updateSigma(lastContactDistance: number, lostTime: number, patchiness: number): number {
     const tp = this.trackingParams;
+    const xi = this.estimateCurvatureRadius();
+    const L = lastContactDistance;
+    const lam = tp.lambda;
+
+    // GWLC regime interpolation: w ∈ [0,1]
+    // L ≪ λ → w ≈ 0 (curvature dominated)
+    // L ≫ λ → w ≈ 1 (diffusive dominated)
+    const denom = L + lam;
+    const w = denom > 0 ? L / denom : 0;
+
+    const curvatureTerm = (L * L) / (4 * xi * xi);
+    const diffusiveTerm = (2 * lam * L) / (3 * xi * xi);
+
     const sigmaTrail = Math.sqrt(
-      tp.sigmaBase * tp.sigmaBase +
-        (lastContactDistance / (2 * tp.xi)) ** 2 +
-        (2 * tp.lambda * lastContactDistance) / (3 * tp.xi * tp.xi)
+      tp.sigmaBase * tp.sigmaBase + (1 - w) * curvatureTerm + w * diffusiveTerm
     );
 
     return this.clamp(
@@ -344,6 +343,40 @@ export class Pursuer {
       tp.sigmaMin,
       tp.sigmaMax
     );
+  }
+
+  /** lastContacts의 최근 3개 접촉점으로 외접원 반지름(곡률) 계산 후 EMA smoothing */
+  // Internal: will be wired by task-2-update-sigma-gwlc
+  estimateCurvatureRadius(): number {
+    const contacts = this.lastContacts;
+    if (contacts.length < 3) {
+      this._prevXi = this.trackingParams.xi;
+      return this._prevXi;
+    }
+
+    const p0 = contacts[contacts.length - 3];
+    const p1 = contacts[contacts.length - 2];
+    const p2 = contacts[contacts.length - 1];
+
+    const a = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    const b = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const c = Math.hypot(p2.x - p0.x, p2.y - p0.y);
+
+    const s = (a + b + c) / 2;
+    const areaSq = s * (s - a) * (s - b) * (s - c);
+    const area = Math.sqrt(Math.max(0, areaSq));
+
+    const EPSILON = 1e-9;
+    let currentXi: number;
+    if (area > EPSILON) {
+      currentXi = (a * b * c) / (4 * area);
+    } else {
+      currentXi = this.trackingParams.xi;
+    }
+
+    const alpha = 0.3;
+    this._prevXi = alpha * currentXi + (1 - alpha) * this._prevXi;
+    return this._prevXi;
   }
 
   /** 기준 heading에 signalDirection을 confidence 가중치로 blend */
