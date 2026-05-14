@@ -76,6 +76,7 @@ export class SceneRuntime {
   private castLeftLine: Line | null = null;
   private castRightLine: Line | null = null;
   private castArcLine: Line | null = null;
+  private lastCastSide = 0;
 
   private readonly homePosition = new Vector3(0, 25, 35);
   private readonly homeTarget = new Vector3(0, 0, 0);
@@ -532,60 +533,64 @@ export class SceneRuntime {
             const offsetZ = pursuer.castOriginY - pursuer.y;
             this.castDebugGroup.position.set(offsetX, 0, offsetZ);
 
-            const heading = pursuer.estimatedHeading;
+            if (pursuer.castSide !== this.lastCastSide) {
+              const heading = pursuer.estimatedHeading;
 
-            // Helper: set 2-point line geometry
-            const setLinePoints = (
-              line: Line,
-              x0: number,
-              z0: number,
-              x1: number,
-              z1: number
-            ): void => {
-              const pos = line.geometry.attributes.position;
-              pos.setXYZ(0, x0, 0, z0);
-              pos.setXYZ(1, x1, 0, z1);
-              pos.needsUpdate = true;
-            };
+              // Helper: set 2-point line geometry
+              const setLinePoints = (
+                line: Line,
+                x0: number,
+                z0: number,
+                x1: number,
+                z1: number
+              ): void => {
+                const pos = line.geometry.attributes.position;
+                pos.setXYZ(0, x0, 0, z0);
+                pos.setXYZ(1, x1, 0, z1);
+                pos.needsUpdate = true;
+              };
 
-            // Center line (estimatedHeading)
-            setLinePoints(
-              this.castCenterLine,
-              0,
-              0,
-              Math.cos(heading) * radius,
-              Math.sin(heading) * radius
-            );
+              // Center line (estimatedHeading)
+              setLinePoints(
+                this.castCenterLine,
+                0,
+                0,
+                Math.cos(heading) * radius,
+                Math.sin(heading) * radius
+              );
 
-            // Left wing (estimatedHeading - castAngle)
-            const leftAngle = heading - castAngle;
-            setLinePoints(
-              this.castLeftLine,
-              0,
-              0,
-              Math.cos(leftAngle) * radius,
-              Math.sin(leftAngle) * radius
-            );
+              // Left wing (estimatedHeading - castAngle)
+              const leftAngle = heading - castAngle;
+              setLinePoints(
+                this.castLeftLine,
+                0,
+                0,
+                Math.cos(leftAngle) * radius,
+                Math.sin(leftAngle) * radius
+              );
 
-            // Right wing (estimatedHeading + castAngle)
-            const rightAngle = heading + castAngle;
-            setLinePoints(
-              this.castRightLine,
-              0,
-              0,
-              Math.cos(rightAngle) * radius,
-              Math.sin(rightAngle) * radius
-            );
+              // Right wing (estimatedHeading + castAngle)
+              const rightAngle = heading + castAngle;
+              setLinePoints(
+                this.castRightLine,
+                0,
+                0,
+                Math.cos(rightAngle) * radius,
+                Math.sin(rightAngle) * radius
+              );
 
-            // Arc line
-            const arcPos = this.castArcLine.geometry.attributes.position;
-            const arcSegments = 32;
-            for (let i = 0; i <= arcSegments; i++) {
-              const t = i / arcSegments;
-              const a = heading - castAngle + 2 * castAngle * t;
-              arcPos.setXYZ(i, Math.cos(a) * radius, 0, Math.sin(a) * radius);
+              // Arc line
+              const arcPos = this.castArcLine.geometry.attributes.position;
+              const arcSegments = 32;
+              for (let i = 0; i <= arcSegments; i++) {
+                const t = i / arcSegments;
+                const a = heading - castAngle + 2 * castAngle * t;
+                arcPos.setXYZ(i, Math.cos(a) * radius, 0, Math.sin(a) * radius);
+              }
+              arcPos.needsUpdate = true;
+
+              this.lastCastSide = pursuer.castSide;
             }
-            arcPos.needsUpdate = true;
           } else {
             this.castDebugGroup.visible = false;
           }

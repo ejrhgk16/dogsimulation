@@ -70,8 +70,8 @@ export interface TrackingParams {
   kRadial: number;
   /** lostTime 누적 속도 배율 (기본값 1.0). lostTime += delta * lostTimeScale */
   lostTimeScale: number;
-  /** cast 상태 조향 속도 계수 (기본값 8). cast sweep 각속도 배율 */
-  castTurnRate: number;
+  /** flip 시 heading에 더해지는 추가 꺾임각 (rad 단위). cast sweep 경계 넘을 때 margin */
+  castFlipMargin: number;
 }
 
 export interface ScentWorldState {

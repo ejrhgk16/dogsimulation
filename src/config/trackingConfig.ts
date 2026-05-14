@@ -26,5 +26,5 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   theta0: 4,
   kRadial: 0.01,
   lostTimeScale: 1.0,
-  castTurnRate: 8
+  castFlipMargin: 0.3
 };

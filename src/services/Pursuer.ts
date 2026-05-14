@@ -62,7 +62,7 @@ export class Pursuer {
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
   private _baseBoundary: number = 0;
-  private readonly _castMargin: number = 0.3;
+  private readonly TURN_RATE: number = 8;
 
   get castBoundaryAngle(): number {
     return this._baseBoundary;
@@ -170,7 +170,8 @@ export class Pursuer {
           this.trackingParams.castAngleMax
         );
         this.targetHeading =
-          this.estimatedHeading + this.castSide * (this._baseBoundary + this._castMargin);
+          this.estimatedHeading +
+          this.castSide * (this._baseBoundary + this.trackingParams.castFlipMargin);
         this.rotationAngle = this.targetHeading;
         console.log('[CAST BOUNDARY] new:', this._baseBoundary.toFixed(3));
       }
@@ -224,7 +225,8 @@ export class Pursuer {
         const oldSide = this.castSide;
         this.castSide *= -1;
         this.targetHeading =
-          this.estimatedHeading + this.castSide * (this._baseBoundary + this._castMargin);
+          this.estimatedHeading +
+          this.castSide * (this._baseBoundary + this.trackingParams.castFlipMargin);
         this.rotationAngle = this.targetHeading;
         console.log(
           '[CAST FLIP] side:',
@@ -260,7 +262,7 @@ export class Pursuer {
     this.y = newY;
     this.height = newHeight;
     const angleDiff = this.shortestAngleDiff(this.targetHeading, this.rotationAngle);
-    this.rotationAngle += angleDiff * Math.min(1, this.trackingParams.castTurnRate * dt);
+    this.rotationAngle += angleDiff * Math.min(1, this.TURN_RATE * dt);
   }
 
   /** 장애물·충돌·경사 고려 실제 이동 계산 */
