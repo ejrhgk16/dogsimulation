@@ -129,9 +129,7 @@ export class Pursuer {
         this.lastContacts.splice(0, this.lastContacts.length - this.trackingParams.maxContacts);
       }
     } else {
-      // cast 상태에만 castLostScale 적용 → 0으로 두면 cast→lost 전이 방지 (디버깅용)
-      const scale = this.state === 'cast' ? this.trackingParams.castLostScale : 1;
-      this.lostTime += dt * scale;
+      this.lostTime += dt * this.trackingParams.lostTimeScale;
     }
 
     const lastContactDistance = getLastContactDistance(this.lastContacts);
@@ -207,25 +205,23 @@ export class Pursuer {
       );
       moveSpeed = this.dynamicSpeed(sigma) * 0.8;
     } else if (this.state === 'cast') {
-      // estimatedHeading 중심선에서의 수직거리 (signed: +왼쪽, -오른쪽)
-      const dx = this.x - this.castOriginX;
-      const dy = this.y - this.castOriginY;
-      const lateral = dy * Math.cos(this.estimatedHeading) - dx * Math.sin(this.estimatedHeading);
+      const relativeAngle = Math.atan2(this.y - this.castOriginY, this.x - this.castOriginX);
+      const angleFromCenter = this.shortestAngleDiff(relativeAngle, this.estimatedHeading);
 
       console.log(
-        '[CAST BOUNDARY] lateral:',
-        lateral.toFixed(3),
-        'max:',
-        this.trackingParams.castLateralMax.toFixed(3),
+        '[CAST BOUNDARY] boundary:',
+        this._baseBoundary.toFixed(3),
+        'theta:',
+        angleFromCenter.toFixed(3),
         'r:',
-        Math.hypot(dx, dy).toFixed(1),
+        Math.hypot(this.x - this.castOriginX, this.y - this.castOriginY).toFixed(1),
         'side:',
         this.castSide,
         'heading:',
         this.targetHeading.toFixed(3)
       );
 
-      if (this.castSide * lateral > this.trackingParams.castLateralMax) {
+      if (this.castSide * angleFromCenter > this._baseBoundary) {
         const oldSide = this.castSide;
         this.castSide *= -1;
         this.targetHeading =
@@ -237,8 +233,8 @@ export class Pursuer {
           oldSide,
           '→',
           this.castSide,
-          'lateral:',
-          lateral.toFixed(3),
+          'theta:',
+          angleFromCenter.toFixed(3),
           'heading:',
           this.targetHeading.toFixed(3)
         );

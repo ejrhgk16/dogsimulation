@@ -151,9 +151,8 @@ trackingPanel.innerHTML = `
     <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
     <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1" /><span class="slider-value" id="tpv-sensorRadius">1.0</span></label>
     <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="180" step="5" value="90" /><span class="slider-value" id="tpv-sensorFanAngle">90°</span></label>
+    <label><span>lostTimeScale</span><input type="range" id="tp-lostTimeScale" min="0" max="10" step="0.1" value="1.0" /><span class="slider-value" id="tpv-lostTimeScale">1.0</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0" max="2" step="0.1" value="0.3" /><span class="slider-value" id="tpv-castFlipMargin">0.3</span></label>
-    <label><span>castLateralMax</span><input type="range" id="tp-castLateralMax" min="0.5" max="10" step="0.5" value="2.0" /><span class="slider-value" id="tpv-castLateralMax">2.0</span></label>
-    <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castLostScale">1.0</span></label>
     <label>
       <input type="checkbox" id="toggle-debug" />
       Debug Visuals
@@ -186,9 +185,8 @@ const tpKeys = [
   'minSpeed',
   'maxSpeed',
   'kSpeedSigma',
-  'castFlipMargin',
-  'castLateralMax',
-  'castLostScale'
+  'lostTimeScale',
+  'castFlipMargin'
 ] as const;
 
 function formatTp(value: number, key?: string): string {
