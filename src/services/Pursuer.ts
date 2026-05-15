@@ -62,6 +62,7 @@ export class Pursuer {
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
   private _baseBoundary: number = 0;
+  private _halfSectorAngle: number = 0;
   private readonly TURN_RATE: number = 8;
 
   get castBoundaryAngle(): number {
@@ -129,7 +130,8 @@ export class Pursuer {
         this.lastContacts.splice(0, this.lastContacts.length - this.trackingParams.maxContacts);
       }
     } else {
-      this.lostTime += dt * this.trackingParams.lostTimeScale;
+      const scale = this.state === 'cast' ? this.trackingParams.castLostScale : 1;
+      this.lostTime += dt * scale;
     }
 
     const lastContactDistance = getLastContactDistance(this.lastContacts);
@@ -165,15 +167,16 @@ export class Pursuer {
         this.state = 'cast';
         this.castOriginX = this.x;
         this.castOriginY = this.y;
-        this._baseBoundary = Math.min(
+        this._halfSectorAngle = Math.min(
           effectiveSigma * this.trackingParams.theta0,
           this.trackingParams.castAngleMax
         );
-        this.targetHeading =
+        this._baseBoundary = Math.tan(this._halfSectorAngle * this.trackingParams.castFlipMargin);
+        this.targetHeading = this.normalizeAngle(
           this.estimatedHeading +
-          this.castSide * (this._baseBoundary + this.trackingParams.castFlipMargin);
+            this.castSide * this._halfSectorAngle * this.trackingParams.castFlipAngleScale
+        );
         this.rotationAngle = this.targetHeading;
-        console.log('[CAST BOUNDARY] new:', this._baseBoundary.toFixed(3));
       }
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
@@ -205,38 +208,27 @@ export class Pursuer {
       );
       moveSpeed = this.dynamicSpeed(sigma) * 0.8;
     } else if (this.state === 'cast') {
-      const relativeAngle = Math.atan2(this.y - this.castOriginY, this.x - this.castOriginX);
-      const angleFromCenter = this.shortestAngleDiff(relativeAngle, this.estimatedHeading);
+      const dx = this.x - this.castOriginX;
+      const dy = this.y - this.castOriginY;
+      const heading = this.estimatedHeading;
+      const cosH = Math.cos(heading);
+      const sinH = Math.sin(heading);
 
-      console.log(
-        '[CAST BOUNDARY] boundary:',
-        this._baseBoundary.toFixed(3),
-        'theta:',
-        angleFromCenter.toFixed(3),
-        'r:',
-        Math.hypot(this.x - this.castOriginX, this.y - this.castOriginY).toFixed(1),
-        'side:',
-        this.castSide,
-        'heading:',
-        this.targetHeading.toFixed(3)
-      );
+      // dot = forward 방향 거리 (heading에 정사영)
+      // cross = 옆 방향 거리 (heading에 수직, +왼쪽)
+      const dot = dx * cosH + dy * sinH;
+      const cross = -dx * sinH + dy * cosH;
 
-      if (this.castSide * angleFromCenter > this._baseBoundary) {
-        const oldSide = this.castSide;
+      // |cross| / max(|dot|, ε) = tan(각도차)
+      const forwardDist = Math.abs(dot);
+      const lateralDist = Math.abs(cross);
+      const tanAngle = lateralDist / Math.max(forwardDist, 0.001);
+
+      if (tanAngle >= this._baseBoundary && this.castSide * cross > 0) {
         this.castSide *= -1;
-        this.targetHeading =
+        this.targetHeading = this.normalizeAngle(
           this.estimatedHeading +
-          this.castSide * (this._baseBoundary + this.trackingParams.castFlipMargin);
-        this.rotationAngle = this.targetHeading;
-        console.log(
-          '[CAST FLIP] side:',
-          oldSide,
-          '→',
-          this.castSide,
-          'theta:',
-          angleFromCenter.toFixed(3),
-          'heading:',
-          this.targetHeading.toFixed(3)
+            this.castSide * this._halfSectorAngle * this.trackingParams.castFlipAngleScale
         );
       }
 
@@ -364,6 +356,14 @@ export class Pursuer {
   /** 두 각도 간 최단 차이 [-π, π] 반환 */
   private shortestAngleDiff(target: number, current: number): number {
     return ((((target - current) % TWO_PI) + THREE_PI) % TWO_PI) - Math.PI;
+  }
+
+  /** 각도를 [-π, π] 범위로 정규화 */
+  private normalizeAngle(angle: number): number {
+    angle = angle % TWO_PI;
+    if (angle > Math.PI) angle -= TWO_PI;
+    if (angle < -Math.PI) angle += TWO_PI;
+    return angle;
   }
 
   /** sigma 업데이트: 동적 xi + GWLC regime 보간 + lost·patch 반영 */

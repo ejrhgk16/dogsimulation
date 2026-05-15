@@ -68,10 +68,12 @@ export interface TrackingParams {
   theta0: number;
   /** radial distance contribution weight to sigma. sigma += kRadial * r */
   kRadial: number;
-  /** lostTime 누적 속도 배율 (기본값 1.0). lostTime += delta * lostTimeScale */
-  lostTimeScale: number;
-  /** flip 시 heading에 더해지는 추가 꺾임각 (rad 단위). cast sweep 경계 넘을 때 margin */
+  /** cast 상태에서 lostTime 누적 배율 (기본 1.0). 0으로 두면 cast 고정 */
+  castLostScale: number;
+  /** cast flip 마진 (0.3~1.0). _baseBoundary = tan(halfSectorAngle * margin). 작을수록 더 자주 flip */
   castFlipMargin: number;
+  /** cast flip 시 꺾는 각도 배율 (0.3~2.0). castSide * halfSectorAngle * scale. 1.0=경계선까지, 작을수록 좁은 각도 */
+  castFlipAngleScale: number;
 }
 
 export interface ScentWorldState {
