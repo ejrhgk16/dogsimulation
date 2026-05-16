@@ -11,6 +11,10 @@ app.appendChild(canvas);
 const runtime = new SceneRuntime(canvas);
 const ALPACA_ID = runtime.alpacaId;
 
+const leftPanels = document.createElement('div');
+leftPanels.id = 'left-panels';
+app.appendChild(leftPanels);
+
 // Control panel
 const controlsPanel = document.createElement('div');
 controlsPanel.id = 'controls-panel';
@@ -55,7 +59,57 @@ controlsPanel.innerHTML = `
   </fieldset>
 `;
 
-app.appendChild(controlsPanel);
+leftPanels.appendChild(controlsPanel);
+
+// Visual panel
+const visualPanel = document.createElement('div');
+visualPanel.id = 'visual-panel';
+visualPanel.innerHTML = `
+  <fieldset>
+    <legend>Visual</legend>
+    <label><input type="checkbox" id="vis-search-ring" /> Search Ring</label>
+    <label><input type="checkbox" id="vis-heading-arrow" /> Heading Arrow</label>
+    <label><input type="checkbox" id="vis-target-heading-arrow" /> Target Heading</label>
+    <label><input type="checkbox" id="vis-sensor-fan" /> Sensor Fan</label>
+    <label><input type="checkbox" id="vis-cast-debug" /> Cast Sector</label>
+    <button id="reset-btn" type="button">Reset (Pos+Scent+Camera)</button>
+  </fieldset>
+`;
+leftPanels.appendChild(visualPanel);
+
+const visSearchRing = visualPanel.querySelector<HTMLInputElement>('#vis-search-ring')!;
+visSearchRing.addEventListener('change', () => {
+  runtime.setSearchRingVisible(visSearchRing.checked);
+});
+
+const visHeadingArrow = visualPanel.querySelector<HTMLInputElement>('#vis-heading-arrow')!;
+visHeadingArrow.addEventListener('change', () => {
+  runtime.setHeadingArrowVisible(visHeadingArrow.checked);
+});
+
+const visTargetHeadingArrow = visualPanel.querySelector<HTMLInputElement>(
+  '#vis-target-heading-arrow'
+)!;
+visTargetHeadingArrow.addEventListener('change', () => {
+  runtime.setTargetHeadingArrowVisible(visTargetHeadingArrow.checked);
+});
+
+const visSensorFan = visualPanel.querySelector<HTMLInputElement>('#vis-sensor-fan')!;
+visSensorFan.addEventListener('change', () => {
+  runtime.setSensorFanVisible(visSensorFan.checked);
+});
+
+const visCastDebug = visualPanel.querySelector<HTMLInputElement>('#vis-cast-debug')!;
+visCastDebug.addEventListener('change', () => {
+  runtime.setCastDebugVisible(visCastDebug.checked);
+});
+
+const resetBtn = visualPanel.querySelector<HTMLButtonElement>('#reset-btn')!;
+resetBtn.addEventListener('click', () => {
+  runtime.resetPositions();
+  runtime.resetScent();
+  runtime.resetCamera();
+});
 
 const scentCheckbox = controlsPanel.querySelector<HTMLInputElement>('#toggle-scent')!;
 scentCheckbox.addEventListener('change', () => {
@@ -154,10 +208,6 @@ trackingPanel.innerHTML = `
     <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castLostScale">1.0</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
     <label><span>castFlipAngleScale</span><input type="range" id="tp-castFlipAngleScale" min="0.3" max="2.0" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castFlipAngleScale">1.0</span></label>
-    <label>
-      <input type="checkbox" id="toggle-debug" />
-      Debug Visuals
-    </label>
   </fieldset>
 `;
 
@@ -213,11 +263,6 @@ for (const key of tpKeys) {
     }
   });
 }
-
-const debugCheckbox = trackingPanel.querySelector<HTMLInputElement>('#toggle-debug')!;
-debugCheckbox.addEventListener('change', () => {
-  runtime.setDebugVisible(debugCheckbox.checked);
-});
 
 // Debug values panel
 const debugPanel = document.createElement('div');

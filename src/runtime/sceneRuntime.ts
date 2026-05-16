@@ -22,9 +22,10 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData } from '../types/map';
 import type { TrackingParams } from '../types/scent';
-import { generateMap } from '../services/mapService';
+import { generateMap, getHeightAt } from '../services/mapService';
 import { Pursuer } from '../services/Pursuer';
 import { Pursued } from '../services/Pursued';
+import { ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import {
   ANIMAL_PROFILES,
   DEFAULT_SCENT_VISUAL_CONFIG,
@@ -61,7 +62,15 @@ export class SceneRuntime {
   private lastFrameTime = performance.now();
   private keys = new Set<string>();
 
-  private debugVisible = false;
+  private showSearchRing = false;
+  private showHeadingArrow = false;
+  private showTargetHeadingArrow = false;
+  private showSensorFan = false;
+  private showCastDebug = false;
+
+  private initialPursuerPositions: Array<{ x: number; y: number }>;
+  private initialPursuedPositions: Array<{ x: number; y: number }>;
+
   private debugGroup: Group | null = null;
   private searchRing: Mesh | null = null;
   private headingArrow: Line | null = null;
@@ -96,6 +105,9 @@ export class SceneRuntime {
     this.pursuers = externalPursuers ?? [dogPursuer];
     this.pursuedList = externalPursuedList ?? [alpacaPursued];
     this.alpacaId = this.pursuedList.find((p) => p.animalType === 'alpaca')?.id ?? 'alpaca';
+
+    this.initialPursuerPositions = this.pursuers.map((p) => ({ x: p.x, y: p.y }));
+    this.initialPursuedPositions = this.pursuedList.map((p) => ({ x: p.x, y: p.y }));
 
     this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -194,22 +206,29 @@ export class SceneRuntime {
     this.scentRender?.setVisible(visible);
   }
 
-  /** 디버그 시각화 표시/숨김 */
-  setDebugVisible(visible: boolean): void {
-    this.debugVisible = visible;
-    if (!visible && this.debugGroup) {
-      this.scene.remove(this.debugGroup);
-      this.debugGroup = null;
-      this.searchRing = null;
-      this.headingArrow = null;
-      this.targetHeadingArrow = null;
-      this.sensorFanMeshes = [];
-      this.castDebugGroup = null;
-      this.castCenterLine = null;
-      this.castLeftLine = null;
-      this.castRightLine = null;
-      this.castArcLine = null;
-    }
+  /** 서치링 디버그 표시/숨김 */
+  setSearchRingVisible(v: boolean): void {
+    this.showSearchRing = v;
+  }
+
+  /** heading 화살표 디버그 표시/숨김 */
+  setHeadingArrowVisible(v: boolean): void {
+    this.showHeadingArrow = v;
+  }
+
+  /** target heading 화살표 디버그 표시/숨김 */
+  setTargetHeadingArrowVisible(v: boolean): void {
+    this.showTargetHeadingArrow = v;
+  }
+
+  /** 센서팬 디버그 표시/숨김 */
+  setSensorFanVisible(v: boolean): void {
+    this.showSensorFan = v;
+  }
+
+  /** cast 디버그 표시/숨김 */
+  setCastDebugVisible(v: boolean): void {
+    this.showCastDebug = v;
   }
 
   /** 동물 모델 스케일 변경 */
@@ -300,6 +319,55 @@ export class SceneRuntime {
     }));
   }
 
+  /** 모든 Pursuer/Pursued를 초기 위치로 리셋 */
+  resetPositions(): void {
+    for (let i = 0; i < this.pursuers.length; i++) {
+      const p = this.pursuers[i];
+      const init = this.initialPursuerPositions[i];
+      p.x = init.x;
+      p.y = init.y;
+      p.height = getHeightAt(this.mapData, p.x, p.y) + ANIMAL_HEIGHT_OFFSET;
+      p.directionX = 1;
+      p.directionY = 0;
+      p.rotationAngle = Math.atan2(1, 0);
+      p.state = 'track';
+      p.lastContacts = [];
+      p.trailMemory = [];
+      p.lostTime = 0;
+      p.searchRadius = 0;
+      p.sigma = p.trackingParams.sigmaBase;
+      p.estimatedHeading = p.rotationAngle;
+      p.targetHeading = p.rotationAngle;
+      p.castOriginX = p.x;
+      p.castOriginY = p.y;
+      (p as unknown as { _prevXi: number })._prevXi = p.trackingParams.xi;
+      this.controllers.get(p.id)?.update(p);
+    }
+
+    for (let i = 0; i < this.pursuedList.length; i++) {
+      const p = this.pursuedList[i];
+      const init = this.initialPursuedPositions[i];
+      p.x = init.x;
+      p.y = init.y;
+      p.height = getHeightAt(this.mapData, p.x, p.y) + ANIMAL_HEIGHT_OFFSET;
+      p.directionX = 1;
+      p.directionY = 0;
+      p.rotationAngle = Math.atan2(1, 0);
+      this.controllers.get(p.id)?.update(p);
+    }
+  }
+
+  /** 모든 Pursued의 향기 관련 상태 초기화 */
+  resetScent(): void {
+    for (const p of this.pursuedList) {
+      p.trailPoints = [];
+      (p as unknown as { lastEmitTime: number }).lastEmitTime = -Infinity;
+      (p as unknown as { distanceSinceLast: number }).distanceSinceLast = 0;
+      (p as unknown as { lastScentX: number }).lastScentX = p.x;
+      (p as unknown as { lastScentY: number }).lastScentY = p.y;
+    }
+  }
+
   /** 프레임 루프: 카메라 복귀 → 시간 계산 → onFrame → render */
   private render(): void {
     if (this.isReturningToHome) {
@@ -328,98 +396,16 @@ export class SceneRuntime {
 
   /** 매 프레임 실행: 애니메이션 업데이트 → 추적/이동 로직 */
   private onFrame(dt: number, now: number): void {
-    if (this.debugVisible && !this.debugGroup) {
+    const anyDebugActive =
+      this.showSearchRing ||
+      this.showHeadingArrow ||
+      this.showTargetHeadingArrow ||
+      this.showSensorFan ||
+      this.showCastDebug;
+
+    if (anyDebugActive && !this.debugGroup) {
       this.debugGroup = new Group();
       this.scene.add(this.debugGroup);
-
-      // searchRing
-      this.debugInitialRadius =
-        this.pursuers[0]?.trackingParams.initialRadius ?? DEFAULT_TRACKING_PARAMS.initialRadius;
-      const ringGeo = new RingGeometry(this.debugInitialRadius, this.debugInitialRadius + 0.1, 64);
-      ringGeo.rotateX(-Math.PI / 2);
-      const ringMat = new MeshBasicMaterial({
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0.4,
-        side: DoubleSide
-      });
-      this.searchRing = new Mesh(ringGeo, ringMat);
-      this.debugGroup.add(this.searchRing);
-
-      // headingArrow
-      const headingGeo = new BufferGeometry();
-      headingGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3));
-      const headingMat = new LineBasicMaterial({ color: 0xffaa00 });
-      this.headingArrow = new Line(headingGeo, headingMat);
-      this.debugGroup.add(this.headingArrow);
-
-      // targetHeadingArrow
-      const targetGeo = new BufferGeometry();
-      targetGeo.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3));
-      const targetMat = new LineBasicMaterial({ color: 0xff6600 });
-      this.targetHeadingArrow = new Line(targetGeo, targetMat);
-      this.debugGroup.add(this.targetHeadingArrow);
-
-      // sensorFanMeshes — 3 fan sectors (left=red, center=white, right=blue)
-      const fanAngle =
-        this.pursuers[0]?.trackingParams.sensorFanAngle ?? DEFAULT_TRACKING_PARAMS.sensorFanAngle;
-      const sensorRadius =
-        this.pursuers[0]?.trackingParams.sensorRadius ?? DEFAULT_TRACKING_PARAMS.sensorRadius;
-      this.lastSensorFanAngle = fanAngle;
-      this.lastSensorRadius = sensorRadius;
-      const halfFan = fanAngle / 2;
-      const sectorWidth = fanAngle / 3;
-      const fanColors = [0xff4444, 0xffffff, 0x4488ff];
-      const fanSectors = [
-        { start: -halfFan, end: -sectorWidth / 2 },
-        { start: -sectorWidth / 2, end: sectorWidth / 2 },
-        { start: sectorWidth / 2, end: halfFan }
-      ];
-      this.sensorFanMeshes = [];
-      for (let i = 0; i < 3; i++) {
-        const shape = new Shape();
-        shape.moveTo(0, 0);
-        shape.absarc(0, 0, sensorRadius, fanSectors[i].start, fanSectors[i].end, false);
-        shape.lineTo(0, 0);
-        const geo = new ShapeGeometry(shape);
-        geo.rotateX(-Math.PI / 2);
-        const mat = new MeshBasicMaterial({
-          color: fanColors[i],
-          transparent: true,
-          opacity: 0.3,
-          side: DoubleSide
-        });
-        const mesh = new Mesh(geo, mat);
-        this.sensorFanMeshes.push(mesh);
-        this.debugGroup.add(mesh);
-      }
-
-      // castDebugGroup — cast sector visualization
-      this.castDebugGroup = new Group();
-      this.debugGroup.add(this.castDebugGroup);
-
-      const createCastLine = (color: number): Line => {
-        const g = new BufferGeometry();
-        g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-        const m = new LineBasicMaterial({ color });
-        return new Line(g, m);
-      };
-      this.castCenterLine = createCastLine(0xffffff);
-      this.castLeftLine = createCastLine(0x00ffff);
-      this.castRightLine = createCastLine(0x00ffff);
-      this.castDebugGroup.add(this.castCenterLine);
-      this.castDebugGroup.add(this.castLeftLine);
-      this.castDebugGroup.add(this.castRightLine);
-
-      const arcSegments = 32;
-      const arcPositions = new Float32Array((arcSegments + 1) * 3);
-      const arcGeo = new BufferGeometry();
-      arcGeo.setAttribute('position', new Float32BufferAttribute(arcPositions, 3));
-      const arcMat = new LineBasicMaterial({ color: 0xffff00 });
-      this.castArcLine = new Line(arcGeo, arcMat);
-      this.castDebugGroup.add(this.castArcLine);
-
-      this.castDebugGroup.visible = false;
     }
 
     for (const ctrl of this.controllers.values()) {
@@ -452,147 +438,311 @@ export class SceneRuntime {
 
     this.scentRender?.update(allTrails, now);
 
-    if (this.debugVisible && this.debugGroup) {
-      for (const pursuer of this.pursuers) {
-        const baseY = pursuer.height + 0.06;
-        this.debugGroup.position.set(pursuer.x, baseY, pursuer.y);
+    if (this.debugGroup) {
+      const anyDebugActive =
+        this.showSearchRing ||
+        this.showHeadingArrow ||
+        this.showTargetHeadingArrow ||
+        this.showSensorFan ||
+        this.showCastDebug;
 
-        // Recreate fan geometries if sensor radius or angle changed
-        const currentRadius = pursuer.trackingParams.sensorRadius;
-        const currentAngle = pursuer.trackingParams.sensorFanAngle;
-        if (
-          Math.abs(currentRadius - this.lastSensorRadius) > 0.001 ||
-          Math.abs(currentAngle - this.lastSensorFanAngle) > 0.001
-        ) {
-          const halfFan = currentAngle / 2;
-          const sectorWidth = currentAngle / 3;
-          const fanSectors = [
-            { start: -halfFan, end: -sectorWidth / 2 },
-            { start: -sectorWidth / 2, end: sectorWidth / 2 },
-            { start: sectorWidth / 2, end: halfFan }
-          ];
-          for (let i = 0; i < this.sensorFanMeshes.length; i++) {
-            this.sensorFanMeshes[i].geometry.dispose();
-            const shape = new Shape();
-            shape.moveTo(0, 0);
-            shape.absarc(0, 0, currentRadius, fanSectors[i].start, fanSectors[i].end, false);
-            shape.lineTo(0, 0);
-            const newGeo = new ShapeGeometry(shape);
-            newGeo.rotateX(-Math.PI / 2);
-            this.sensorFanMeshes[i].geometry = newGeo;
-          }
-          this.lastSensorRadius = currentRadius;
-          this.lastSensorFanAngle = currentAngle;
-        }
+      if (!anyDebugActive) {
+        this.scene.remove(this.debugGroup);
+        this.debugGroup = null;
+        this.searchRing = null;
+        this.headingArrow = null;
+        this.targetHeadingArrow = null;
+        this.sensorFanMeshes = [];
+        this.castDebugGroup = null;
+        this.castCenterLine = null;
+        this.castLeftLine = null;
+        this.castRightLine = null;
+        this.castArcLine = null;
+        this.lastCastSide = 0;
+      } else {
+        for (const pursuer of this.pursuers) {
+          const baseY = pursuer.height + 0.06;
+          this.debugGroup.position.set(pursuer.x, baseY, pursuer.y);
 
-        // Fan rotation: -rotationAngle to match Three.js Y+ (X→-Z) with game X→+Z
-        for (const mesh of this.sensorFanMeshes) {
-          mesh.rotation.y = -pursuer.rotationAngle;
-          mesh.position.set(0, 0, 0);
-        }
-
-        if (this.searchRing) {
-          const scale =
-            this.debugInitialRadius > 0 ? pursuer.searchRadius / this.debugInitialRadius : 1;
-          this.searchRing.scale.setScalar(scale);
-        }
-
-        if (this.headingArrow) {
-          const hdx = Math.cos(pursuer.estimatedHeading) * 3;
-          const hdz = Math.sin(pursuer.estimatedHeading) * 3;
-          const hPos = this.headingArrow.geometry.attributes.position;
-          hPos.setXYZ(1, hdx, 0, hdz);
-          hPos.needsUpdate = true;
-        }
-
-        if (this.targetHeadingArrow) {
-          const tdx = Math.cos(pursuer.targetHeading) * 3;
-          const tdz = Math.sin(pursuer.targetHeading) * 3;
-          const tPos = this.targetHeadingArrow.geometry.attributes.position;
-          tPos.setXYZ(1, tdx, 0, tdz);
-          tPos.needsUpdate = true;
-        }
-
-        // cast sector visualization
-        if (
-          this.castDebugGroup &&
-          this.castCenterLine &&
-          this.castLeftLine &&
-          this.castRightLine &&
-          this.castArcLine
-        ) {
-          if (pursuer.state === 'cast') {
-            this.castDebugGroup.visible = true;
-
-            const castAngle = pursuer.castBoundaryAngle;
-            const r = Math.hypot(pursuer.x - pursuer.castOriginX, pursuer.y - pursuer.castOriginY);
-            const radius = Math.max(r, 0.5);
-
-            // Place castDebugGroup at castOrigin relative to debugGroup (which is at pursuer position)
-            const offsetX = pursuer.castOriginX - pursuer.x;
-            const offsetZ = pursuer.castOriginY - pursuer.y;
-            this.castDebugGroup.position.set(offsetX, 0, offsetZ);
-
-            if (pursuer.castSide !== this.lastCastSide) {
-              const heading = pursuer.estimatedHeading;
-
-              // Helper: set 2-point line geometry
-              const setLinePoints = (
-                line: Line,
-                x0: number,
-                z0: number,
-                x1: number,
-                z1: number
-              ): void => {
-                const pos = line.geometry.attributes.position;
-                pos.setXYZ(0, x0, 0, z0);
-                pos.setXYZ(1, x1, 0, z1);
-                pos.needsUpdate = true;
-              };
-
-              // Center line (estimatedHeading)
-              setLinePoints(
-                this.castCenterLine,
-                0,
-                0,
-                Math.cos(heading) * radius,
-                Math.sin(heading) * radius
+          // --- Search Ring ---
+          if (this.showSearchRing) {
+            if (!this.searchRing) {
+              this.debugInitialRadius =
+                pursuer.trackingParams.initialRadius ?? DEFAULT_TRACKING_PARAMS.initialRadius;
+              const ringGeo = new RingGeometry(
+                this.debugInitialRadius,
+                this.debugInitialRadius + 0.1,
+                64
               );
-
-              // Left wing (estimatedHeading - castAngle)
-              const leftAngle = heading - castAngle;
-              setLinePoints(
-                this.castLeftLine,
-                0,
-                0,
-                Math.cos(leftAngle) * radius,
-                Math.sin(leftAngle) * radius
-              );
-
-              // Right wing (estimatedHeading + castAngle)
-              const rightAngle = heading + castAngle;
-              setLinePoints(
-                this.castRightLine,
-                0,
-                0,
-                Math.cos(rightAngle) * radius,
-                Math.sin(rightAngle) * radius
-              );
-
-              // Arc line
-              const arcPos = this.castArcLine.geometry.attributes.position;
-              const arcSegments = 32;
-              for (let i = 0; i <= arcSegments; i++) {
-                const t = i / arcSegments;
-                const a = heading - castAngle + 2 * castAngle * t;
-                arcPos.setXYZ(i, Math.cos(a) * radius, 0, Math.sin(a) * radius);
-              }
-              arcPos.needsUpdate = true;
-
-              this.lastCastSide = pursuer.castSide;
+              ringGeo.rotateX(-Math.PI / 2);
+              const ringMat = new MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.4,
+                side: DoubleSide
+              });
+              this.searchRing = new Mesh(ringGeo, ringMat);
+              this.debugGroup.add(this.searchRing);
             }
-          } else {
-            this.castDebugGroup.visible = false;
+            const scale =
+              this.debugInitialRadius > 0 ? pursuer.searchRadius / this.debugInitialRadius : 1;
+            this.searchRing.scale.setScalar(scale);
+          } else if (this.searchRing) {
+            this.debugGroup.remove(this.searchRing);
+            this.searchRing.geometry.dispose();
+            (this.searchRing.material as MeshBasicMaterial).dispose();
+            this.searchRing = null;
+          }
+
+          // --- Heading Arrow ---
+          if (this.showHeadingArrow) {
+            if (!this.headingArrow) {
+              const headingGeo = new BufferGeometry();
+              headingGeo.setAttribute(
+                'position',
+                new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3)
+              );
+              const headingMat = new LineBasicMaterial({ color: 0xffaa00 });
+              this.headingArrow = new Line(headingGeo, headingMat);
+              this.debugGroup.add(this.headingArrow);
+            }
+            const hdx = Math.cos(pursuer.estimatedHeading) * 3;
+            const hdz = Math.sin(pursuer.estimatedHeading) * 3;
+            const hPos = this.headingArrow.geometry.attributes.position;
+            hPos.setXYZ(1, hdx, 0, hdz);
+            hPos.needsUpdate = true;
+          } else if (this.headingArrow) {
+            this.debugGroup.remove(this.headingArrow);
+            this.headingArrow.geometry.dispose();
+            (this.headingArrow.material as LineBasicMaterial).dispose();
+            this.headingArrow = null;
+          }
+
+          // --- Target Heading Arrow ---
+          if (this.showTargetHeadingArrow) {
+            if (!this.targetHeadingArrow) {
+              const targetGeo = new BufferGeometry();
+              targetGeo.setAttribute(
+                'position',
+                new Float32BufferAttribute([0, 0, 0, 0, 0, -3], 3)
+              );
+              const targetMat = new LineBasicMaterial({ color: 0xff6600 });
+              this.targetHeadingArrow = new Line(targetGeo, targetMat);
+              this.debugGroup.add(this.targetHeadingArrow);
+            }
+            const tdx = Math.cos(pursuer.targetHeading) * 3;
+            const tdz = Math.sin(pursuer.targetHeading) * 3;
+            const tPos = this.targetHeadingArrow.geometry.attributes.position;
+            tPos.setXYZ(1, tdx, 0, tdz);
+            tPos.needsUpdate = true;
+          } else if (this.targetHeadingArrow) {
+            this.debugGroup.remove(this.targetHeadingArrow);
+            this.targetHeadingArrow.geometry.dispose();
+            (this.targetHeadingArrow.material as LineBasicMaterial).dispose();
+            this.targetHeadingArrow = null;
+          }
+
+          // --- Sensor Fan ---
+          if (this.showSensorFan) {
+            const fanAngle =
+              pursuer.trackingParams.sensorFanAngle ?? DEFAULT_TRACKING_PARAMS.sensorFanAngle;
+            const sensorRadius =
+              pursuer.trackingParams.sensorRadius ?? DEFAULT_TRACKING_PARAMS.sensorRadius;
+
+            if (this.sensorFanMeshes.length === 0) {
+              const halfFan = fanAngle / 2;
+              const sectorWidth = fanAngle / 3;
+              const fanColors = [0xff4444, 0xffffff, 0x4488ff];
+              const fanSectors = [
+                { start: -halfFan, end: -sectorWidth / 2 },
+                { start: -sectorWidth / 2, end: sectorWidth / 2 },
+                { start: sectorWidth / 2, end: halfFan }
+              ];
+              this.sensorFanMeshes = [];
+              for (let i = 0; i < 3; i++) {
+                const shape = new Shape();
+                shape.moveTo(0, 0);
+                shape.absarc(0, 0, sensorRadius, fanSectors[i].start, fanSectors[i].end, false);
+                shape.lineTo(0, 0);
+                const geo = new ShapeGeometry(shape);
+                geo.rotateX(-Math.PI / 2);
+                const mat = new MeshBasicMaterial({
+                  color: fanColors[i],
+                  transparent: true,
+                  opacity: 0.3,
+                  side: DoubleSide
+                });
+                const mesh = new Mesh(geo, mat);
+                this.sensorFanMeshes.push(mesh);
+                this.debugGroup.add(mesh);
+              }
+              this.lastSensorFanAngle = fanAngle;
+              this.lastSensorRadius = sensorRadius;
+            }
+
+            const currentRadius = pursuer.trackingParams.sensorRadius;
+            const currentAngle = pursuer.trackingParams.sensorFanAngle;
+            if (
+              Math.abs(currentRadius - this.lastSensorRadius) > 0.001 ||
+              Math.abs(currentAngle - this.lastSensorFanAngle) > 0.001
+            ) {
+              const halfFan = currentAngle / 2;
+              const sectorWidth = currentAngle / 3;
+              const fanSectors = [
+                { start: -halfFan, end: -sectorWidth / 2 },
+                { start: -sectorWidth / 2, end: sectorWidth / 2 },
+                { start: sectorWidth / 2, end: halfFan }
+              ];
+              for (let i = 0; i < this.sensorFanMeshes.length; i++) {
+                this.sensorFanMeshes[i].geometry.dispose();
+                const shape = new Shape();
+                shape.moveTo(0, 0);
+                shape.absarc(0, 0, currentRadius, fanSectors[i].start, fanSectors[i].end, false);
+                shape.lineTo(0, 0);
+                const newGeo = new ShapeGeometry(shape);
+                newGeo.rotateX(-Math.PI / 2);
+                this.sensorFanMeshes[i].geometry = newGeo;
+              }
+              this.lastSensorRadius = currentRadius;
+              this.lastSensorFanAngle = currentAngle;
+            }
+
+            for (const mesh of this.sensorFanMeshes) {
+              mesh.rotation.y = -pursuer.rotationAngle;
+              mesh.position.set(0, 0, 0);
+            }
+          } else if (this.sensorFanMeshes.length > 0) {
+            for (const mesh of this.sensorFanMeshes) {
+              this.debugGroup.remove(mesh);
+              mesh.geometry.dispose();
+              (mesh.material as MeshBasicMaterial).dispose();
+            }
+            this.sensorFanMeshes = [];
+          }
+
+          // --- Cast Debug ---
+          if (this.showCastDebug) {
+            if (!this.castDebugGroup) {
+              this.castDebugGroup = new Group();
+              this.debugGroup.add(this.castDebugGroup);
+
+              const createCastLine = (color: number): Line => {
+                const g = new BufferGeometry();
+                g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+                const m = new LineBasicMaterial({ color });
+                return new Line(g, m);
+              };
+              this.castCenterLine = createCastLine(0xffffff);
+              this.castLeftLine = createCastLine(0x00ffff);
+              this.castRightLine = createCastLine(0x00ffff);
+              this.castDebugGroup.add(this.castCenterLine);
+              this.castDebugGroup.add(this.castLeftLine);
+              this.castDebugGroup.add(this.castRightLine);
+
+              const arcSegments = 32;
+              const arcPositions = new Float32Array((arcSegments + 1) * 3);
+              const arcGeo = new BufferGeometry();
+              arcGeo.setAttribute('position', new Float32BufferAttribute(arcPositions, 3));
+              const arcMat = new LineBasicMaterial({ color: 0xffff00 });
+              this.castArcLine = new Line(arcGeo, arcMat);
+              this.castDebugGroup.add(this.castArcLine);
+
+              this.castDebugGroup.visible = false;
+            }
+
+            if (
+              this.castCenterLine &&
+              this.castLeftLine &&
+              this.castRightLine &&
+              this.castArcLine
+            ) {
+              if (pursuer.state === 'cast') {
+                this.castDebugGroup.visible = true;
+
+                const castAngle = pursuer.castBoundaryAngle;
+                const r = Math.hypot(
+                  pursuer.x - pursuer.castOriginX,
+                  pursuer.y - pursuer.castOriginY
+                );
+                const radius = Math.max(r, 0.5);
+
+                const offsetX = pursuer.castOriginX - pursuer.x;
+                const offsetZ = pursuer.castOriginY - pursuer.y;
+                this.castDebugGroup.position.set(offsetX, 0, offsetZ);
+
+                if (pursuer.castSide !== this.lastCastSide) {
+                  const heading = pursuer.estimatedHeading;
+
+                  const setLinePoints = (
+                    line: Line,
+                    x0: number,
+                    z0: number,
+                    x1: number,
+                    z1: number
+                  ): void => {
+                    const pos = line.geometry.attributes.position;
+                    pos.setXYZ(0, x0, 0, z0);
+                    pos.setXYZ(1, x1, 0, z1);
+                    pos.needsUpdate = true;
+                  };
+
+                  setLinePoints(
+                    this.castCenterLine,
+                    0,
+                    0,
+                    Math.cos(heading) * radius,
+                    Math.sin(heading) * radius
+                  );
+
+                  const leftAngle = heading - castAngle;
+                  setLinePoints(
+                    this.castLeftLine,
+                    0,
+                    0,
+                    Math.cos(leftAngle) * radius,
+                    Math.sin(leftAngle) * radius
+                  );
+
+                  const rightAngle = heading + castAngle;
+                  setLinePoints(
+                    this.castRightLine,
+                    0,
+                    0,
+                    Math.cos(rightAngle) * radius,
+                    Math.sin(rightAngle) * radius
+                  );
+
+                  const arcPos = this.castArcLine.geometry.attributes.position;
+                  const arcSegments = 32;
+                  for (let i = 0; i <= arcSegments; i++) {
+                    const t = i / arcSegments;
+                    const a = heading - castAngle + 2 * castAngle * t;
+                    arcPos.setXYZ(i, Math.cos(a) * radius, 0, Math.sin(a) * radius);
+                  }
+                  arcPos.needsUpdate = true;
+
+                  this.lastCastSide = pursuer.castSide;
+                }
+              } else {
+                this.castDebugGroup.visible = false;
+              }
+            }
+          } else if (this.castDebugGroup) {
+            this.debugGroup.remove(this.castDebugGroup);
+            this.castCenterLine?.geometry.dispose();
+            (this.castCenterLine?.material as LineBasicMaterial)?.dispose();
+            this.castLeftLine?.geometry.dispose();
+            (this.castLeftLine?.material as LineBasicMaterial)?.dispose();
+            this.castRightLine?.geometry.dispose();
+            (this.castRightLine?.material as LineBasicMaterial)?.dispose();
+            this.castArcLine?.geometry.dispose();
+            (this.castArcLine?.material as LineBasicMaterial)?.dispose();
+            this.castDebugGroup = null;
+            this.castCenterLine = null;
+            this.castLeftLine = null;
+            this.castRightLine = null;
+            this.castArcLine = null;
+            this.lastCastSide = 0;
           }
         }
       }
