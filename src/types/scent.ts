@@ -72,8 +72,14 @@ export interface TrackingParams {
   castLostScale: number;
   /** cast flip 마진 (0.3~1.0). _baseBoundary = tan(halfSectorAngle * margin). 작을수록 더 자주 flip */
   castFlipMargin: number;
-  /** cast flip 시 꺾는 각도 배율 (0.3~2.0). castSide * halfSectorAngle * scale. 1.0=경계선까지, 작을수록 좁은 각도 */
-  castFlipAngleScale: number;
+  /** flip scale 최대값 (0.3~2.0). flipRampStart에서 시작해 flipRampStep씩 증가, 이 값에서 cap. 기본 1.0 */
+  castFlipScaleMax: number;
+  /** cast flip 시 회전 속도 (2~20). 기본 8. 클수록 빠르게 꺾임 */
+  flipTurnRate: number;
+  /** flip 시 초기 angle scale (0.3~1.0). cast 진입 또는 flip ramp 시작 시 적용값. 기본 0.5 */
+  flipRampStart: number;
+  /** flip 시 angle scale 증가량 (0.05~0.5). 매 flip마다 이 값만큼 scale 증가. castFlipScaleMax까지 cap. 기본 0.1 */
+  flipRampStep: number;
 }
 
 export interface ScentWorldState {

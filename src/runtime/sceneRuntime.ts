@@ -294,6 +294,7 @@ export class SceneRuntime {
     castOriginY: number;
     castBoundaryAngle: number;
     contactsCount: number;
+    flipScale: number;
     x: number;
     y: number;
     height: number;
@@ -313,6 +314,7 @@ export class SceneRuntime {
       castOriginY: p.castOriginY,
       castBoundaryAngle: p.castBoundaryAngle,
       contactsCount: p.lastContacts.length,
+      flipScale: p.flipScale,
       x: p.x,
       y: p.y,
       height: p.height
@@ -422,6 +424,8 @@ export class SceneRuntime {
       }
       const others = this.pursuedList.map((p) => ({ x: p.x, y: p.y }));
       pursuer.updateDogState(allTrails, now, dt, this.mapData, others);
+      const turnRate = pursuer.state === 'cast' ? pursuer.trackingParams.flipTurnRate : 8;
+      this.controllers.get(pursuer.id)?.setRotationSpeed(turnRate);
       this.controllers.get(pursuer.id)?.update(pursuer);
     }
 

@@ -207,7 +207,10 @@ trackingPanel.innerHTML = `
     <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="180" step="5" value="90" /><span class="slider-value" id="tpv-sensorFanAngle">90°</span></label>
     <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castLostScale">1.0</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
-    <label><span>castFlipAngleScale</span><input type="range" id="tp-castFlipAngleScale" min="0.3" max="2.0" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castFlipAngleScale">1.0</span></label>
+    <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castFlipScaleMax">1.0</span></label>
+    <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-flipRampStart">0.50</span></label>
+    <label><span>flipRampStep</span><input type="range" id="tp-flipRampStep" min="0.05" max="0.5" step="0.05" value="0.1" /><span class="slider-value" id="tpv-flipRampStep">0.10</span></label>
+    <label><span>flipTurnRate</span><input type="range" id="tp-flipTurnRate" min="2" max="20" step="1" value="8" /><span class="slider-value" id="tpv-flipTurnRate">8</span></label>
   </fieldset>
 `;
 
@@ -238,7 +241,10 @@ const tpKeys = [
   'kSpeedSigma',
   'castLostScale',
   'castFlipMargin',
-  'castFlipAngleScale'
+  'castFlipScaleMax',
+  'flipRampStart',
+  'flipRampStep',
+  'flipTurnRate'
 ] as const;
 
 function formatTp(value: number, key?: string): string {
@@ -278,6 +284,7 @@ debugPanel.innerHTML = `
     <div class="debug-row"><span>lostTime</span><span id="dv-lostTime">-</span></div>
     <div class="debug-row"><span>trailSig</span><span id="dv-lastTrailSignal">-</span></div>
     <div class="debug-row"><span>castSide</span><span id="dv-castSide">-</span></div>
+    <div class="debug-row"><span>flipScale</span><span id="dv-flipScale">-</span></div>
     <div class="debug-row"><span>contacts</span><span id="dv-contactsCount">-</span></div>
     <div class="debug-row"><span>x</span><span id="dv-x">-</span></div>
     <div class="debug-row"><span>y</span><span id="dv-y">-</span></div>
@@ -295,6 +302,7 @@ const debugKeys = [
   'lostTime',
   'lastTrailSignal',
   'castSide',
+  'flipScale',
   'contactsCount',
   'x',
   'y',
@@ -314,7 +322,11 @@ setInterval(() => {
   const s = states[0];
   for (const key of debugKeys) {
     const el = debugPanel.querySelector<HTMLElement>(`#dv-${key}`);
-    if (el) el.textContent = formatDebug(s[key as keyof typeof s] as number | string);
+    if (el) {
+      const val = s[key as keyof typeof s];
+      el.textContent =
+        key === 'flipScale' ? (val as number).toFixed(2) : formatDebug(val as number | string);
+    }
   }
 }, 250);
 

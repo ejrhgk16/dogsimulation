@@ -63,10 +63,14 @@ export class Pursuer {
   private _prevXi: number;
   private _baseBoundary: number = 0;
   private _halfSectorAngle: number = 0;
-  private readonly TURN_RATE: number = 8;
+  private _currentFlipScale: number;
 
   get castBoundaryAngle(): number {
     return this._baseBoundary;
+  }
+
+  get flipScale(): number {
+    return this._currentFlipScale;
   }
 
   /** 추적자 생성 (위치/추적 파라미터 초기화) */
@@ -94,6 +98,7 @@ export class Pursuer {
     this.lastTrailSignal = 0;
     this.isTracking = false;
     this._prevXi = this.trackingParams.xi;
+    this._currentFlipScale = this.trackingParams.flipRampStart;
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -172,11 +177,10 @@ export class Pursuer {
           this.trackingParams.castAngleMax
         );
         this._baseBoundary = Math.tan(this._halfSectorAngle * this.trackingParams.castFlipMargin);
+        this._currentFlipScale = this.trackingParams.flipRampStart;
         this.targetHeading = this.normalizeAngle(
-          this.estimatedHeading +
-            this.castSide * this._halfSectorAngle * this.trackingParams.castFlipAngleScale
+          this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
         );
-        this.rotationAngle = this.targetHeading;
       }
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
@@ -227,8 +231,11 @@ export class Pursuer {
       if (tanAngle >= this._baseBoundary && this.castSide * cross > 0) {
         this.castSide *= -1;
         this.targetHeading = this.normalizeAngle(
-          this.estimatedHeading +
-            this.castSide * this._halfSectorAngle * this.trackingParams.castFlipAngleScale
+          this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
+        );
+        this._currentFlipScale = Math.min(
+          this._currentFlipScale + this.trackingParams.flipRampStep,
+          this.trackingParams.castFlipScaleMax
         );
       }
 
@@ -254,7 +261,8 @@ export class Pursuer {
     this.y = newY;
     this.height = newHeight;
     const angleDiff = this.shortestAngleDiff(this.targetHeading, this.rotationAngle);
-    this.rotationAngle += angleDiff * Math.min(1, this.TURN_RATE * dt);
+    const turnRate = this.state === 'cast' ? this.trackingParams.flipTurnRate : 8;
+    this.rotationAngle += angleDiff * Math.min(1, turnRate * dt);
   }
 
   /** 장애물·충돌·경사 고려 실제 이동 계산 */
