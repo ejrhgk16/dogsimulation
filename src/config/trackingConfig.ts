@@ -1,4 +1,5 @@
 import type { TrackingParams } from '../types/scent';
+import type { VisionParams } from '../types/vision';
 
 export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   sensorRadius: 1,
@@ -30,5 +31,12 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   castFlipScaleMax: 1.0,
   flipRampStart: 0.5,
   flipRampStep: 0.1,
-  flipTurnRate: 8
+  flipTurnRate: 8,
+  visionRange: 8,
+  visionConeAngle: Math.PI / 6
+};
+
+export const DEFAULT_VISION_PARAMS: VisionParams = {
+  visionRange: 8,
+  visionConeAngle: Math.PI / 6 // 30° (half cone, total 60°)
 };

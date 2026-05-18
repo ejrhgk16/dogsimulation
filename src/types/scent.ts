@@ -80,6 +80,10 @@ export interface TrackingParams {
   flipRampStart: number;
   /** flip 시 angle scale 증가량 (0.05~0.5). 매 flip마다 이 값만큼 scale 증가. castFlipScaleMax까지 cap. 기본 0.1 */
   flipRampStep: number;
+  /** 시야 감지 최대 거리 */
+  visionRange: number;
+  /** 시야 cone 반각 (라디안). 전체 cone 각도 = 2 * visionConeAngle */
+  visionConeAngle: number;
 }
 
 export interface ScentWorldState {

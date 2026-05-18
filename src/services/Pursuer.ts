@@ -9,7 +9,7 @@ import {
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
-import { getHeightAt, isObstacleInFootprint } from './mapService';
+import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
 
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
@@ -55,6 +55,10 @@ export class Pursuer {
   castSide: number;
   /** 마지막 프레임 감지 신호 */
   lastTrailSignal: number;
+  /** 시야로 감지한 대상 ID (없으면 null) */
+  visionTargetId: string | null;
+  /** 시야 감지 여부 (현재 프레임) */
+  hasVisionContact: boolean;
   /** 추적 파라미터 (UI 연동) */
   trackingParams: TrackingParams;
   /** 추적 활성 여부 */
@@ -96,6 +100,8 @@ export class Pursuer {
     this.targetHeading = this.rotationAngle;
     this.castSide = Math.random() < 0.5 ? 1 : -1;
     this.lastTrailSignal = 0;
+    this.visionTargetId = null;
+    this.hasVisionContact = false;
     this.isTracking = false;
     this._prevXi = this.trackingParams.xi;
     this._currentFlipScale = this.trackingParams.flipRampStart;
@@ -112,9 +118,19 @@ export class Pursuer {
     now: number,
     dt: number,
     mapData: MapData,
-    otherEntities: ReadonlyArray<{ x: number; y: number }> = []
+    otherEntities: ReadonlyArray<{ id: string; x: number; y: number }> = []
   ): void {
     if (!this.isTracking) return;
+
+    // Vision check before scent sampling
+    const visionTarget = this.detectVisionTarget(otherEntities, mapData);
+    if (visionTarget) {
+      this.visionTargetId = visionTarget.targetId;
+      this.hasVisionContact = true;
+    } else {
+      this.visionTargetId = null;
+      this.hasVisionContact = false;
+    }
 
     const sample = this.buildDogScentSample(trailPoints, now);
     const detected = sample.totalSignal > this.trackingParams.detectThreshold;
@@ -196,7 +212,11 @@ export class Pursuer {
       this.estimatedHeading = this.rotationAngle;
     }
 
-    if (this.state === 'track') {
+    // Vision override: direct heading toward visible target
+    if (visionTarget) {
+      this.targetHeading = Math.atan2(visionTarget.y - this.y, visionTarget.x - this.x);
+      moveSpeed = this.trackingParams.maxSpeed;
+    } else if (this.state === 'track') {
       this.targetHeading = this.blendHeading(
         this.estimatedHeading,
         sample.signalDirection,
@@ -444,6 +464,40 @@ export class Pursuer {
   private dynamicSpeed(sigma: number): number {
     const tp = this.trackingParams;
     return this.clamp(tp.maxSpeed * Math.exp(-tp.kSpeedSigma * sigma), tp.minSpeed, tp.maxSpeed);
+  }
+
+  /**
+   * 시야 cone 내에 있는 pursued 중 가장 가까운 것 반환.
+   * 조건: cone 각도 내 + visionRange 내 + 장애물 가시선 확보
+   */
+  private detectVisionTarget(
+    pursuedList: ReadonlyArray<{ id: string; x: number; y: number }>,
+    mapData: MapData
+  ): { targetId: string; x: number; y: number } | null {
+    let closest: { targetId: string; x: number; y: number } | null = null;
+    let closestDist = Infinity;
+
+    for (const pursued of pursuedList) {
+      const dx = pursued.x - this.x;
+      const dy = pursued.y - this.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > this.trackingParams.visionRange) continue;
+
+      const angleToTarget = Math.atan2(dy, dx);
+      const relativeAngle = this.normalizeAngle(angleToTarget - this.rotationAngle);
+
+      if (Math.abs(relativeAngle) > this.trackingParams.visionConeAngle) continue;
+
+      if (!hasLineOfSight(mapData, this.x, this.y, pursued.x, pursued.y)) continue;
+
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = { targetId: pursued.id, x: pursued.x, y: pursued.y };
+      }
+    }
+
+    return closest;
   }
 
   /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */

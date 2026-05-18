@@ -40,4 +40,8 @@ export interface PursuerState {
   targetHeading: number;
   castSide: number; // +1 or -1
   lastTrailSignal: number;
+  /** 시야로 감지한 대상 ID (없으면 null) */
+  visionTargetId: string | null;
+  /** 시야 감지 여부 (현재 프레임) */
+  hasVisionContact: boolean;
 }

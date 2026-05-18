@@ -67,6 +67,9 @@ export class SceneRuntime {
   private showTargetHeadingArrow = false;
   private showSensorFan = false;
   private showCastDebug = false;
+  private showVisionDebug = false;
+  private visionFanMeshes: Mesh[] = [];
+  private visionRayLine: Line | null = null;
 
   private initialPursuerPositions: Array<{ x: number; y: number }>;
   private initialPursuedPositions: Array<{ x: number; y: number }>;
@@ -79,6 +82,8 @@ export class SceneRuntime {
   private sensorFanMeshes: Mesh[] = [];
   private lastSensorRadius = 0;
   private lastSensorFanAngle = 0;
+  private lastVisionRange = 0;
+  private lastVisionConeAngle = 0;
 
   private castDebugGroup: Group | null = null;
   private castCenterLine: Line | null = null;
@@ -229,6 +234,11 @@ export class SceneRuntime {
   /** cast 디버그 표시/숨김 */
   setCastDebugVisible(v: boolean): void {
     this.showCastDebug = v;
+  }
+
+  /** vision 디버그 표시/숨김 */
+  setVisionDebugVisible(v: boolean): void {
+    this.showVisionDebug = v;
   }
 
   /** 동물 모델 스케일 변경 */
@@ -403,7 +413,8 @@ export class SceneRuntime {
       this.showHeadingArrow ||
       this.showTargetHeadingArrow ||
       this.showSensorFan ||
-      this.showCastDebug;
+      this.showCastDebug ||
+      this.showVisionDebug;
 
     if (anyDebugActive && !this.debugGroup) {
       this.debugGroup = new Group();
@@ -422,7 +433,7 @@ export class SceneRuntime {
         this.controllers.get(pursuer.id)?.update(pursuer);
         continue;
       }
-      const others = this.pursuedList.map((p) => ({ x: p.x, y: p.y }));
+      const others = this.pursuedList.map((p) => ({ id: p.id, x: p.x, y: p.y }));
       pursuer.updateDogState(allTrails, now, dt, this.mapData, others);
       const turnRate = pursuer.state === 'cast' ? pursuer.trackingParams.flipTurnRate : 8;
       this.controllers.get(pursuer.id)?.setRotationSpeed(turnRate);
@@ -448,7 +459,8 @@ export class SceneRuntime {
         this.showHeadingArrow ||
         this.showTargetHeadingArrow ||
         this.showSensorFan ||
-        this.showCastDebug;
+        this.showCastDebug ||
+        this.showVisionDebug;
 
       if (!anyDebugActive) {
         this.scene.remove(this.debugGroup);
@@ -463,6 +475,8 @@ export class SceneRuntime {
         this.castRightLine = null;
         this.castArcLine = null;
         this.lastCastSide = 0;
+        this.visionFanMeshes = [];
+        this.visionRayLine = null;
       } else {
         for (const pursuer of this.pursuers) {
           const baseY = pursuer.height + 0.06;
@@ -747,6 +761,97 @@ export class SceneRuntime {
             this.castRightLine = null;
             this.castArcLine = null;
             this.lastCastSide = 0;
+          }
+
+          // --- Vision Debug ---
+          if (this.showVisionDebug) {
+            const visionRange =
+              pursuer.trackingParams.visionRange ?? DEFAULT_TRACKING_PARAMS.visionRange;
+            const visionConeAngle =
+              pursuer.trackingParams.visionConeAngle ?? DEFAULT_TRACKING_PARAMS.visionConeAngle;
+
+            if (this.visionFanMeshes.length === 0) {
+              const shape = new Shape();
+              shape.moveTo(0, 0);
+              shape.absarc(0, 0, visionRange, -visionConeAngle, visionConeAngle, false);
+              shape.lineTo(0, 0);
+              const fanGeo = new ShapeGeometry(shape);
+              fanGeo.rotateX(-Math.PI / 2);
+              const fanMat = new MeshBasicMaterial({
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.3,
+                side: DoubleSide
+              });
+              this.visionFanMeshes.push(new Mesh(fanGeo, fanMat));
+              this.debugGroup.add(this.visionFanMeshes[0]);
+              this.lastVisionRange = visionRange;
+              this.lastVisionConeAngle = visionConeAngle;
+            }
+
+            if (
+              Math.abs(visionRange - this.lastVisionRange) > 0.001 ||
+              Math.abs(visionConeAngle - this.lastVisionConeAngle) > 0.001
+            ) {
+              for (const mesh of this.visionFanMeshes) {
+                mesh.geometry.dispose();
+                const shape = new Shape();
+                shape.moveTo(0, 0);
+                shape.absarc(0, 0, visionRange, -visionConeAngle, visionConeAngle, false);
+                shape.lineTo(0, 0);
+                const newGeo = new ShapeGeometry(shape);
+                newGeo.rotateX(-Math.PI / 2);
+                mesh.geometry = newGeo;
+              }
+              this.lastVisionRange = visionRange;
+              this.lastVisionConeAngle = visionConeAngle;
+            }
+
+            for (const mesh of this.visionFanMeshes) {
+              mesh.rotation.y = -pursuer.rotationAngle;
+              mesh.position.set(0, 0, 0);
+            }
+
+            // Vision ray
+            if (pursuer.visionTargetId) {
+              const target = this.pursuedList.find((p) => p.id === pursuer.visionTargetId);
+              if (target) {
+                if (!this.visionRayLine) {
+                  const rayGeo = new BufferGeometry();
+                  rayGeo.setAttribute(
+                    'position',
+                    new Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3)
+                  );
+                  const rayMat = new LineBasicMaterial({ color: 0x00ff00 });
+                  this.visionRayLine = new Line(rayGeo, rayMat);
+                  this.debugGroup.add(this.visionRayLine);
+                }
+                const rPos = this.visionRayLine.geometry.attributes.position;
+                const dx = target.x - pursuer.x;
+                const dz = target.y - pursuer.y;
+                rPos.setXYZ(0, 0, 0, 0);
+                rPos.setXYZ(1, dx, 0, dz);
+                rPos.needsUpdate = true;
+                this.visionRayLine.visible = true;
+              } else {
+                if (this.visionRayLine) this.visionRayLine.visible = false;
+              }
+            } else {
+              if (this.visionRayLine) this.visionRayLine.visible = false;
+            }
+          } else if (this.visionFanMeshes.length > 0) {
+            for (const mesh of this.visionFanMeshes) {
+              this.debugGroup.remove(mesh);
+              mesh.geometry.dispose();
+              (mesh.material as MeshBasicMaterial).dispose();
+            }
+            this.visionFanMeshes = [];
+            if (this.visionRayLine) {
+              this.debugGroup.remove(this.visionRayLine);
+              this.visionRayLine.geometry.dispose();
+              (this.visionRayLine.material as LineBasicMaterial).dispose();
+              this.visionRayLine = null;
+            }
           }
         }
       }

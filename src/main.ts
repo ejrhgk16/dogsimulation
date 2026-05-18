@@ -72,6 +72,7 @@ visualPanel.innerHTML = `
     <label><input type="checkbox" id="vis-target-heading-arrow" /> Target Heading</label>
     <label><input type="checkbox" id="vis-sensor-fan" /> Sensor Fan</label>
     <label><input type="checkbox" id="vis-cast-debug" /> Cast Sector</label>
+    <label><input type="checkbox" id="vis-vision-debug" /> Vision Cone</label>
     <button id="reset-btn" type="button">Reset (Pos+Scent+Camera)</button>
   </fieldset>
 `;
@@ -102,6 +103,11 @@ visSensorFan.addEventListener('change', () => {
 const visCastDebug = visualPanel.querySelector<HTMLInputElement>('#vis-cast-debug')!;
 visCastDebug.addEventListener('change', () => {
   runtime.setCastDebugVisible(visCastDebug.checked);
+});
+
+const visVisionDebug = visualPanel.querySelector<HTMLInputElement>('#vis-vision-debug')!;
+visVisionDebug.addEventListener('change', () => {
+  runtime.setVisionDebugVisible(visVisionDebug.checked);
 });
 
 const resetBtn = visualPanel.querySelector<HTMLButtonElement>('#reset-btn')!;
@@ -211,6 +217,8 @@ trackingPanel.innerHTML = `
     <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-flipRampStart">0.50</span></label>
     <label><span>flipRampStep</span><input type="range" id="tp-flipRampStep" min="0.05" max="0.5" step="0.05" value="0.1" /><span class="slider-value" id="tpv-flipRampStep">0.10</span></label>
     <label><span>flipTurnRate</span><input type="range" id="tp-flipTurnRate" min="2" max="20" step="1" value="8" /><span class="slider-value" id="tpv-flipTurnRate">8</span></label>
+    <label><span>visionRange</span><input type="range" id="tp-visionRange" min="1" max="30" step="0.5" value="8" /><span class="slider-value" id="tpv-visionRange">8.0</span></label>
+    <label><span>visionConeAngle</span><input type="range" id="tp-visionConeAngle" min="10" max="120" step="5" value="60" /><span class="slider-value" id="tpv-visionConeAngle">60°</span></label>
   </fieldset>
 `;
 
@@ -244,11 +252,14 @@ const tpKeys = [
   'castFlipScaleMax',
   'flipRampStart',
   'flipRampStep',
-  'flipTurnRate'
+  'flipTurnRate',
+  'visionRange',
+  'visionConeAngle'
 ] as const;
 
 function formatTp(value: number, key?: string): string {
-  if (key === 'sensorFanAngle') return Math.round((value * 180) / Math.PI) + '°';
+  if (key === 'sensorFanAngle' || key === 'visionConeAngle')
+    return Math.round((value * 180) / Math.PI) + '°';
   if (Number.isInteger(value)) return String(value);
   if (value < 0.1 || value >= 10) return value.toFixed(1);
   return value.toFixed(2);
@@ -259,7 +270,7 @@ for (const key of tpKeys) {
   const display = trackingPanel.querySelector<HTMLElement>(`#tpv-${key}`)!;
   slider.addEventListener('input', () => {
     const val = parseFloat(slider.value);
-    if (key === 'sensorFanAngle') {
+    if (key === 'sensorFanAngle' || key === 'visionConeAngle') {
       const rad = (val * Math.PI) / 180;
       display.textContent = formatTp(rad, key);
       runtime.setTrackingParam(key, rad);

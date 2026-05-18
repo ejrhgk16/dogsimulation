@@ -246,3 +246,91 @@ export function getHeightAt(mapData: MapData, x: number, z: number): number {
   const bottom = h01 + (h11 - h01) * fx;
   return top + (bottom - top) * fz;
 }
+
+/**
+ * 두 점 사이 직선 경로상에 장애물(terrain === 'obstacle')이 있는지 검사.
+ * DDA grid traversal 알고리즘 사용.
+ */
+export function hasLineOfSight(
+  mapData: MapData,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): boolean {
+  const mapWidth = mapData.width * mapData.cellSize;
+  const mapDepth = mapData.depth * mapData.cellSize;
+
+  // world 좌표 → grid 실수 좌표
+  const gx1 = (x1 + mapWidth / 2) / mapData.cellSize;
+  const gy1 = (y1 + mapDepth / 2) / mapData.cellSize;
+  const gx2 = (x2 + mapWidth / 2) / mapData.cellSize;
+  const gy2 = (y2 + mapDepth / 2) / mapData.cellSize;
+
+  // 시작·끝 셀
+  const startCol = Math.floor(gx1);
+  const startRow = Math.floor(gy1);
+  const endCol = Math.floor(gx2);
+  const endRow = Math.floor(gy2);
+
+  // 같은 셀이면 중간 셀 없음
+  if (startCol === endCol && startRow === endRow) {
+    return true;
+  }
+
+  const dx = gx2 - gx1;
+  const dy = gy2 - gy1;
+
+  const stepX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+  const stepY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+
+  const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
+  const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+
+  let tMaxX: number;
+  if (dx > 0) {
+    tMaxX = (Math.floor(gx1) + 1 - gx1) * tDeltaX;
+  } else if (dx < 0) {
+    tMaxX = (gx1 - Math.floor(gx1)) * tDeltaX;
+  } else {
+    tMaxX = Infinity;
+  }
+
+  let tMaxY: number;
+  if (dy > 0) {
+    tMaxY = (Math.floor(gy1) + 1 - gy1) * tDeltaY;
+  } else if (dy < 0) {
+    tMaxY = (gy1 - Math.floor(gy1)) * tDeltaY;
+  } else {
+    tMaxY = Infinity;
+  }
+
+  let curCol = startCol;
+  let curRow = startRow;
+
+  while (curCol !== endCol || curRow !== endRow) {
+    if (tMaxX < tMaxY) {
+      tMaxX += tDeltaX;
+      curCol += stepX;
+    } else {
+      tMaxY += tDeltaY;
+      curRow += stepY;
+    }
+
+    // 종료 셀에 도달했으면 검사 중단 (끝점 셀 제외)
+    if (curCol === endCol && curRow === endRow) {
+      break;
+    }
+
+    // boundary clamp: grid 범위 벗어난 cell은 skip
+    if (curRow < 0 || curRow >= mapData.depth || curCol < 0 || curCol >= mapData.width) {
+      continue;
+    }
+
+    if (mapData.grid[curRow][curCol].terrain === 'obstacle') {
+      return false;
+    }
+  }
+
+  return true;
+}
