@@ -21,7 +21,7 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData } from '../types/map';
-import type { TrackingParams } from '../types/scent';
+import type { ScentPoint, TrackingParams } from '../types/scent';
 import { generateMap, getHeightAt } from '../services/mapService';
 import { Pursuer } from '../services/Pursuer';
 import { Pursued } from '../services/Pursued';
@@ -91,6 +91,9 @@ export class SceneRuntime {
   private castRightLine: Line | null = null;
   private castArcLine: Line | null = null;
   private lastCastSide = 0;
+
+  private fakeTrails: ScentPoint[] = [];
+  private stressIntervalId: ReturnType<typeof setInterval> | null = null;
 
   private readonly homePosition = new Vector3(0, 25, 35);
   private readonly homeTarget = new Vector3(0, 0, 0);
@@ -175,6 +178,27 @@ export class SceneRuntime {
     });
 
     this.resize();
+
+    // URL-based fake scent stress injection for performance testing
+    const params = new URLSearchParams(window.location.search);
+    const scentStress = parseInt(params.get('count') ?? '', 10) || 0;
+    if (scentStress > 0) {
+      const mapWidth = this.mapData.width;
+      const mapDepth = this.mapData.depth;
+      this.stressIntervalId = setInterval(() => {
+        for (let i = 0; i < scentStress; i++) {
+          this.fakeTrails.push({
+            animalId: 'stress',
+            animalType: 'dog',
+            x: (Math.random() - 0.5) * mapWidth,
+            y: (Math.random() - 0.5) * mapDepth,
+            height: 0.5,
+            t: performance.now(),
+            tauDecay: 1e12
+          });
+        }
+      }, 5000);
+    }
   }
 
   /** 애니메이션 루프 시작 */
@@ -188,6 +212,10 @@ export class SceneRuntime {
     if (this.animationFrameId === null) return;
     window.cancelAnimationFrame(this.animationFrameId);
     this.animationFrameId = null;
+    if (this.stressIntervalId !== null) {
+      clearInterval(this.stressIntervalId);
+      this.stressIntervalId = null;
+    }
   }
 
   /** 캔버스 크기 변경 시 렌더러/카메라 애스펙트 재설정 */
@@ -380,6 +408,13 @@ export class SceneRuntime {
     }
   }
 
+  /** 모든 상태(위치+향기+가짜 향기) 리셋 */
+  resetAll(): void {
+    this.resetPositions();
+    this.resetScent();
+    this.fakeTrails = [];
+  }
+
   /** 프레임 루프: 카메라 복귀 → 시간 계산 → onFrame → render */
   private render(): void {
     if (this.isReturningToHome) {
@@ -426,7 +461,7 @@ export class SceneRuntime {
       if (model?.mixer) model.mixer.update(dt);
     }
 
-    const allTrails = this.pursuedList.flatMap((p) => p.trailPoints);
+    const allTrails = [...this.fakeTrails, ...this.pursuedList.flatMap((p) => p.trailPoints)];
 
     for (const pursuer of this.pursuers) {
       if (!pursuer.isTracking) {
