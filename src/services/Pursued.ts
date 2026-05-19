@@ -1,5 +1,5 @@
 import type { MapData } from '../types/map';
-import type { ScentPoint, ScentParams, AnimalScentProfile } from '../types/scent';
+import type { ScentGrid, AnimalScentProfile } from '../types/scent';
 import {
   ANIMAL_HEIGHT_OFFSET,
   ANIMAL_HALF_EXTENT,
@@ -8,8 +8,7 @@ import {
 import {
   getAnimalProfile,
   getTauDecayMultiplier,
-  getEmitRateMultiplier,
-  DEFAULT_SCENT_PARAMS
+  getEmitRateMultiplier
 } from '../config/scentConfig';
 import { getHeightAt, isObstacleInFootprint } from './mapService';
 
@@ -41,8 +40,6 @@ export class Pursued {
   rotationAngle: number;
 
   // Scent
-  /** 방출된 향기 포인트 목록 */
-  trailPoints: ScentPoint[] = [];
   /** 마지막 방출 시간 (시간 기반 스로틀) */
   private lastEmitTime = -Infinity;
   /** 마지막 방출 이후 누적 이동거리 (거리 기반 스로틀) */
@@ -188,16 +185,16 @@ export class Pursued {
     return false;
   }
 
-  /** scent 생성 + trim (한 번에 처리) */
-  emitScent(now: number): void {
+  /** scent 방출: grid에 insert + grid에서 expired 제거 (매 호출 1회 trim) */
+  emitScent(now: number, grid: ScentGrid, tauDecay: number): void {
     const profile = getAnimalProfile(this.animalType);
-    this.trim(now, DEFAULT_SCENT_PARAMS);
+    grid.removeExpired(now, tauDecay);
 
     // 시간 기반 방출 (emitInterval 스로틀)
     if (now - this.lastEmitTime >= profile.emitInterval) {
       this.lastEmitTime = now;
       if (Math.random() <= profile.emitProbability * getEmitRateMultiplier()) {
-        this.pushScentPoint(this.x, this.y, this.height, now, profile);
+        this.pushScentPoint(this.x, this.y, this.height, now, profile, grid);
       }
     }
 
@@ -211,22 +208,23 @@ export class Pursued {
     if (this.distanceSinceLast >= profile.emitSpacing) {
       this.distanceSinceLast = 0;
       if (Math.random() <= profile.emitProbability * getEmitRateMultiplier()) {
-        this.pushScentPoint(this.x, this.y, this.height, now, profile);
+        this.pushScentPoint(this.x, this.y, this.height, now, profile, grid);
       }
     }
   }
 
-  /** 향기 포인트 생성 (위치·약간의 랜덤 오프셋 적용) */
+  /** 향기 포인트 생성 (위치·약간의 랜덤 오프셋 적용 → grid.insert) */
   private pushScentPoint(
     x: number,
     y: number,
     height: number,
     now: number,
-    profile: AnimalScentProfile
+    profile: AnimalScentProfile,
+    grid: ScentGrid
   ): void {
     const angle = Math.random() * 2 * Math.PI;
     const radius = Math.abs(randomGaussian()) * profile.spreadRadius;
-    this.trailPoints.push({
+    grid.insert({
       animalId: this.id,
       animalType: this.animalType,
       x: x + Math.cos(angle) * radius,
@@ -234,15 +232,6 @@ export class Pursued {
       height,
       t: now,
       tauDecay: profile.tauDecay * getTauDecayMultiplier()
-    });
-  }
-
-  /** 5×tauDecay 초과 오래된 향기 제거 */
-  private trim(now: number, params: ScentParams): void {
-    this.trailPoints = this.trailPoints.filter((point) => {
-      const age = now - point.t;
-      const threshold = (point.tauDecay ?? params.tauDecay) * 5;
-      return age <= threshold;
     });
   }
 }

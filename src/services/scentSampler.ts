@@ -1,4 +1,4 @@
-import type { ScentPoint } from '../types/scent';
+import type { ScentGrid } from '../types/scent';
 import type { ContactPoint } from '../types/pursuer';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 
@@ -24,11 +24,11 @@ export interface ScentSampleDetail {
  */
 export function sampleScentAt(
   pos: { x: number; y: number },
-  trailPoints: readonly ScentPoint[],
+  grid: ScentGrid,
   now: number,
   params: ScentSamplerParams
 ): number {
-  return sampleScentDetail(pos, trailPoints, now, params).totalSignal;
+  return sampleScentDetail(pos, grid, now, params).totalSignal;
 }
 
 /**
@@ -37,7 +37,7 @@ export function sampleScentAt(
  */
 export function sampleScentDetail(
   pos: { x: number; y: number },
-  trailPoints: readonly ScentPoint[],
+  grid: ScentGrid,
   now: number,
   params: ScentSamplerParams
 ): ScentSampleDetail {
@@ -46,17 +46,20 @@ export function sampleScentDetail(
   let total = 0;
   let weightedAgeSum = 0;
 
-  for (const point of trailPoints) {
-    const dx = pos.x - point.x;
-    const dy = pos.y - point.y;
-    const distSq = dx * dx + dy * dy;
-    if (Math.sqrt(distSq) > params.sensorRadius) continue;
-    const tauDecay = point.tauDecay ?? params.tauDecay;
-    const timeDecay = Math.exp(-(now - point.t) / tauDecay);
-    const distDecay = Math.exp(-distSq / twoSigmaSq);
-    const contribution = timeDecay * distDecay;
-    total += contribution;
-    weightedAgeSum += contribution * (now - point.t);
+  const cells = grid.getCellsInRadius(pos, params.sensorRadius);
+  for (const cell of cells) {
+    for (const point of cell.points) {
+      const dx = pos.x - point.x;
+      const dy = pos.y - point.y;
+      const distSq = dx * dx + dy * dy;
+      if (Math.sqrt(distSq) > params.sensorRadius) continue;
+      const tauDecay = point.tauDecay ?? params.tauDecay;
+      const timeDecay = Math.exp(-(now - point.t) / tauDecay);
+      const distDecay = Math.exp(-distSq / twoSigmaSq);
+      const contribution = timeDecay * distDecay;
+      total += contribution;
+      weightedAgeSum += contribution * (now - point.t);
+    }
   }
 
   const avgAge = total > 1e-9 ? weightedAgeSum / total : Number.POSITIVE_INFINITY;
@@ -75,7 +78,7 @@ export function sampleScentInSector(
   sectorMinAngle: number,
   sectorMaxAngle: number,
   maxRadius: number,
-  trailPoints: readonly ScentPoint[],
+  grid: ScentGrid,
   now: number,
   params: ScentSamplerParams
 ): ScentSampleDetail {
@@ -84,26 +87,35 @@ export function sampleScentInSector(
   let total = 0;
   let weightedAgeSum = 0;
 
-  for (const point of trailPoints) {
-    const dx = point.x - origin.x;
-    const dy = point.y - origin.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+  const cells = grid.getCellsInSector(
+    origin,
+    facingAngle,
+    sectorMinAngle,
+    sectorMaxAngle,
+    maxRadius
+  );
+  for (const cell of cells) {
+    for (const point of cell.points) {
+      const dx = point.x - origin.x;
+      const dy = point.y - origin.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // 거리 차단
-    if (dist > maxRadius) continue;
-    if (dist > params.sensorRadius) continue;
+      // 거리 차단
+      if (dist > maxRadius) continue;
+      if (dist > params.sensorRadius) continue;
 
-    // 각도 필터: facing 방향 기준 상대각도 [-π, π] 정규화
-    const pointAngle = Math.atan2(dy, dx) - facingAngle;
-    const normalizedAngle = Math.atan2(Math.sin(pointAngle), Math.cos(pointAngle));
-    if (normalizedAngle < sectorMinAngle || normalizedAngle > sectorMaxAngle) continue;
+      // 각도 필터: facing 방향 기준 상대각도 [-π, π] 정규화
+      const pointAngle = Math.atan2(dy, dx) - facingAngle;
+      const normalizedAngle = Math.atan2(Math.sin(pointAngle), Math.cos(pointAngle));
+      if (normalizedAngle < sectorMinAngle || normalizedAngle > sectorMaxAngle) continue;
 
-    const tauDecay = point.tauDecay ?? params.tauDecay;
-    const timeDecay = Math.exp(-(now - point.t) / tauDecay);
-    const distDecay = Math.exp(-(dx * dx + dy * dy) / twoSigmaSq);
-    const contribution = timeDecay * distDecay;
-    total += contribution;
-    weightedAgeSum += contribution * (now - point.t);
+      const tauDecay = point.tauDecay ?? params.tauDecay;
+      const timeDecay = Math.exp(-(now - point.t) / tauDecay);
+      const distDecay = Math.exp(-(dx * dx + dy * dy) / twoSigmaSq);
+      const contribution = timeDecay * distDecay;
+      total += contribution;
+      weightedAgeSum += contribution * (now - point.t);
+    }
   }
 
   const avgAge = total > 1e-9 ? weightedAgeSum / total : Number.POSITIVE_INFINITY;

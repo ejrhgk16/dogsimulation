@@ -1,6 +1,6 @@
 import type { MapData } from '../types/map';
 import type { ContactPoint, TrackState, ScentSample } from '../types/pursuer';
-import type { TrackingParams, ScentPoint } from '../types/scent';
+import type { TrackingParams, ScentGrid } from '../types/scent';
 import {
   ANIMAL_HEIGHT_OFFSET,
   ANIMAL_HALF_EXTENT,
@@ -114,7 +114,7 @@ export class Pursuer {
 
   /** 강아지 추적 상태머신: scent 샘플링 → 상태 전환 → 속도/조향 결정 → 이동 */
   updateDogState(
-    trailPoints: readonly ScentPoint[],
+    grid: ScentGrid,
     now: number,
     dt: number,
     mapData: MapData,
@@ -132,7 +132,7 @@ export class Pursuer {
       this.hasVisionContact = false;
     }
 
-    const sample = this.buildDogScentSample(trailPoints, now);
+    const sample = this.buildDogScentSample(grid, now);
     const detected = sample.totalSignal > this.trackingParams.detectThreshold;
 
     if (detected) {
@@ -501,7 +501,7 @@ export class Pursuer {
   }
 
   /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
-  private buildDogScentSample(trailPoints: readonly ScentPoint[], now: number): ScentSample {
+  private buildDogScentSample(grid: ScentGrid, now: number): ScentSample {
     const fanAngle = this.trackingParams.sensorFanAngle;
     const halfFan = fanAngle / 2;
     const sectorWidth = fanAngle / 3;
@@ -519,7 +519,7 @@ export class Pursuer {
       -sectorWidth / 2,
       sectorWidth / 2,
       maxRadius,
-      trailPoints,
+      grid,
       now,
       params
     );
@@ -529,7 +529,7 @@ export class Pursuer {
       -halfFan,
       -sectorWidth / 2,
       maxRadius,
-      trailPoints,
+      grid,
       now,
       params
     );
@@ -539,7 +539,7 @@ export class Pursuer {
       sectorWidth / 2,
       halfFan,
       maxRadius,
-      trailPoints,
+      grid,
       now,
       params
     );

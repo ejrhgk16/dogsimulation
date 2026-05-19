@@ -86,6 +86,42 @@ export interface TrackingParams {
   visionConeAngle: number;
 }
 
+/** scent spatial grid — cell 단위로 scent point 공간 인덱싱 */
+export interface ScentGridCell {
+  cx: number;
+  cy: number;
+  points: readonly ScentPoint[];
+}
+
+/** scent spatial grid — scent point의 공유 저장소이자 공간 인덱스 */
+export interface ScentGrid {
+  readonly scentCellSize: number;
+  readonly cols: number;
+  readonly rows: number;
+  readonly worldLeft: number;
+  readonly worldTop: number;
+  readonly worldWidth: number;
+  readonly worldDepth: number;
+  /** point를 해당 셀에 삽입 */
+  insert(point: ScentPoint): void;
+  /** 5×tauDecay 초과 오래된 point 제거 */
+  removeExpired(now: number, defaultTauDecay: number): void;
+  /** origin 중심 반경 내 모든 point를 단일 배열로 반환 (scentRender용) */
+  getAllPoints(): readonly ScentPoint[];
+  /** origin 기준 부채꼴 섹터와 겹치는 셀들 조회 (sampler용) */
+  getCellsInSector(
+    origin: { x: number; y: number },
+    facingAngle: number,
+    sectorMinAngle: number,
+    sectorMaxAngle: number,
+    maxRadius: number
+  ): readonly ScentGridCell[];
+  /** origin 중심 반경 내 모든 셀 조회 */
+  getCellsInRadius(origin: { x: number; y: number }, radius: number): readonly ScentGridCell[];
+  /** 모든 셀의 위치와 점 개수를 배열로 반환 (시각화용) */
+  getAllCellEntries(): Array<{ cx: number; cy: number; count: number }>;
+}
+
 export interface ScentWorldState {
   trailPoints: ScentPoint[];
   emitters: Map<string, EmitAccumulator>;

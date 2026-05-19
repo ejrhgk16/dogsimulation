@@ -1,6 +1,9 @@
 import { ANIMAL_SCALE } from './animalConfig';
 import type { AnimalScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
 
+/** scent grid cell 크기 (map cellSize와 독립적). 기본 5 (지형 1×1 셀보다 넓은 인덱스). */
+export const DEFAULT_SCENT_CELL_SIZE = 5;
+
 export const DEFAULT_SCENT_PARAMS: ScentParams = {
   tauDecay: 8000,
   scentSpreadSigma: 2.0,
@@ -38,9 +41,9 @@ export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
   pointSize: 0.2,
   minHeight: ANIMAL_SCALE * 0.05,
   animalColorMap: {
-    dog: 0xff9933,
-    cow: 0x44aa44,
-    pig: 0xff6688
+    dog: 0xffffff,
+    cow: 0xffffff,
+    pig: 0xffffff
   }
 };
 

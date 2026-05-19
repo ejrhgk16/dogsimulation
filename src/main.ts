@@ -73,6 +73,7 @@ visualPanel.innerHTML = `
     <label><input type="checkbox" id="vis-sensor-fan" /> Sensor Fan</label>
     <label><input type="checkbox" id="vis-cast-debug" /> Cast Sector</label>
     <label><input type="checkbox" id="vis-vision-debug" /> Vision Cone</label>
+    <label><input type="checkbox" id="vis-grid-cells" /> Grid Cells</label>
     <label><input type="checkbox" id="vis-scent" checked /> Scent Trail</label>
     <button id="reset-btn" type="button">Reset (Pos+Scent+Camera)</button>
   </fieldset>
@@ -109,6 +110,11 @@ visCastDebug.addEventListener('change', () => {
 const visVisionDebug = visualPanel.querySelector<HTMLInputElement>('#vis-vision-debug')!;
 visVisionDebug.addEventListener('change', () => {
   runtime.setVisionDebugVisible(visVisionDebug.checked);
+});
+
+const visGridCells = visualPanel.querySelector<HTMLInputElement>('#vis-grid-cells')!;
+visGridCells.addEventListener('change', () => {
+  runtime.setGridCellsVisible(visGridCells.checked);
 });
 
 const visScent = visualPanel.querySelector<HTMLInputElement>('#vis-scent')!;

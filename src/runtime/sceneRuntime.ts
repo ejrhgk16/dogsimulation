@@ -8,6 +8,7 @@ import {
   Group,
   Line,
   LineBasicMaterial,
+  LineSegments,
   MOUSE,
   Mesh,
   MeshBasicMaterial,
@@ -22,12 +23,15 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData } from '../types/map';
 import type { ScentPoint, TrackingParams } from '../types/scent';
+import { ScentGridImpl } from '../services/scentGrid';
 import { generateMap, getHeightAt } from '../services/mapService';
 import { Pursuer } from '../services/Pursuer';
 import { Pursued } from '../services/Pursued';
 import { ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import {
   ANIMAL_PROFILES,
+  DEFAULT_SCENT_CELL_SIZE,
+  DEFAULT_SCENT_PARAMS,
   DEFAULT_SCENT_VISUAL_CONFIG,
   setTauDecayMultiplier,
   setEmitRateMultiplier,
@@ -68,6 +72,7 @@ export class SceneRuntime {
   private showSensorFan = false;
   private showCastDebug = false;
   private showVisionDebug = false;
+  private showGridCells = false;
   private visionFanMeshes: Mesh[] = [];
   private visionRayLine: Line | null = null;
 
@@ -75,6 +80,7 @@ export class SceneRuntime {
   private initialPursuedPositions: Array<{ x: number; y: number }>;
 
   private debugGroup: Group | null = null;
+  private gridCellGroup: Group | null = null;
   private searchRing: Mesh | null = null;
   private headingArrow: Line | null = null;
   private targetHeadingArrow: Line | null = null;
@@ -94,6 +100,9 @@ export class SceneRuntime {
 
   private fakeTrails: ScentPoint[] = [];
   private stressIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  /** 공유 ScentGrid 인스턴스 (매 프레임 rebuild 없이 실시간 insert) */
+  private trailGrid: ScentGridImpl;
 
   private readonly homePosition = new Vector3(0, 25, 35);
   private readonly homeTarget = new Vector3(0, 0, 0);
@@ -116,6 +125,18 @@ export class SceneRuntime {
 
     this.initialPursuerPositions = this.pursuers.map((p) => ({ x: p.x, y: p.y }));
     this.initialPursuedPositions = this.pursuedList.map((p) => ({ x: p.x, y: p.y }));
+
+    const worldWidth = this.mapData.width * this.mapData.cellSize;
+    const worldDepth = this.mapData.depth * this.mapData.cellSize;
+    const worldLeft = -worldWidth / 2;
+    const worldTop = -worldDepth / 2;
+    this.trailGrid = new ScentGridImpl(
+      worldLeft,
+      worldTop,
+      worldWidth,
+      worldDepth,
+      DEFAULT_SCENT_CELL_SIZE
+    );
 
     this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -187,7 +208,7 @@ export class SceneRuntime {
       const mapDepth = this.mapData.depth;
       this.stressIntervalId = setInterval(() => {
         for (let i = 0; i < scentStress; i++) {
-          this.fakeTrails.push({
+          const pt: ScentPoint = {
             animalId: 'stress',
             animalType: 'dog',
             x: (Math.random() - 0.5) * mapWidth,
@@ -195,7 +216,9 @@ export class SceneRuntime {
             height: 0.5,
             t: performance.now(),
             tauDecay: 1e12
-          });
+          };
+          this.fakeTrails.push(pt);
+          this.trailGrid.insert(pt);
         }
       }, 5000);
     }
@@ -267,6 +290,16 @@ export class SceneRuntime {
   /** vision 디버그 표시/숨김 */
   setVisionDebugVisible(v: boolean): void {
     this.showVisionDebug = v;
+  }
+
+  /** grid cell 시각화 표시/숨김 */
+  setGridCellsVisible(v: boolean): void {
+    this.showGridCells = v;
+    if (!v && this.gridCellGroup) {
+      this.scene.remove(this.gridCellGroup);
+      this.disposeGridCellGroup();
+      this.gridCellGroup = null;
+    }
   }
 
   /** 동물 모델 스케일 변경 */
@@ -359,6 +392,73 @@ export class SceneRuntime {
     }));
   }
 
+  /** grid cell LineSegments 재생성 — 전 셀 line 그림 */
+  private rebuildGridCells(): void {
+    if (this.gridCellGroup) {
+      this.scene.remove(this.gridCellGroup);
+      this.disposeGridCellGroup();
+      this.gridCellGroup = null;
+    }
+    if (!this.showGridCells) return;
+
+    this.gridCellGroup = new Group();
+    const entries = this.trailGrid.getAllCellEntries();
+    const maxCount = Math.max(1, ...entries.map((e) => e.count));
+    const cs = this.trailGrid.scentCellSize;
+    const x0 = this.trailGrid.worldLeft;
+    const z0 = this.trailGrid.worldTop;
+
+    for (const entry of entries) {
+      const left = x0 + entry.cx * cs;
+      const right = left + cs;
+      const top = z0 + entry.cy * cs;
+      const bottom = top + cs;
+      const positions = new Float32Array([
+        left,
+        0.1,
+        top,
+        right,
+        0.1,
+        top,
+        right,
+        0.1,
+        top,
+        right,
+        0.1,
+        bottom,
+        right,
+        0.1,
+        bottom,
+        left,
+        0.1,
+        bottom,
+        left,
+        0.1,
+        bottom,
+        left,
+        0.1,
+        top
+      ]);
+      const geo = new BufferGeometry();
+      geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
+      const opacity = 0.15 + 0.5 * (entry.count / maxCount);
+      const mat = new LineBasicMaterial({ color: 0x88ccff, transparent: true, opacity });
+      this.gridCellGroup.add(new LineSegments(geo, mat));
+    }
+
+    this.scene.add(this.gridCellGroup);
+  }
+
+  private disposeGridCellGroup(): void {
+    if (!this.gridCellGroup) return;
+    for (const child of this.gridCellGroup.children) {
+      if (child instanceof LineSegments) {
+        child.geometry.dispose();
+        (child.material as LineBasicMaterial).dispose();
+      }
+    }
+  }
+
   /** 모든 Pursuer/Pursued를 초기 위치로 리셋 */
   resetPositions(): void {
     for (let i = 0; i < this.pursuers.length; i++) {
@@ -397,15 +497,27 @@ export class SceneRuntime {
     }
   }
 
-  /** 모든 Pursued의 향기 관련 상태 초기화 */
+  /** 모든 Pursued의 향기 관련 상태 초기화 (grid 재생성) */
   resetScent(): void {
+    this.fakeTrails = [];
+    const worldWidth = this.mapData.width * this.mapData.cellSize;
+    const worldDepth = this.mapData.depth * this.mapData.cellSize;
+    const worldLeft = -worldWidth / 2;
+    const worldTop = -worldDepth / 2;
+    this.trailGrid = new ScentGridImpl(
+      worldLeft,
+      worldTop,
+      worldWidth,
+      worldDepth,
+      DEFAULT_SCENT_CELL_SIZE
+    );
     for (const p of this.pursuedList) {
-      p.trailPoints = [];
       (p as unknown as { lastEmitTime: number }).lastEmitTime = -Infinity;
       (p as unknown as { distanceSinceLast: number }).distanceSinceLast = 0;
       (p as unknown as { lastScentX: number }).lastScentX = p.x;
       (p as unknown as { lastScentY: number }).lastScentY = p.y;
     }
+    if (this.showGridCells) this.rebuildGridCells();
   }
 
   /** 모든 상태(위치+향기+가짜 향기) 리셋 */
@@ -461,20 +573,10 @@ export class SceneRuntime {
       if (model?.mixer) model.mixer.update(dt);
     }
 
-    const allTrails = [...this.fakeTrails, ...this.pursuedList.flatMap((p) => p.trailPoints)];
+    // 1. grid trim
+    this.trailGrid.removeExpired(now, DEFAULT_SCENT_PARAMS.tauDecay);
 
-    for (const pursuer of this.pursuers) {
-      if (!pursuer.isTracking) {
-        this.controllers.get(pursuer.id)?.update(pursuer);
-        continue;
-      }
-      const others = this.pursuedList.map((p) => ({ id: p.id, x: p.x, y: p.y }));
-      pursuer.updateDogState(allTrails, now, dt, this.mapData, others);
-      const turnRate = pursuer.state === 'cast' ? pursuer.trackingParams.flipTurnRate : 8;
-      this.controllers.get(pursuer.id)?.setRotationSpeed(turnRate);
-      this.controllers.get(pursuer.id)?.update(pursuer);
-    }
-
+    // 2. pursued emit → grid에 insert
     for (const pursued of this.pursuedList) {
       pursued.moveByKeys(
         this.keys,
@@ -482,10 +584,27 @@ export class SceneRuntime {
         this.mapData,
         this.pursuers.map((p) => ({ x: p.x, y: p.y }))
       );
-      pursued.emitScent(now);
+      pursued.emitScent(now, this.trailGrid, DEFAULT_SCENT_PARAMS.tauDecay);
       this.controllers.get(pursued.id)?.update(pursued);
     }
 
+    // 3. scentRender용 flatten (spread로 mutable copy)
+    const allTrails = [...this.trailGrid.getAllPoints()];
+
+    // 4. pursuer 업데이트 (grid 전달)
+    for (const pursuer of this.pursuers) {
+      if (!pursuer.isTracking) {
+        this.controllers.get(pursuer.id)?.update(pursuer);
+        continue;
+      }
+      const others = this.pursuedList.map((p) => ({ id: p.id, x: p.x, y: p.y }));
+      pursuer.updateDogState(this.trailGrid, now, dt, this.mapData, others);
+      const turnRate = pursuer.state === 'cast' ? pursuer.trackingParams.flipTurnRate : 8;
+      this.controllers.get(pursuer.id)?.setRotationSpeed(turnRate);
+      this.controllers.get(pursuer.id)?.update(pursuer);
+    }
+
+    // 5. scentRender
     this.scentRender?.update(allTrails, now);
 
     if (this.debugGroup) {
@@ -890,6 +1009,11 @@ export class SceneRuntime {
           }
         }
       }
+    }
+
+    // Grid cell overlay (world-space, not per-pursuer)
+    if (this.showGridCells && !this.gridCellGroup) {
+      this.rebuildGridCells();
     }
   }
 }
