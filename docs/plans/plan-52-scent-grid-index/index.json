@@ -3,24 +3,24 @@
   "status": "pending",
   "tasks": [
     {
-      "name": "task-1-grid-types",
+      "name": "task-1-grid-service",
       "status": "pending",
       "depends_on": []
     },
     {
-      "name": "task-2-grid-service",
+      "name": "task-2-pursued",
       "status": "pending",
-      "depends_on": ["task-1-grid-types"]
+      "depends_on": ["task-1-grid-service"]
     },
     {
-      "name": "task-3-sampler-grid",
+      "name": "task-3-sampler-pursuer",
       "status": "pending",
-      "depends_on": ["task-2-grid-service"]
+      "depends_on": ["task-1-grid-service"]
     },
     {
       "name": "task-4-wiring",
       "status": "pending",
-      "depends_on": ["task-2-grid-service", "task-3-sampler-grid"]
+      "depends_on": ["task-2-pursued", "task-3-sampler-pursuer"]
     }
   ]
 }
