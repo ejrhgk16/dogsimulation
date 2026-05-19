@@ -36,14 +36,35 @@ function createCircleTexture(): CanvasTexture {
 }
 
 const VERTEX_SHADER = `
-  attribute vec3 color;
-  attribute float size;
+  uniform float uTime;
+  uniform float uPointSize;
+  uniform float uMinHeight;
+  uniform vec3 uAnimalColors[3];
+
+  attribute float aTimestamp;
+  attribute float aHeight;
+  attribute float aTauDecay;
+  attribute float aTypeIndex;
+
   varying vec3 vColor;
+
   void main() {
-    vColor = color;
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = size * (300.0 / -mvPosition.z);
+    float age = uTime - aTimestamp;
+    float decay = exp(-age / aTauDecay);
+    float ratio = 1.0 - decay;
+
+    // height lerp: 새 점 = aHeight, 오래된 점 = uMinHeight
+    vec3 pos = position;
+    pos.y = aHeight * (1.0 - ratio) + uMinHeight * ratio;
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    gl_PointSize = uPointSize * (1.0 - ratio * 0.85) * (300.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
+
+    // color dim: 새 점 = 원색, 오래된 점 = 원색 * 0.4
+    int idx = int(aTypeIndex);
+    vec3 baseColor = uAnimalColors[idx];
+    vColor = baseColor * (1.0 - ratio * 0.6);
   }
 `;
 
@@ -56,6 +77,12 @@ const FRAGMENT_SHADER = `
   }
 `;
 
+const ANIMAL_TYPE_INDEX: Record<string, number> = {
+  dog: 0,
+  cow: 1,
+  pig: 2
+};
+
 /** 향기 입자를 Points + ShaderMaterial + circle sprite로 렌더링 */
 export function createScentRender(
   scene: Scene,
@@ -64,9 +91,20 @@ export function createScentRender(
 ): ScentRender {
   const circleTexture = createCircleTexture();
 
+  // Map animalColorMap to uniform array [dog=0, cow=1, pig=2]
+  const animalColorValues = [
+    new Color(config.animalColorMap['dog'] ?? 0xffffff),
+    new Color(config.animalColorMap['cow'] ?? 0xffffff),
+    new Color(config.animalColorMap['pig'] ?? 0xffffff)
+  ];
+
   const material = new ShaderMaterial({
     uniforms: {
-      pointTexture: { value: circleTexture }
+      pointTexture: { value: circleTexture },
+      uTime: { value: 0 },
+      uPointSize: { value: config.pointSize },
+      uMinHeight: { value: config.minHeight },
+      uAnimalColors: { value: animalColorValues }
     },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -78,45 +116,46 @@ export function createScentRender(
   const points = new Points(geometry, material);
   scene.add(points);
 
-  const tempColor = new Color();
-  let pointSize = config.pointSize;
-
-  /** trailPoints를 Points 객체로 렌더링 (나이에 따라 페이드·축소) */
-  const update = (trailPoints: ScentPoint[], now: number): void => {
+  /** 점 개수 변경 시에만 버퍼 재업로드 */
+  const rebuildBuffer = (trailPoints: ScentPoint[]): void => {
     const count = trailPoints.length;
-
     const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
+    const timestamps = new Float32Array(count);
+    const heights = new Float32Array(count);
+    const tauDecays = new Float32Array(count);
+    const typeIndices = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
       const point = trailPoints[i];
-      const age = now - point.t;
       const profile = profileMap[point.animalType];
-      const tauDecay = point.tauDecay ?? profile?.tauDecay ?? 10000;
-      const decayFactor = Math.exp(-age / tauDecay);
-      const ratio = 1 - decayFactor;
-
-      // Height lerp: age 0 = point.height, age → ∞ = minHeight
-      const height = point.height * (1 - ratio) + config.minHeight * ratio;
+      const tauDecay = point.tauDecay ?? profile?.tauDecay ?? 8000;
 
       positions[i * 3] = point.x;
-      positions[i * 3 + 1] = height;
+      positions[i * 3 + 1] = 0; // height는 GPU에서 계산 (초기값 0)
       positions[i * 3 + 2] = point.y;
 
-      sizes[i] = pointSize * (1 - ratio * 0.85);
-
-      const colorHex = config.animalColorMap[point.animalType] ?? 0xffffff;
-      tempColor.setHex(colorHex);
-      tempColor.multiplyScalar(1 - ratio * 0.6);
-      colors[i * 3] = tempColor.r;
-      colors[i * 3 + 1] = tempColor.g;
-      colors[i * 3 + 2] = tempColor.b;
+      timestamps[i] = point.t;
+      heights[i] = point.height;
+      tauDecays[i] = tauDecay;
+      typeIndices[i] = ANIMAL_TYPE_INDEX[point.animalType] ?? 0;
     }
 
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-    geometry.setAttribute('size', new Float32BufferAttribute(sizes, 1));
+    geometry.setAttribute('aTimestamp', new Float32BufferAttribute(timestamps, 1));
+    geometry.setAttribute('aHeight', new Float32BufferAttribute(heights, 1));
+    geometry.setAttribute('aTauDecay', new Float32BufferAttribute(tauDecays, 1));
+    geometry.setAttribute('aTypeIndex', new Float32BufferAttribute(typeIndices, 1));
+  };
+
+  let _lastCount = 0;
+
+  /** 매 프레임 uTime만 업데이트, 점 개수 변경 시 rebuildBuffer 호출 */
+  const update = (trailPoints: ScentPoint[], now: number): void => {
+    if (trailPoints.length !== _lastCount) {
+      rebuildBuffer(trailPoints);
+      _lastCount = trailPoints.length;
+    }
+    material.uniforms.uTime.value = now;
   };
 
   /** Points/지오메트리/재질 정리 */
@@ -134,7 +173,7 @@ export function createScentRender(
 
   /** 향기 입자 크기 변경 */
   const setPointSize = (size: number): void => {
-    pointSize = size;
+    material.uniforms.uPointSize.value = size;
   };
 
   return { update, dispose, setVisible, setPointSize };
