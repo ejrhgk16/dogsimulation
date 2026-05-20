@@ -227,11 +227,7 @@ export class Pursuer {
       this.targetHeading = Math.atan2(visionTarget.y - this.y, visionTarget.x - this.x);
       moveSpeed = this.trackingParams.maxSpeed;
     } else if (this.state === 'track') {
-      this.targetHeading = this.blendHeading(
-        this.estimatedHeading,
-        sample.signalDirection,
-        sample.directionConfidence
-      );
+      this.targetHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
 
       moveSpeed = this.dynamicSpeed(sigma);
     } else if (this.state === 'surge') {
@@ -620,14 +616,16 @@ export class Pursuer {
       return {
         totalSignal,
         signalDirection: trailHeading,
-        directionConfidence: 0
+        directionConfidence: 0,
+        netBias
       };
     }
 
     return {
       totalSignal,
       signalDirection,
-      directionConfidence: confidence
+      directionConfidence: confidence,
+      netBias
     };
   }
 }

@@ -11,6 +11,7 @@ export interface ScentSample {
   totalSignal: number;
   signalDirection: number; // radians
   directionConfidence: number; // 0~1
+  netBias: number;
 }
 
 export interface SensorPositions {
