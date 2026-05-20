@@ -114,6 +114,7 @@ export class Pursuer {
   updateTrackingParam<K extends keyof TrackingParams>(key: K, value: TrackingParams[K]): void {
     this.trackingParams[key] = value;
   }
+  // slider
 
   /** 강아지 추적 상태머신: scent 샘플링 → 상태 전환 → 속도/조향 결정 → 이동 */
   updateDogState(

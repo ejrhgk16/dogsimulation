@@ -38,7 +38,6 @@ function createCircleTexture(): CanvasTexture {
 const VERTEX_SHADER = `
   uniform float uTime;
   uniform float uPointSize;
-  uniform float uMinHeight;
   uniform vec3 uAnimalColors[3];
 
   attribute float aTimestamp;
@@ -51,20 +50,16 @@ const VERTEX_SHADER = `
   void main() {
     float age = uTime - aTimestamp;
     float decay = exp(-age / aTauDecay);
-    float ratio = 1.0 - decay;
 
-    // height lerp: 새 점 = aHeight, 오래된 점 = uMinHeight
     vec3 pos = position;
-    pos.y = aHeight * (1.0 - ratio) + uMinHeight * ratio;
+    pos.y = aHeight;
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-    gl_PointSize = uPointSize * (1.0 - ratio * 0.85) * (300.0 / -mvPosition.z);
+    gl_PointSize = uPointSize * decay * step(0.01, decay) * (300.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
 
-    // color dim: 새 점 = 원색, 오래된 점 = 원색 * 0.4
     int idx = int(aTypeIndex);
-    vec3 baseColor = uAnimalColors[idx];
-    vColor = baseColor * (1.0 - ratio * 0.6);
+    vColor = uAnimalColors[idx];
   }
 `;
 
@@ -103,7 +98,6 @@ export function createScentRender(
       pointTexture: { value: circleTexture },
       uTime: { value: 0 },
       uPointSize: { value: config.pointSize },
-      uMinHeight: { value: config.minHeight },
       uAnimalColors: { value: animalColorValues }
     },
     vertexShader: VERTEX_SHADER,
@@ -175,6 +169,7 @@ export function createScentRender(
   const setPointSize = (size: number): void => {
     material.uniforms.uPointSize.value = size;
   };
+  // slider
 
   return { update, dispose, setVisible, setPointSize };
 }

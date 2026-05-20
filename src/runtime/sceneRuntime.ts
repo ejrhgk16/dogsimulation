@@ -306,33 +306,39 @@ export class SceneRuntime {
   setAnimalScale(id: string, scale: number): void {
     this.controllers.get(id)?.setScale(scale);
   }
+  // slider
 
   /** 동물 회전 속도 설정 (rad/s) */
   setRotationSpeed(id: string, radPerSec: number): void {
     this.controllers.get(id)?.setRotationSpeed(radPerSec);
   }
+  // slider
 
   /** 향기 감쇠율 배수 설정 */
   setScentDecayRate(multiplier: number): void {
     setTauDecayMultiplier(multiplier);
   }
+  // slider
 
   /** 향기 방출률 배수 설정 */
   setEmitRate(multiplier: number): void {
     setEmitRateMultiplier(multiplier);
   }
+  // slider
 
   /** 향기 입자 크기 배수 설정 */
   setScentPointSize(multiplier: number): void {
     setScentPointSizeMultiplier(multiplier);
     this.scentRender?.setPointSize(DEFAULT_SCENT_VISUAL_CONFIG.pointSize * multiplier);
   }
+  // slider
 
   /** 피추적자 이동 속도 설정 */
   setPursuedSpeed(id: string, speed: number): void {
     const pursued = this.pursuedList.find((p) => p.id === id);
     if (pursued) pursued.speed = speed;
   }
+  // slider
 
   /** 모든 추적자 추적 시작 */
   startTracking(): void {
@@ -343,6 +349,7 @@ export class SceneRuntime {
   setTrackingParam<K extends keyof TrackingParams>(key: K, value: TrackingParams[K]): void {
     for (const p of this.pursuers) p.updateTrackingParam(key, value);
   }
+  // slider
 
   /** 모든 추적자 추적 중지 */
   stopTracking(): void {

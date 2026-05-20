@@ -1,10 +1,6 @@
 import type { ScentGrid, ScentGridCell, ScentPoint } from '../types/scent';
 
-/**
- * ScentGrid 구현체.
- * 내부 저장소는 `ScentPoint[][][]` 2D 배열 (col, row 인덱스).
- * 순수 도메인 로직 전용 — Three.js/브라우저 의존성 없음.
- */
+/** 세계 좌표 → 2D 셀 인덱스 매핑, 셀 단위 ScentPoint 저장 */
 export class ScentGridImpl implements ScentGrid {
   readonly scentCellSize: number;
   readonly cols: number;
@@ -40,6 +36,7 @@ export class ScentGridImpl implements ScentGrid {
     }
   }
 
+  /** 세계좌표(x,z) → 그리드 셀 인덱스. 범위 밖이면 null */
   private worldToCell(x: number, z: number): { col: number; row: number } | null {
     const col = Math.floor((x - this.worldLeft) / this.scentCellSize);
     const row = Math.floor((z - this.worldTop) / this.scentCellSize);
@@ -47,12 +44,14 @@ export class ScentGridImpl implements ScentGrid {
     return { col, row };
   }
 
+  /** 향기 점을 해당 셀에 삽입 */
   insert(point: ScentPoint): void {
     const cell = this.worldToCell(point.x, point.y);
     if (!cell) return;
     this.grid[cell.col][cell.row].push(point);
   }
 
+  /** decay < 0.01 이면 제거 (GPU step(0.01)과 동일 기준) */
   removeExpired(now: number, defaultTauDecay: number): void {
     for (let c = 0; c < this.cols; c++) {
       for (let r = 0; r < this.rows; r++) {
@@ -60,7 +59,8 @@ export class ScentGridImpl implements ScentGrid {
         if (cell.length === 0) continue;
         const filtered = cell.filter((p) => {
           const tau = p.tauDecay ?? defaultTauDecay;
-          return now - p.t <= 5 * tau;
+          const decay = Math.exp(-(now - p.t) / tau);
+          return decay >= 0.01;
         });
         if (filtered.length !== cell.length) {
           // splice + copy to keep array reference stable
@@ -70,6 +70,7 @@ export class ScentGridImpl implements ScentGrid {
     }
   }
 
+  /** 전체 셀의 모든 ScentPoint를 평탄화하여 반환 (scentRender용) */
   getAllPoints(): readonly ScentPoint[] {
     const result: ScentPoint[] = [];
     for (let c = 0; c < this.cols; c++) {
