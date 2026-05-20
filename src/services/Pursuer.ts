@@ -68,6 +68,9 @@ export class Pursuer {
   private _baseBoundary: number = 0;
   private _halfSectorAngle: number = 0;
   private _currentFlipScale: number;
+  private _retraceTargetX: number = 0;
+  private _retraceTargetY: number = 0;
+  private _isRetracing: boolean = false;
 
   get castBoundaryAngle(): number {
     return this._baseBoundary;
@@ -140,6 +143,7 @@ export class Pursuer {
       this.lostTime = 0;
       this.searchRadius = 0;
       this.state = 'track';
+      this._isRetracing = false;
 
       this.lastContacts.push({
         x: this.x,
@@ -201,6 +205,12 @@ export class Pursuer {
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
       this.trailMemory = [];
+      if (this.lastContacts.length > 0) {
+        const last = this.lastContacts[this.lastContacts.length - 1];
+        this._retraceTargetX = last.x;
+        this._retraceTargetY = last.y;
+        this._isRetracing = true;
+      }
       this.estimatedHeading = this.rotationAngle;
     }
 
@@ -260,6 +270,17 @@ export class Pursuer {
       }
 
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
+    } else if (this._isRetracing) {
+      const dx = this._retraceTargetX - this.x;
+      const dy = this._retraceTargetY - this.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 0.5) {
+        this._isRetracing = false;
+        moveSpeed = this.trackingParams.minSpeed;
+      } else {
+        this.targetHeading = Math.atan2(dy, dx);
+        moveSpeed = this.trackingParams.minSpeed * 1.5;
+      }
     } else {
       this.targetHeading += this.trackingParams.lostTurnRate * dt;
       moveSpeed = this.trackingParams.minSpeed;
