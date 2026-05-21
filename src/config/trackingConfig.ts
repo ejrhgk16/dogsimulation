@@ -2,8 +2,8 @@ import type { TrackingParams } from '../types/scent';
 import type { VisionParams } from '../types/vision';
 
 export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
-  sensorRadius: 1,
-  sensorFanAngle: Math.PI / 2,
+  sensorRadius: 1.8,
+  sensorFanAngle: (110 * Math.PI) / 180,
   detectThreshold: 0.01,
   tauMemory: 3.0,
   sigmaBase: 0.05,
@@ -26,17 +26,17 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   kSpeedSigma: 1.2,
   theta0: 4,
   kRadial: 0.01,
-  castLostScale: 1.0,
+  castLostScale: 0.5,
   castFlipMargin: 0.5,
-  castFlipScaleMax: 1.0,
-  flipRampStart: 0.5,
+  castFlipScaleMax: 1.7,
+  flipRampStart: 0.7,
   flipRampStep: 0.1,
   flipTurnRate: 8,
-  visionRange: 8,
+  visionRange: 3.5,
   visionConeAngle: Math.PI / 6
 };
 
 export const DEFAULT_VISION_PARAMS: VisionParams = {
-  visionRange: 8,
+  visionRange: 3.5,
   visionConeAngle: Math.PI / 6 // 30° (half cone, total 60°)
 };

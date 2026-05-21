@@ -229,10 +229,20 @@ export class Pursuer {
       this.estimatedHeading = this.rotationAngle;
     }
 
-    // Vision override: direct heading toward visible target
+    // Vision override: approach target, stop when within stopDistance
     if (visionTarget) {
-      this.targetHeading = Math.atan2(visionTarget.y - this.y, visionTarget.x - this.x);
-      moveSpeed = this.trackingParams.maxSpeed;
+      const dx = visionTarget.x - this.x;
+      const dy = visionTarget.y - this.y;
+      const dist = Math.hypot(dx, dy);
+      const STOP_DISTANCE = 2;
+
+      if (dist <= STOP_DISTANCE) {
+        moveSpeed = 0;
+        this.targetHeading = this.rotationAngle; // keep current heading
+      } else {
+        this.targetHeading = Math.atan2(dy, dx);
+        moveSpeed = this.trackingParams.maxSpeed;
+      }
     } else if (this.state === 'track') {
       this.targetHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
 

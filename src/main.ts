@@ -1,4 +1,5 @@
 import { SceneRuntime } from './runtime/sceneRuntime';
+import { DEFAULT_TRACKING_PARAMS } from './config/trackingConfig';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app element.');
@@ -221,15 +222,15 @@ trackingPanel.innerHTML = `
     <label><span>minSpeed</span><input type="range" id="tp-minSpeed" min="0.5" max="10" step="0.5" value="1" /><span class="slider-value" id="tpv-minSpeed">1.0</span></label>
     <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
     <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
-    <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1" /><span class="slider-value" id="tpv-sensorRadius">1.0</span></label>
-    <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="180" step="5" value="90" /><span class="slider-value" id="tpv-sensorFanAngle">90°</span></label>
-    <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castLostScale">1.0</span></label>
+    <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1.8" /><span class="slider-value" id="tpv-sensorRadius">1.80</span></label>
+    <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="180" step="5" value="110" /><span class="slider-value" id="tpv-sensorFanAngle">110°</span></label>
+    <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="0.5" /><span class="slider-value" id="tpv-castLostScale">0.5</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
-    <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.0" /><span class="slider-value" id="tpv-castFlipScaleMax">1.0</span></label>
-    <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-flipRampStart">0.50</span></label>
+    <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.7" /><span class="slider-value" id="tpv-castFlipScaleMax">1.7</span></label>
+    <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="0.7" /><span class="slider-value" id="tpv-flipRampStart">0.70</span></label>
     <label><span>flipRampStep</span><input type="range" id="tp-flipRampStep" min="0.05" max="0.5" step="0.05" value="0.1" /><span class="slider-value" id="tpv-flipRampStep">0.10</span></label>
     <label><span>flipTurnRate</span><input type="range" id="tp-flipTurnRate" min="2" max="20" step="1" value="8" /><span class="slider-value" id="tpv-flipTurnRate">8</span></label>
-    <label><span>visionRange</span><input type="range" id="tp-visionRange" min="1" max="30" step="0.5" value="8" /><span class="slider-value" id="tpv-visionRange">8.0</span></label>
+    <label><span>visionRange</span><input type="range" id="tp-visionRange" min="1" max="30" step="0.5" value="3.5" /><span class="slider-value" id="tpv-visionRange">3.5</span></label>
     <label><span>visionConeAngle</span><input type="range" id="tp-visionConeAngle" min="10" max="120" step="5" value="60" /><span class="slider-value" id="tpv-visionConeAngle">60°</span></label>
   </fieldset>
 `;
@@ -275,6 +276,23 @@ function formatTp(value: number, key?: string): string {
   if (Number.isInteger(value)) return String(value);
   if (value < 0.1 || value >= 10) return value.toFixed(1);
   return value.toFixed(2);
+}
+
+// Initialize slider values from DEFAULT_TRACKING_PARAMS (single source of truth)
+for (const key of tpKeys) {
+  const slider = trackingPanel.querySelector<HTMLInputElement>(`#tp-${key}`)!;
+  const display = trackingPanel.querySelector<HTMLElement>(`#tpv-${key}`)!;
+  const defaultValue = DEFAULT_TRACKING_PARAMS[key as keyof typeof DEFAULT_TRACKING_PARAMS];
+
+  if (key === 'sensorFanAngle' || key === 'visionConeAngle') {
+    // Config stores radians, slider uses degrees
+    const deg = Math.round((defaultValue * 180) / Math.PI);
+    slider.value = String(deg);
+    display.textContent = deg + '°';
+  } else {
+    slider.value = String(defaultValue);
+    display.textContent = formatTp(defaultValue);
+  }
 }
 
 for (const key of tpKeys) {

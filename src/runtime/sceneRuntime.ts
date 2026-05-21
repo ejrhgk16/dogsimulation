@@ -118,7 +118,7 @@ export class SceneRuntime {
     this.mapData = externalMapData ?? generateMap(defaultSceneConfig.mapConfig);
 
     const dogPursuer = new Pursuer('dog-1', -4, -2, this.mapData, DEFAULT_TRACKING_PARAMS);
-    const alpacaPursued = new Pursued('alpaca', 'alpaca', 0, 3, this.mapData, 1.0);
+    const alpacaPursued = new Pursued('alpaca', 'alpaca', 0, 3, this.mapData, 5.0);
     this.pursuers = externalPursuers ?? [dogPursuer];
     this.pursuedList = externalPursuedList ?? [alpacaPursued];
     this.alpacaId = this.pursuedList.find((p) => p.animalType === 'alpaca')?.id ?? 'alpaca';
