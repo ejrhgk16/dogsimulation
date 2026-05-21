@@ -373,6 +373,7 @@ export class SceneRuntime {
     castBoundaryAngle: number;
     contactsCount: number;
     flipScale: number;
+    currentSpeed: number;
     x: number;
     y: number;
     height: number;
@@ -393,6 +394,7 @@ export class SceneRuntime {
       castBoundaryAngle: p.castBoundaryAngle,
       contactsCount: p.lastContacts.length,
       flipScale: p.flipScale,
+      currentSpeed: p.currentSpeed,
       x: p.x,
       y: p.y,
       height: p.height

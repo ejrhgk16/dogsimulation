@@ -71,6 +71,7 @@ export class Pursuer {
   private _retraceTargetX: number = 0;
   private _retraceTargetY: number = 0;
   private _isRetracing: boolean = false;
+  currentSpeed: number = 0;
 
   get castBoundaryAngle(): number {
     return this._baseBoundary;
@@ -282,6 +283,8 @@ export class Pursuer {
       this.targetHeading += this.trackingParams.lostTurnRate * dt;
       moveSpeed = this.trackingParams.minSpeed;
     }
+
+    this.currentSpeed = moveSpeed;
 
     this.directionX = Math.cos(this.targetHeading);
     this.directionY = Math.sin(this.targetHeading);

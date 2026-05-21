@@ -308,6 +308,7 @@ debugPanel.innerHTML = `
     <div class="debug-row"><span>trailSig</span><span id="dv-lastTrailSignal">-</span></div>
     <div class="debug-row"><span>castSide</span><span id="dv-castSide">-</span></div>
     <div class="debug-row"><span>flipScale</span><span id="dv-flipScale">-</span></div>
+    <div class="debug-row"><span>speed</span><span id="dv-currentSpeed">-</span></div>
     <div class="debug-row"><span>contacts</span><span id="dv-contactsCount">-</span></div>
     <div class="debug-row"><span>x</span><span id="dv-x">-</span></div>
     <div class="debug-row"><span>y</span><span id="dv-y">-</span></div>
@@ -326,6 +327,7 @@ const debugKeys = [
   'lastTrailSignal',
   'castSide',
   'flipScale',
+  'currentSpeed',
   'contactsCount',
   'x',
   'y',
