@@ -10,6 +10,8 @@ import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
 import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
+import { resolveStuck } from './obstacleAvoidance';
+import { DEFAULT_AVOIDANCE_PARAMS } from '../config/avoidanceConfig';
 
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
@@ -71,6 +73,9 @@ export class Pursuer {
   private _retraceTargetX: number = 0;
   private _retraceTargetY: number = 0;
   private _isRetracing: boolean = false;
+  private _avoidanceParams = DEFAULT_AVOIDANCE_PARAMS;
+  private _retraceStuckTime: number = 0;
+  private _stuckFrameCount: number = 0;
   currentSpeed: number = 0;
 
   get castBoundaryAngle(): number {
@@ -364,6 +369,78 @@ export class Pursuer {
           finalDy = 0;
         }
       }
+    }
+
+    // Stuck detection + obstacle avoidance integration
+    const xAttempted = Math.abs(dx) > 1e-9;
+    const yAttempted = Math.abs(dy) > 1e-9;
+    const xBlocked = xAttempted && Math.abs(finalDx) < 1e-9;
+    const yBlocked = yAttempted && Math.abs(finalDy) < 1e-9;
+    const isStuck = (finalDx === 0 && finalDy === 0) || xBlocked || yBlocked;
+
+    if (isStuck) {
+      this._stuckFrameCount++;
+      if (this.state === 'lost' && this._isRetracing) {
+        this._retraceStuckTime += dt;
+      }
+    } else {
+      this._stuckFrameCount = 0;
+      this._retraceStuckTime = 0;
+    }
+
+    if (this._stuckFrameCount >= 2) {
+      this._stuckFrameCount = 0;
+      let avoidResult: { heading: number; shouldBacktrack: boolean };
+
+      if (this.state === 'cast') {
+        // cast: 장애물 만나면 즉시 flip
+        this.castSide *= -1;
+        this.targetHeading = this.normalizeAngle(
+          this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
+        );
+        avoidResult = resolveStuck(
+          this.x,
+          this.y,
+          this.targetHeading,
+          this.castSide,
+          mapData,
+          this._avoidanceParams,
+          this.trailMemory
+        );
+      } else if (this.state === 'lost' && this._isRetracing) {
+        if (this._retraceStuckTime > this._avoidanceParams.retraceTimeout) {
+          this._isRetracing = false;
+          this._retraceStuckTime = 0;
+          this.targetHeading = this.rotationAngle + Math.PI; // 180° turn
+        }
+        avoidResult = resolveStuck(
+          this.x,
+          this.y,
+          this.targetHeading,
+          this.castSide,
+          mapData,
+          this._avoidanceParams,
+          this.trailMemory
+        );
+      } else {
+        avoidResult = resolveStuck(
+          this.x,
+          this.y,
+          this.targetHeading,
+          this.castSide,
+          mapData,
+          this._avoidanceParams,
+          this.trailMemory
+        );
+      }
+
+      this.targetHeading = avoidResult.heading;
+
+      // 회피 heading으로 재계산
+      const avoidDx = Math.cos(this.targetHeading);
+      const avoidDy = Math.sin(this.targetHeading);
+      finalDx = avoidDx;
+      finalDy = avoidDy;
     }
 
     const heightDiff = Math.abs(
