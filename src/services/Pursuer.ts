@@ -9,6 +9,7 @@ import {
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
+import type { ScentSampleDetail } from './scentSampler';
 import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
 import { resolveStuck } from './obstacleAvoidance';
 import { DEFAULT_AVOIDANCE_PARAMS } from '../config/avoidanceConfig';
@@ -225,7 +226,7 @@ export class Pursuer {
         rFromContact = Math.hypot(this.x - last.x, this.y - last.y);
       }
       const effectiveSigma = this.sigma + this.trackingParams.kRadial * rFromContact;
-      if (effectiveSigma * this.trackingParams.theta0 > this.trackingParams.sensorFanAngle / 2) {
+      if (this.sigma > this.trackingParams.theta0) {
         this.state = 'cast';
         this.castOriginX = this.x;
         this.castOriginY = this.y;
@@ -649,114 +650,133 @@ export class Pursuer {
     return closest;
   }
 
-  /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
+  /** 전방/후방 반원 N섹터 샘플링 → signalDirection·netBias(선명도 0~1)·confidence 산출 */
   private buildDogScentSample(grid: ScentGrid, now: number): ScentSample {
-    const fanAngle = this.trackingParams.sensorFanAngle;
-    const halfFan = fanAngle / 2;
-    const sectorWidth = fanAngle / 3;
+    const sectorCount = this.trackingParams.sensorSectorCount;
     const maxRadius = this.trackingParams.sensorRadius;
-    const origin = { x: this.x, y: this.y };
     const facing = this.rotationAngle;
+
+    const origin = {
+      x: this.x + Math.cos(facing) * this.trackingParams.sensorOffset,
+      y: this.y + Math.sin(facing) * this.trackingParams.sensorOffset
+    };
 
     const params = {
       ...DEFAULT_SCENT_PARAMS,
       sensorRadius: maxRadius
     };
-    const center = sampleScentInSector(
-      origin,
-      facing,
-      -sectorWidth / 2,
-      sectorWidth / 2,
-      maxRadius,
-      grid,
-      now,
-      params
-    );
-    const left = sampleScentInSector(
-      origin,
-      facing,
-      -halfFan,
-      -sectorWidth / 2,
-      maxRadius,
-      grid,
-      now,
-      params
-    );
-    const right = sampleScentInSector(
-      origin,
-      facing,
-      sectorWidth / 2,
-      halfFan,
-      maxRadius,
-      grid,
-      now,
-      params
-    );
 
-    // Estimate heading from trailMemory, fallback to current facing when empty
-    let trailHeading = this.trailMemory.length >= 2 ? this.estimatedHeading : this.rotationAngle;
-    if (this.trailMemory.length >= 2) {
-      const prev = this.trailMemory[this.trailMemory.length - 2];
-      const last = this.trailMemory[this.trailMemory.length - 1];
-      const dx = last.x - prev.x;
-      const dy = last.y - prev.y;
-      if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) {
-        trailHeading = Math.atan2(dy, dx);
+    // 전방/후방 분할
+    const forwardCount = Math.ceil(sectorCount / 2);
+    const backwardCount = sectorCount - forwardCount;
+    const forwardSectorAngle = Math.PI / forwardCount;
+    const backwardSectorAngle = backwardCount > 0 ? Math.PI / backwardCount : 0;
+
+    // 각 섹터 샘플링
+    const sectors: { idx: number; totalSignal: number; avgAge: number }[] = [];
+    for (let i = 0; i < sectorCount; i++) {
+      let relMin: number;
+      let relMax: number;
+      if (i < forwardCount) {
+        relMin = -Math.PI / 2 + i * forwardSectorAngle;
+        relMax = -Math.PI / 2 + (i + 1) * forwardSectorAngle;
+      } else {
+        const j = i - forwardCount;
+        relMin = Math.PI / 2 + j * backwardSectorAngle;
+        relMax = Math.PI / 2 + (j + 1) * backwardSectorAngle;
       }
+
+      const normMin = this.normalizeAngle(relMin);
+      const normMax = this.normalizeAngle(relMax);
+
+      let result: ScentSampleDetail;
+      if (normMin <= normMax) {
+        result = sampleScentInSector(
+          origin,
+          facing,
+          normMin,
+          normMax,
+          maxRadius,
+          grid,
+          now,
+          params
+        );
+      } else {
+        // 각도 wrap-around: 두 번 호출하여 병합
+        const r1 = sampleScentInSector(
+          origin,
+          facing,
+          normMin,
+          Math.PI,
+          maxRadius,
+          grid,
+          now,
+          params
+        );
+        const r2 = sampleScentInSector(
+          origin,
+          facing,
+          -Math.PI,
+          normMax,
+          maxRadius,
+          grid,
+          now,
+          params
+        );
+        const total = r1.totalSignal + r2.totalSignal;
+        result = {
+          totalSignal: total,
+          avgAge:
+            total > 1e-9
+              ? (r1.totalSignal * r1.avgAge + r2.totalSignal * r2.avgAge) / total
+              : Number.POSITIVE_INFINITY
+        };
+      }
+
+      sectors.push({ idx: i, totalSignal: result.totalSignal, avgAge: result.avgAge });
     }
 
-    const ages = [
-      { side: -1, age: left.avgAge },
-      { side: 0, age: center.avgAge },
-      { side: 1, age: right.avgAge }
-    ].filter((a) => isFinite(a.age));
+    // 유효 섹터 필터링 (finite avgAge)
+    const valid = sectors.filter((s) => isFinite(s.avgAge));
 
-    let netBias = 0;
-    let confidence = 0;
-
-    if (ages.length >= 2) {
-      ages.sort((a, b) => a.age - b.age);
-      const freshest = ages[0];
-      const second = ages[1];
-      const diff = (second.age - freshest.age) / Math.max(second.age, freshest.age, 1e-3);
-      netBias = freshest.side * diff;
-      confidence = Math.abs(netBias);
-    } else if (ages.length === 1) {
-      netBias = ages[0].side;
-      confidence = 1;
-    }
-
-    const maxTurn = Math.PI / 6;
-    const signalDirection = trailHeading + maxTurn * netBias;
-    const totalSignal = Math.max(center.totalSignal, left.totalSignal, right.totalSignal);
-
-    if (confidence < 1e-3) {
-      if (isFinite(center.avgAge)) {
-        const shouldPush =
-          this.trailMemory.length === 0 ||
-          Math.hypot(
-            this.x - this.trailMemory[this.trailMemory.length - 1].x,
-            this.y - this.trailMemory[this.trailMemory.length - 1].y
-          ) > 0.1;
-        if (shouldPush) {
-          this.trailMemory.push({ x: this.x, y: this.y, age: center.avgAge });
-          if (this.trailMemory.length > 5) {
-            this.trailMemory.shift();
-          }
-        }
-      }
+    if (valid.length === 0) {
       return {
-        totalSignal,
-        signalDirection: trailHeading,
+        totalSignal: 0,
+        signalDirection: 0,
         directionConfidence: 0,
-        netBias
+        netBias: 0
       };
     }
 
+    // freshest(avgAge 최소) 섹터 찾기
+    valid.sort((a, b) => a.avgAge - b.avgAge);
+    const freshest = valid[0];
+    const secondFreshest = valid.length >= 2 ? valid[1] : null;
+
+    // signalDirection: freshest 섹터 중심각 (world-space 절대각)
+    let centerRel: number;
+    if (freshest.idx < forwardCount) {
+      centerRel = -Math.PI / 2 + (freshest.idx + 0.5) * forwardSectorAngle;
+    } else {
+      const j = freshest.idx - forwardCount;
+      centerRel = Math.PI / 2 + (j + 0.5) * backwardSectorAngle;
+    }
+    const signalDirection = this.normalizeAngle(facing + centerRel);
+
+    // netBias: 신호 선명도 (0~1). freshest와 second의 avgAge 차이를 tauDecay로 정규화
+    let netBias = 0;
+    if (secondFreshest && freshest.totalSignal > 0) {
+      netBias = this.clamp(
+        (secondFreshest.avgAge - freshest.avgAge) / DEFAULT_SCENT_PARAMS.tauDecay,
+        0,
+        1
+      );
+    }
+
     return {
-      totalSignal,
+      totalSignal: freshest.totalSignal,
       signalDirection,
-      directionConfidence: confidence,
+      directionConfidence: netBias,
       netBias
     };
   }

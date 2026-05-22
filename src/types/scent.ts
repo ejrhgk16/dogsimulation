@@ -44,6 +44,10 @@ export interface TrackingParams {
   sensorRadius: number;
   /** 부채꼴 센서의 총 각도 (라디안). 기본값은 Math.PI / 2 (90°). */
   sensorFanAngle: number;
+  /** 360도 fan을 나눌 섹터 개수 (기본 6, 60도 간격) */
+  sensorSectorCount: number;
+  /** 센서 중심의 머리 앞 offset 거리 (기본 1.0 = ANIMAL_HALF_EXTENT*2) */
+  sensorOffset: number;
   detectThreshold: number;
   tauMemory: number;
   sigmaBase: number;

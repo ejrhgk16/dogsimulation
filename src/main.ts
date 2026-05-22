@@ -265,7 +265,10 @@ trackingPanel.innerHTML = `
     <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
     <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
     <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1.8" /><span class="slider-value" id="tpv-sensorRadius">1.80</span></label>
-    <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="180" step="5" value="110" /><span class="slider-value" id="tpv-sensorFanAngle">110°</span></label>
+    <label><span>sensorOffset</span><input type="range" id="tp-sensorOffset" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-sensorOffset">1.00</span></label>
+    <label><span>fanCircleSize</span><input type="range" id="tp-fanCircleSize" min="0.5" max="10" step="0.1" value="1.8" /><span class="slider-value" id="tpv-fanCircleSize">1.80</span></label>
+    <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="360" step="5" value="110" /><span class="slider-value" id="tpv-sensorFanAngle">110°</span></label>
+    <label><span>Sectors</span><input type="range" id="tp-sensorSectorCount" min="2" max="12" step="1" value="6" /><span class="slider-value" id="tpv-sensorSectorCount">6</span></label>
     <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="0.5" /><span class="slider-value" id="tpv-castLostScale">0.5</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
     <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.7" /><span class="slider-value" id="tpv-castFlipScaleMax">1.7</span></label>
@@ -281,7 +284,9 @@ app.appendChild(trackingPanel);
 
 const tpKeys = [
   'sensorRadius',
+  'sensorOffset',
   'sensorFanAngle',
+  'sensorSectorCount',
   'detectThreshold',
   'tauMemory',
   'sigmaBase',
@@ -352,6 +357,18 @@ for (const key of tpKeys) {
     }
   });
 }
+
+// fanCircleSize: 별도 슬라이더 (tracking param 아님)
+const fanCircleSizeSlider = trackingPanel.querySelector<HTMLInputElement>('#tp-fanCircleSize')!;
+const fanCircleSizeDisplay = trackingPanel.querySelector<HTMLElement>('#tpv-fanCircleSize')!;
+fanCircleSizeSlider.value = String(DEFAULT_TRACKING_PARAMS.sensorRadius);
+fanCircleSizeDisplay.textContent = DEFAULT_TRACKING_PARAMS.sensorRadius.toFixed(1);
+
+fanCircleSizeSlider.addEventListener('input', () => {
+  const val = parseFloat(fanCircleSizeSlider.value);
+  fanCircleSizeDisplay.textContent = val.toFixed(1);
+  runtime.setFanCircleSize(val);
+});
 
 // Debug values panel
 const debugPanel = document.createElement('div');

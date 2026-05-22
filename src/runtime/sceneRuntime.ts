@@ -92,8 +92,9 @@ export class SceneRuntime {
   private targetHeadingArrow: Line | null = null;
   private debugInitialRadius = 0;
   private sensorFanMeshes: Mesh[] = [];
-  private lastSensorRadius = 0;
-  private lastSensorFanAngle = 0;
+  private lastSensorSectorCount = 0;
+  private fanCircleSize: number = DEFAULT_TRACKING_PARAMS.sensorRadius;
+  private lastFanCircleSize = 0;
   private lastVisionRange = 0;
   private lastVisionConeAngle = 0;
 
@@ -391,6 +392,14 @@ export class SceneRuntime {
     for (const p of this.pursuers) p.updateTrackingParam(key, value);
   }
   // slider
+
+  /** 센서팬 디버그 viz 원 크기 설정 (tracking param과 별개) */
+  setFanCircleSize(v: number): void {
+    this.fanCircleSize = v;
+  }
+  getFanCircleSize(): number {
+    return this.fanCircleSize;
+  }
 
   /** 모든 추적자 추적 중지 */
   stopTracking(): void {
@@ -766,72 +775,48 @@ export class SceneRuntime {
 
           // --- Sensor Fan ---
           if (this.showSensorFan) {
-            const fanAngle =
-              pursuer.trackingParams.sensorFanAngle ?? DEFAULT_TRACKING_PARAMS.sensorFanAngle;
-            const sensorRadius =
-              pursuer.trackingParams.sensorRadius ?? DEFAULT_TRACKING_PARAMS.sensorRadius;
+            const drawRadius = this.fanCircleSize;
+            const sectorCount =
+              pursuer.trackingParams.sensorSectorCount ?? DEFAULT_TRACKING_PARAMS.sensorSectorCount;
 
             if (this.sensorFanMeshes.length === 0) {
-              const halfFan = fanAngle / 2;
-              const sectorWidth = fanAngle / 3;
-              const fanColors = [0xff4444, 0xffffff, 0x4488ff];
-              const fanSectors = [
-                { start: -halfFan, end: -sectorWidth / 2 },
-                { start: -sectorWidth / 2, end: sectorWidth / 2 },
-                { start: sectorWidth / 2, end: halfFan }
-              ];
-              this.sensorFanMeshes = [];
-              for (let i = 0; i < 3; i++) {
-                const shape = new Shape();
-                shape.moveTo(0, 0);
-                shape.absarc(0, 0, sensorRadius, fanSectors[i].start, fanSectors[i].end, false);
-                shape.lineTo(0, 0);
-                const geo = new ShapeGeometry(shape);
-                geo.rotateX(-Math.PI / 2);
-                const mat = new MeshBasicMaterial({
-                  color: fanColors[i],
-                  transparent: true,
-                  opacity: 0.3,
-                  side: DoubleSide
-                });
-                const mesh = new Mesh(geo, mat);
-                this.sensorFanMeshes.push(mesh);
+              this.sensorFanMeshes = this.buildSensorFanSectorMeshes(drawRadius, sectorCount);
+              for (const mesh of this.sensorFanMeshes) {
                 this.debugGroup.add(mesh);
               }
-              this.lastSensorFanAngle = fanAngle;
-              this.lastSensorRadius = sensorRadius;
+              this.lastFanCircleSize = drawRadius;
+              this.lastSensorSectorCount = sectorCount;
             }
 
-            const currentRadius = pursuer.trackingParams.sensorRadius;
-            const currentAngle = pursuer.trackingParams.sensorFanAngle;
+            const currentCount = pursuer.trackingParams.sensorSectorCount;
             if (
-              Math.abs(currentRadius - this.lastSensorRadius) > 0.001 ||
-              Math.abs(currentAngle - this.lastSensorFanAngle) > 0.001
+              Math.abs(this.fanCircleSize - this.lastFanCircleSize) > 0.001 ||
+              currentCount !== this.lastSensorSectorCount
             ) {
-              const halfFan = currentAngle / 2;
-              const sectorWidth = currentAngle / 3;
-              const fanSectors = [
-                { start: -halfFan, end: -sectorWidth / 2 },
-                { start: -sectorWidth / 2, end: sectorWidth / 2 },
-                { start: sectorWidth / 2, end: halfFan }
-              ];
-              for (let i = 0; i < this.sensorFanMeshes.length; i++) {
-                this.sensorFanMeshes[i].geometry.dispose();
-                const shape = new Shape();
-                shape.moveTo(0, 0);
-                shape.absarc(0, 0, currentRadius, fanSectors[i].start, fanSectors[i].end, false);
-                shape.lineTo(0, 0);
-                const newGeo = new ShapeGeometry(shape);
-                newGeo.rotateX(-Math.PI / 2);
-                this.sensorFanMeshes[i].geometry = newGeo;
+              for (const mesh of this.sensorFanMeshes) {
+                this.debugGroup.remove(mesh);
+                mesh.geometry.dispose();
+                (mesh.material as MeshBasicMaterial).dispose();
               }
-              this.lastSensorRadius = currentRadius;
-              this.lastSensorFanAngle = currentAngle;
+              this.sensorFanMeshes = [];
+              this.sensorFanMeshes = this.buildSensorFanSectorMeshes(
+                this.fanCircleSize,
+                currentCount
+              );
+              for (const mesh of this.sensorFanMeshes) {
+                this.debugGroup.add(mesh);
+              }
+              this.lastFanCircleSize = this.fanCircleSize;
+              this.lastSensorSectorCount = currentCount;
             }
 
             for (const mesh of this.sensorFanMeshes) {
               mesh.rotation.y = -pursuer.rotationAngle;
-              mesh.position.set(0, 0, 0);
+              mesh.position.set(
+                Math.cos(pursuer.rotationAngle) * pursuer.trackingParams.sensorOffset,
+                0,
+                Math.sin(pursuer.rotationAngle) * pursuer.trackingParams.sensorOffset
+              );
             }
           } else if (this.sensorFanMeshes.length > 0) {
             for (const mesh of this.sensorFanMeshes) {
@@ -1065,5 +1050,49 @@ export class SceneRuntime {
     if (this.showGridCells && !this.gridCellGroup) {
       this.rebuildGridCells();
     }
+  }
+
+  /** 전방/후방 분할 센서 팬 섹터 메시 배열 생성 */
+  private buildSensorFanSectorMeshes(radius: number, sectorCount: number): Mesh[] {
+    const meshes: Mesh[] = [];
+    const forwardCount = Math.ceil(sectorCount / 2);
+    const backwardCount = sectorCount - forwardCount;
+    const forwardSectorAngle = Math.PI / forwardCount;
+    const backwardSectorAngle = Math.PI / backwardCount;
+
+    for (let i = 0; i < sectorCount; i++) {
+      const shape = new Shape();
+      shape.moveTo(0, 0);
+      let startAngle: number;
+      let endAngle: number;
+      let hue: number;
+
+      if (i < forwardCount) {
+        // 전방: 녹색 계열
+        startAngle = -Math.PI / 2 + i * forwardSectorAngle;
+        endAngle = -Math.PI / 2 + (i + 1) * forwardSectorAngle;
+        hue = 100 + (i / Math.max(forwardCount - 1, 1)) * 60;
+      } else {
+        // 후방: 적색 계열
+        const j = i - forwardCount;
+        startAngle = Math.PI / 2 + j * backwardSectorAngle;
+        endAngle = Math.PI / 2 + (j + 1) * backwardSectorAngle;
+        hue = (j / Math.max(backwardCount - 1, 1)) * 50;
+      }
+
+      shape.absarc(0, 0, radius, startAngle, endAngle, false);
+      shape.lineTo(0, 0);
+      const geo = new ShapeGeometry(shape);
+      geo.rotateX(-Math.PI / 2);
+      const color = new Color().setHSL(hue / 360, 0.6, 0.5);
+      const mat = new MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.3,
+        side: DoubleSide
+      });
+      meshes.push(new Mesh(geo, mat));
+    }
+    return meshes;
   }
 }
