@@ -244,8 +244,6 @@ trackingPanel.id = 'tracking-panel';
 trackingPanel.innerHTML = `
   <fieldset>
     <legend>Tracking Params</legend>
-    <label><span>detectThreshold</span><input type="range" id="tp-detectThreshold" min="0.01" max="2" step="0.01" value="0.25" /><span class="slider-value" id="tpv-detectThreshold">0.25</span></label>
-    <label><span>tauMemory</span><input type="range" id="tp-tauMemory" min="0.1" max="10" step="0.1" value="3.0" /><span class="slider-value" id="tpv-tauMemory">3.0</span></label>
     <label><span>sigmaBase</span><input type="range" id="tp-sigmaBase" min="0.01" max="0.5" step="0.01" value="0.08" /><span class="slider-value" id="tpv-sigmaBase">0.08</span></label>
     <label><span>sigmaMin</span><input type="range" id="tp-sigmaMin" min="0.01" max="0.5" step="0.01" value="0.05" /><span class="slider-value" id="tpv-sigmaMin">0.05</span></label>
     <label><span>sigmaMax</span><input type="range" id="tp-sigmaMax" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-sigmaMax">1.2</span></label>
@@ -256,19 +254,14 @@ trackingPanel.innerHTML = `
     <label><span>initialRadius</span><input type="range" id="tp-initialRadius" min="1" max="50" step="0.5" value="8" /><span class="slider-value" id="tpv-initialRadius">8.0</span></label>
     <label><span>kRadius</span><input type="range" id="tp-kRadius" min="1" max="100" step="0.5" value="20" /><span class="slider-value" id="tpv-kRadius">20.0</span></label>
     <label><span>castAngleMax</span><input type="range" id="tp-castAngleMax" min="0.1" max="3.14" step="0.01" value="1.0" /><span class="slider-value" id="tpv-castAngleMax">1.00</span></label>
-    <label><span>castTurnTolerance</span><input type="range" id="tp-castTurnTolerance" min="0.01" max="0.5" step="0.01" value="0.08" /><span class="slider-value" id="tpv-castTurnTolerance">0.08</span></label>
     <label><span>lostRadius</span><input type="range" id="tp-lostRadius" min="10" max="200" step="1" value="80" /><span class="slider-value" id="tpv-lostRadius">80</span></label>
     <label><span>lostTurnRate</span><input type="range" id="tp-lostTurnRate" min="0.1" max="3" step="0.1" value="0.8" /><span class="slider-value" id="tpv-lostTurnRate">0.8</span></label>
     <label><span>surgeDuration</span><input type="range" id="tp-surgeDuration" min="0.1" max="3" step="0.1" value="0.5" /><span class="slider-value" id="tpv-surgeDuration">0.5</span></label>
-    <label><span>maxContacts</span><input type="range" id="tp-maxContacts" min="2" max="20" step="1" value="6" /><span class="slider-value" id="tpv-maxContacts">6</span></label>
     <label><span>minSpeed</span><input type="range" id="tp-minSpeed" min="0.5" max="10" step="0.5" value="1" /><span class="slider-value" id="tpv-minSpeed">1.0</span></label>
     <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
     <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
     <label><span>sensorRadius</span><input type="range" id="tp-sensorRadius" min="0.1" max="10" step="0.1" value="1.8" /><span class="slider-value" id="tpv-sensorRadius">1.80</span></label>
     <label><span>sensorOffset</span><input type="range" id="tp-sensorOffset" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-sensorOffset">1.00</span></label>
-    <label><span>fanCircleSize</span><input type="range" id="tp-fanCircleSize" min="0.5" max="10" step="0.1" value="1.8" /><span class="slider-value" id="tpv-fanCircleSize">1.80</span></label>
-    <label><span>sensorFanAngle</span><input type="range" id="tp-sensorFanAngle" min="10" max="360" step="5" value="110" /><span class="slider-value" id="tpv-sensorFanAngle">110°</span></label>
-    <label><span>Sectors</span><input type="range" id="tp-sensorSectorCount" min="2" max="12" step="1" value="6" /><span class="slider-value" id="tpv-sensorSectorCount">6</span></label>
     <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="0.5" /><span class="slider-value" id="tpv-castLostScale">0.5</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
     <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.7" /><span class="slider-value" id="tpv-castFlipScaleMax">1.7</span></label>
@@ -285,10 +278,6 @@ app.appendChild(trackingPanel);
 const tpKeys = [
   'sensorRadius',
   'sensorOffset',
-  'sensorFanAngle',
-  'sensorSectorCount',
-  'detectThreshold',
-  'tauMemory',
   'sigmaBase',
   'sigmaMin',
   'sigmaMax',
@@ -299,11 +288,9 @@ const tpKeys = [
   'initialRadius',
   'kRadius',
   'castAngleMax',
-  'castTurnTolerance',
   'lostRadius',
   'lostTurnRate',
   'surgeDuration',
-  'maxContacts',
   'minSpeed',
   'maxSpeed',
   'kSpeedSigma',
@@ -318,8 +305,7 @@ const tpKeys = [
 ] as const;
 
 function formatTp(value: number, key?: string): string {
-  if (key === 'sensorFanAngle' || key === 'visionConeAngle')
-    return Math.round((value * 180) / Math.PI) + '°';
+  if (key === 'visionConeAngle') return Math.round((value * 180) / Math.PI) + '°';
   if (Number.isInteger(value)) return String(value);
   if (value < 0.1 || value >= 10) return value.toFixed(1);
   return value.toFixed(2);
@@ -331,7 +317,7 @@ for (const key of tpKeys) {
   const display = trackingPanel.querySelector<HTMLElement>(`#tpv-${key}`)!;
   const defaultValue = DEFAULT_TRACKING_PARAMS[key as keyof typeof DEFAULT_TRACKING_PARAMS];
 
-  if (key === 'sensorFanAngle' || key === 'visionConeAngle') {
+  if (key === 'visionConeAngle') {
     // Config stores radians, slider uses degrees
     const deg = Math.round((defaultValue * 180) / Math.PI);
     slider.value = String(deg);
@@ -347,7 +333,7 @@ for (const key of tpKeys) {
   const display = trackingPanel.querySelector<HTMLElement>(`#tpv-${key}`)!;
   slider.addEventListener('input', () => {
     const val = parseFloat(slider.value);
-    if (key === 'sensorFanAngle' || key === 'visionConeAngle') {
+    if (key === 'visionConeAngle') {
       const rad = (val * Math.PI) / 180;
       display.textContent = formatTp(rad, key);
       runtime.setTrackingParam(key, rad);
@@ -357,18 +343,6 @@ for (const key of tpKeys) {
     }
   });
 }
-
-// fanCircleSize: 별도 슬라이더 (tracking param 아님)
-const fanCircleSizeSlider = trackingPanel.querySelector<HTMLInputElement>('#tp-fanCircleSize')!;
-const fanCircleSizeDisplay = trackingPanel.querySelector<HTMLElement>('#tpv-fanCircleSize')!;
-fanCircleSizeSlider.value = String(DEFAULT_TRACKING_PARAMS.sensorRadius);
-fanCircleSizeDisplay.textContent = DEFAULT_TRACKING_PARAMS.sensorRadius.toFixed(1);
-
-fanCircleSizeSlider.addEventListener('input', () => {
-  const val = parseFloat(fanCircleSizeSlider.value);
-  fanCircleSizeDisplay.textContent = val.toFixed(1);
-  runtime.setFanCircleSize(val);
-});
 
 // Debug values panel
 const debugPanel = document.createElement('div');
