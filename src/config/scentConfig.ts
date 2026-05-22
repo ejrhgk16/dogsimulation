@@ -47,7 +47,7 @@ export const DEFAULT_SCENT_VISUAL_CONFIG: ScentVisualConfig = {
   }
 };
 
-let _tauDecayMultiplier = 1.0;
+let _tauDecayMultiplier = 10;
 
 export function getTauDecayMultiplier(): number {
   return _tauDecayMultiplier;
@@ -71,7 +71,7 @@ export function setEmitRateMultiplier(multiplier: number): void {
   }
 }
 
-let _scentPointSizeMultiplier = 1.0;
+let _scentPointSizeMultiplier = 3;
 
 export function getScentPointSizeMultiplier(): number {
   return _scentPointSizeMultiplier;

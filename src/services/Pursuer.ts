@@ -42,7 +42,7 @@ export class Pursuer {
   /** 최근 접촉점 기록 */
   lastContacts: ContactPoint[];
   /** 지나온 경로 (몸통 위치) */
-  trailMemory: { x: number; y: number }[];
+  trailMemory: { x: number; y: number; age?: number }[];
   /** 마지막 감지 이후 경과 시간 */
   lostTime: number;
   /** cast/lost 탐색 반경 */
@@ -114,6 +114,36 @@ export class Pursuer {
     this.isTracking = false;
     this._prevXi = this.trackingParams.xi;
     this._currentFlipScale = this.trackingParams.flipRampStart;
+  }
+
+  /** 주어진 위치로 순간이동 (텔레포트) — 위치·높이·상태·trailMemory 전면 초기화, direction은 유지 */
+  setPosition(x: number, y: number, mapData: MapData): void {
+    this.x = x;
+    this.y = y;
+    this.height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
+    this.trailMemory = [];
+    this.state = 'track';
+    this.lastContacts = [];
+    this.lostTime = 0;
+    this.searchRadius = 0;
+    this.sigma = this.trackingParams.sigmaBase;
+    this.estimatedHeading = this.rotationAngle;
+    this.targetHeading = this.rotationAngle;
+    this.castOriginX = x;
+    this.castOriginY = y;
+    this.visionTargetId = null;
+    this.hasVisionContact = false;
+    this.lastTrailSignal = 0;
+    this._isRetracing = false;
+    this._retraceStuckTime = 0;
+    this._stuckFrameCount = 0;
+  }
+
+  /** trailMemory 마지막 3개 entry age가 단조 증가 → trail 역주행 중 */
+  isReversingTrail(): boolean {
+    if (this.trailMemory.length < 3) return false;
+    const last3 = this.trailMemory.slice(-3);
+    return last3[0].age! < last3[1].age! && last3[1].age! < last3[2].age!;
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -246,6 +276,11 @@ export class Pursuer {
     } else if (this.state === 'track') {
       this.targetHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
 
+      if (this.isReversingTrail()) {
+        this.targetHeading = this.normalizeAngle(this.targetHeading + Math.PI);
+        this.trailMemory = [];
+      }
+
       moveSpeed = this.dynamicSpeed(sigma);
     } else if (this.state === 'surge') {
       this.targetHeading = this.blendHeading(
@@ -253,6 +288,12 @@ export class Pursuer {
         sample.signalDirection,
         0.5 * sample.directionConfidence
       );
+
+      if (this.isReversingTrail()) {
+        this.targetHeading = this.normalizeAngle(this.targetHeading + Math.PI);
+        this.trailMemory = [];
+      }
+
       moveSpeed = this.dynamicSpeed(sigma) * 0.8;
     } else if (this.state === 'cast') {
       const dx = this.x - this.castOriginX;
@@ -698,7 +739,7 @@ export class Pursuer {
             this.y - this.trailMemory[this.trailMemory.length - 1].y
           ) > 0.1;
         if (shouldPush) {
-          this.trailMemory.push({ x: this.x, y: this.y });
+          this.trailMemory.push({ x: this.x, y: this.y, age: center.avgAge });
           if (this.trailMemory.length > 5) {
             this.trailMemory.shift();
           }

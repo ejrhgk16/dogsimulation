@@ -1,4 +1,10 @@
 import { SceneRuntime } from './runtime/sceneRuntime';
+import { ANIMAL_SCALE, ANIMAL_TYPES } from './config/animalConfig';
+import {
+  getEmitRateMultiplier,
+  getScentPointSizeMultiplier,
+  getTauDecayMultiplier
+} from './config/scentConfig';
 import { DEFAULT_TRACKING_PARAMS } from './config/trackingConfig';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -43,12 +49,12 @@ controlsPanel.innerHTML = `
     </label>
     <label>
       <span>TauDecay</span>
-      <input type="range" id="tau-decay-slider" min="0.1" max="20.0" step="0.1" value="1.0" />
+      <input type="range" id="tau-decay-slider" min="0.1" max="20.0" step="0.1" value="10" />
       <span class="slider-value" id="tau-decay-value">1.0x</span>
     </label>
     <label>
       <span>PtSize</span>
-      <input type="range" id="ptsize-slider" min="0.1" max="5.0" step="0.1" value="1.0" />
+      <input type="range" id="ptsize-slider" min="0.1" max="5.0" step="0.1" value="3" />
       <span class="slider-value" id="ptsize-value">1.0x</span>
     </label>
     <label>
@@ -182,6 +188,42 @@ emitRateSlider.addEventListener('input', () => {
   emitRateValue.textContent = val.toFixed(1) + 'x';
   runtime.setEmitRate(val);
 });
+
+// --- Slider initialization from config defaults ---
+
+// Speed: no config → keep HTML value="5", init display
+speedValue.textContent = parseFloat(speedSlider.value).toFixed(1);
+runtime.setPursuedSpeed(ALPACA_ID, parseFloat(speedSlider.value));
+
+// Scale: ANIMAL_SCALE
+const scaleDefault = String(ANIMAL_SCALE);
+scaleSlider.value = scaleDefault;
+scaleValue.textContent = ANIMAL_SCALE.toFixed(2);
+runtime.setAnimalScale(ALPACA_ID, ANIMAL_SCALE);
+
+// Rotation: ANIMAL_TYPES.dog.rotationSpeed
+const rotDefault = String(ANIMAL_TYPES.dog.rotationSpeed!);
+rotationSlider.value = rotDefault;
+rotationValue.textContent = ANIMAL_TYPES.dog.rotationSpeed!.toFixed(1);
+runtime.setRotationSpeed(ALPACA_ID, ANIMAL_TYPES.dog.rotationSpeed!);
+
+// TauDecay: getTauDecayMultiplier()
+const tauDefault = getTauDecayMultiplier();
+tauDecaySlider.value = String(tauDefault);
+tauDecayValue.textContent = tauDefault.toFixed(1) + 'x';
+runtime.setScentDecayRate(tauDefault);
+
+// PtSize: getScentPointSizeMultiplier()
+const ptsizeDefault = getScentPointSizeMultiplier();
+ptsizeSlider.value = String(ptsizeDefault);
+ptsizeValue.textContent = ptsizeDefault.toFixed(1) + 'x';
+runtime.setScentPointSize(ptsizeDefault);
+
+// EmitRate: getEmitRateMultiplier()
+const emitDefault = getEmitRateMultiplier();
+emitRateSlider.value = String(emitDefault);
+emitRateValue.textContent = emitDefault.toFixed(1) + 'x';
+runtime.setEmitRate(emitDefault);
 
 const trackBtn = controlsPanel.querySelector<HTMLButtonElement>('#track-btn')!;
 let tracking = false;

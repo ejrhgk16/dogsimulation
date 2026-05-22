@@ -13,10 +13,12 @@ import {
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
+  Raycaster,
   RingGeometry,
   Scene,
   Shape,
   ShapeGeometry,
+  Vector2,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -51,6 +53,10 @@ export class SceneRuntime {
   private scene: Scene;
   private camera: PerspectiveCamera;
   private controls: OrbitControls;
+
+  private terrainMesh: Mesh;
+  private raycaster: Raycaster;
+  private mouseNDC: Vector2;
 
   private pursuers: Pursuer[];
   private pursuedList: Pursued[];
@@ -164,6 +170,9 @@ export class SceneRuntime {
     directionalLight.position.set(5, 10, 4);
 
     const { terrainMesh, obstacleMeshes } = buildMapRender(this.mapData, defaultSceneConfig);
+    this.terrainMesh = terrainMesh;
+    this.raycaster = new Raycaster();
+    this.mouseNDC = new Vector2();
 
     this.scene.add(ambientLight, directionalLight, terrainMesh);
     if (obstacleMeshes.shaped) this.scene.add(obstacleMeshes.shaped);
@@ -183,7 +192,14 @@ export class SceneRuntime {
     window.addEventListener('keyup', (e) => this.keys.delete(e.key));
 
     this.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (e.button === 2) this.shouldResetOnEnd = true;
+      if (e.button === 2) {
+        this.shouldResetOnEnd = true;
+        return;
+      }
+      if (e.shiftKey && e.button === 0) {
+        this.handleShiftClick(e);
+        return;
+      }
     });
 
     this.controls.addEventListener('start', () => {
@@ -238,6 +254,31 @@ export class SceneRuntime {
     if (this.stressIntervalId !== null) {
       clearInterval(this.stressIntervalId);
       this.stressIntervalId = null;
+    }
+  }
+
+  /** Shift+좌클릭 → Raycaster 지형 선택 → 모든 pursuer 순간이동 */
+  private handleShiftClick(e: PointerEvent): void {
+    this.controls.enabled = false;
+    setTimeout(() => {
+      this.controls.enabled = true;
+    }, 0);
+
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouseNDC.set(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+
+    this.raycaster.setFromCamera(this.mouseNDC, this.camera);
+    const intersects = this.raycaster.intersectObject(this.terrainMesh);
+
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      for (const pursuer of this.pursuers) {
+        pursuer.setPosition(point.x, point.z, this.mapData);
+        this.controllers.get(pursuer.id)?.update(pursuer);
+      }
     }
   }
 
