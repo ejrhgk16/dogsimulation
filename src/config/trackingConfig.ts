@@ -3,9 +3,7 @@ import type { VisionParams } from '../types/vision';
 
 export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   sensorRadius: 1.8,
-  sensorFanAngle: 2 * Math.PI,
-  sensorSectorCount: 6,
-  sensorOffset: 1.0,
+  sensorFanAngle: (110 * Math.PI) / 180,
   detectThreshold: 0.01,
   tauMemory: 3.0,
   sigmaBase: 0.05,
