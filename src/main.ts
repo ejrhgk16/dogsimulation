@@ -59,8 +59,8 @@ controlsPanel.innerHTML = `
     </label>
     <label>
       <span>EmitRate</span>
-      <input type="range" id="emit-rate-slider" min="0.1" max="2.0" step="0.1" value="1.0" />
-      <span class="slider-value" id="emit-rate-value">1.0x</span>
+      <input type="range" id="emit-rate-slider" min="0.1" max="2.0" step="0.1" value="1.7" />
+      <span class="slider-value" id="emit-rate-value">1.7x</span>
     </label>
     <button id="track-btn" type="button">추적 시작</button>
   </fieldset>

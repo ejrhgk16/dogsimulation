@@ -9,7 +9,7 @@ export interface SceneConfig {
 
 export const defaultSceneConfig: SceneConfig = {
   gravity: -9.81,
-  groundSize: 50,
+  groundSize: 100,
   mapConfig: defaultMapConfig
 };
 

@@ -13,6 +13,8 @@ import {
 import { getHeightAt, isObstacleInFootprint } from './mapService';
 
 /** Box-Muller 정규분포 난수 생성 */
+const SCENT_SPREAD_CLAMP = 1.2;
+
 function randomGaussian(): number {
   const u1 = Math.random();
   const u2 = Math.random();
@@ -223,7 +225,7 @@ export class Pursued {
     grid: ScentGrid
   ): void {
     const angle = Math.random() * 2 * Math.PI;
-    const radius = Math.abs(randomGaussian()) * profile.spreadRadius;
+    const radius = Math.min(Math.abs(randomGaussian()), SCENT_SPREAD_CLAMP) * profile.spreadRadius;
     grid.insert({
       animalId: this.id,
       animalType: this.animalType,

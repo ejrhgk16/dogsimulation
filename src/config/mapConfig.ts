@@ -32,8 +32,8 @@ export const OBSTACLE_PATTERNS: Record<Exclude<ObstacleShape, 'single'>, Obstacl
 };
 
 export const defaultMapConfig: MapConfig = {
-  width: 50,
-  depth: 30,
+  width: 100,
+  depth: 60,
   cellSize: 1,
   baseHeight: 0,
   hillHeight: 2,
