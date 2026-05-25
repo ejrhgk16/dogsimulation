@@ -150,7 +150,7 @@ export class SceneRuntime {
     this.scene = new Scene();
     this.scene.background = new Color(0x2a3028);
 
-    this.camera = new PerspectiveCamera(50, 1, 0.1, 100);
+    this.camera = new PerspectiveCamera(50, 1, 0.1, 200);
     this.camera.position.set(0, 25, 35);
 
     this.controls = new OrbitControls(this.camera, canvas);

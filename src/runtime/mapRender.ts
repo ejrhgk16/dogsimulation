@@ -85,6 +85,7 @@ export function buildMapRender(
   const terrainGeo = createTerrainGeometry(mapData);
   const terrainMat = new MeshStandardMaterial({ color: 0x4a6b4a });
   const terrainMesh = new Mesh(terrainGeo, terrainMat);
+  terrainMesh.frustumCulled = false;
 
   const obstaclePositions: ObstaclePos[] = [];
   for (let row = 0; row < mapData.depth; row++) {
