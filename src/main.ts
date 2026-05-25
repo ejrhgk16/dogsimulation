@@ -74,23 +74,17 @@ visualPanel.id = 'visual-panel';
 visualPanel.innerHTML = `
   <fieldset>
     <legend>Visual</legend>
-    <label><input type="checkbox" id="vis-search-ring" /> Search Ring</label>
-    <label><input type="checkbox" id="vis-heading-arrow" /> Heading Arrow</label>
-    <label><input type="checkbox" id="vis-target-heading-arrow" /> Target Heading</label>
-    <label><input type="checkbox" id="vis-sensor-fan" /> Sensor Fan</label>
-    <label><input type="checkbox" id="vis-cast-debug" /> Cast Sector</label>
-    <label><input type="checkbox" id="vis-vision-debug" /> Vision Cone</label>
-    <label><input type="checkbox" id="vis-grid-cells" /> Grid Cells</label>
+    <label><input type="checkbox" id="vis-heading-arrow" checked /> Heading Arrow</label>
+    <label><input type="checkbox" id="vis-target-heading-arrow" checked /> Target Heading</label>
+    <label><input type="checkbox" id="vis-sensor-fan" checked /> Sensor Fan</label>
+    <label><input type="checkbox" id="vis-cast-debug" checked /> Cast Sector</label>
+    <label><input type="checkbox" id="vis-vision-debug" checked /> Vision Cone</label>
+    <label><input type="checkbox" id="vis-grid-cells" checked /> Grid Cells</label>
     <label><input type="checkbox" id="vis-scent" checked /> Scent Trail</label>
     <button id="reset-btn" type="button">Reset (Pos+Scent+Camera)</button>
   </fieldset>
 `;
 leftPanels.appendChild(visualPanel);
-
-const visSearchRing = visualPanel.querySelector<HTMLInputElement>('#vis-search-ring')!;
-visSearchRing.addEventListener('change', () => {
-  runtime.setSearchRingVisible(visSearchRing.checked);
-});
 
 const visHeadingArrow = visualPanel.querySelector<HTMLInputElement>('#vis-heading-arrow')!;
 visHeadingArrow.addEventListener('change', () => {

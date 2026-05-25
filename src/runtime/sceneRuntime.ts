@@ -14,7 +14,6 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   Raycaster,
-  RingGeometry,
   Scene,
   Shape,
   ShapeGeometry,
@@ -58,6 +57,45 @@ export function getAllVisitedCells(pursuers: { visitedCells: Set<string> }[]): S
   return visited;
 }
 
+/** 마지막 냄새 탐지 셀 (주황) — _lastScentGridX/Y >= 0 인 셀 key Set 반환 */
+export function getOrangeCellKeys(pursuers: { visitedCells: Set<string> }[]): Set<string> {
+  const orange = new Set<string>();
+  for (const p of pursuers) {
+    const gx = (p as unknown as { _lastScentGridX: number })._lastScentGridX;
+    const gy = (p as unknown as { _lastScentGridY: number })._lastScentGridY;
+    if (gx >= 0 && gy >= 0) {
+      orange.add(`${gx},${gy}`);
+    }
+  }
+  return orange;
+}
+
+/** lost 상태 pursuer의 동심원 perimeter 미방문 셀 (보라) Set 반환 */
+export function getPurpleCellKeys(
+  pursuers: { visitedCells: Set<string>; state: string }[]
+): Set<string> {
+  const purple = new Set<string>();
+  for (const p of pursuers) {
+    if (p.state !== 'lost') continue;
+    const gx = (p as unknown as { _lastScentGridX: number })._lastScentGridX;
+    const gy = (p as unknown as { _lastScentGridY: number })._lastScentGridY;
+    if (gx < 0 || gy < 0) continue;
+    for (let r = 1; r <= 3; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          if (Math.abs(dx) === r || Math.abs(dy) === r) {
+            const key = `${gx + dx},${gy + dy}`;
+            if (!p.visitedCells.has(key)) {
+              purple.add(key);
+            }
+          }
+        }
+      }
+    }
+  }
+  return purple;
+}
+
 /** 씬/카메라/렌더러/컨트롤 초기화, 추적자·피추적자·향기 객체 생성 */
 export class SceneRuntime {
   private renderer: WebGLRenderer;
@@ -83,13 +121,12 @@ export class SceneRuntime {
   private lastFrameTime = performance.now();
   private keys = new Set<string>();
 
-  private showSearchRing = false;
-  private showHeadingArrow = false;
-  private showTargetHeadingArrow = false;
-  private showSensorFan = false;
-  private showCastDebug = false;
-  private showVisionDebug = false;
-  private showGridCells = false;
+  private showHeadingArrow = true;
+  private showTargetHeadingArrow = true;
+  private showSensorFan = true;
+  private showCastDebug = true;
+  private showVisionDebug = true;
+  private showGridCells = true;
   private visionFanMeshes: Mesh[] = [];
   private visionRayLine: Line | null = null;
 
@@ -100,10 +137,8 @@ export class SceneRuntime {
   private gridCellGroup: Group | null = null;
   private gridCellEntries: { line: LineSegments; cellKey: string; baseOpacity: number }[] | null =
     null;
-  private searchRing: Mesh | null = null;
   private headingArrow: Line | null = null;
   private targetHeadingArrow: Line | null = null;
-  private debugInitialRadius = 0;
   private sensorFanMeshes: Mesh[] = [];
   private lastSensorRadius = 0;
   private lastSensorFanAngle = 0;
@@ -316,11 +351,6 @@ export class SceneRuntime {
     this.scentRender?.setVisible(visible);
   }
 
-  /** 서치링 디버그 표시/숨김 */
-  setSearchRingVisible(v: boolean): void {
-    this.showSearchRing = v;
-  }
-
   /** heading 화살표 디버그 표시/숨김 */
   setHeadingArrowVisible(v: boolean): void {
     this.showHeadingArrow = v;
@@ -527,11 +557,23 @@ export class SceneRuntime {
   private updateGridCellColors(): void {
     if (!this.gridCellEntries) return;
     const visited = getAllVisitedCells(this.pursuers);
+    const orangeSet = getOrangeCellKeys(this.pursuers);
+    const purpleSet = getPurpleCellKeys(this.pursuers);
     for (const { line, cellKey, baseOpacity } of this.gridCellEntries) {
       const mat = line.material as LineBasicMaterial;
-      const isVisited = visited.has(cellKey);
-      mat.color.setHex(isVisited ? 0xffff00 : 0x88ccff);
-      mat.opacity = isVisited ? 0.5 : baseOpacity;
+      if (orangeSet.has(cellKey)) {
+        mat.color.setHex(0xff8800);
+        mat.opacity = 0.6;
+      } else if (purpleSet.has(cellKey)) {
+        mat.color.setHex(0x9944ff);
+        mat.opacity = 0.4;
+      } else if (visited.has(cellKey)) {
+        mat.color.setHex(0xffff00);
+        mat.opacity = 0.5;
+      } else {
+        mat.color.setHex(0x88ccff);
+        mat.opacity = baseOpacity;
+      }
     }
   }
 
@@ -561,6 +603,9 @@ export class SceneRuntime {
       p.lastContacts = [];
       p.lostTime = 0;
       p.searchRadius = 0;
+      p.visitedCells.clear();
+      (p as unknown as { _lastScentGridX: number })._lastScentGridX = -1;
+      (p as unknown as { _lastScentGridY: number })._lastScentGridY = -1;
       p.sigma = p.trackingParams.sigmaBase;
       p.estimatedHeading = p.rotationAngle;
       p.targetHeading = p.rotationAngle;
@@ -648,7 +693,6 @@ export class SceneRuntime {
   /** 매 프레임 실행: 애니메이션 업데이트 → 추적/이동 로직 */
   private onFrame(dt: number, now: number): void {
     const anyDebugActive =
-      this.showSearchRing ||
       this.showHeadingArrow ||
       this.showTargetHeadingArrow ||
       this.showSensorFan ||
@@ -701,7 +745,6 @@ export class SceneRuntime {
 
     if (this.debugGroup) {
       const anyDebugActive =
-        this.showSearchRing ||
         this.showHeadingArrow ||
         this.showTargetHeadingArrow ||
         this.showSensorFan ||
@@ -711,7 +754,6 @@ export class SceneRuntime {
       if (!anyDebugActive) {
         this.scene.remove(this.debugGroup);
         this.debugGroup = null;
-        this.searchRing = null;
         this.headingArrow = null;
         this.targetHeadingArrow = null;
         this.sensorFanMeshes = [];
@@ -727,36 +769,6 @@ export class SceneRuntime {
         for (const pursuer of this.pursuers) {
           const baseY = pursuer.height + 0.06;
           this.debugGroup.position.set(pursuer.x, baseY, pursuer.y);
-
-          // --- Search Ring ---
-          if (this.showSearchRing) {
-            if (!this.searchRing) {
-              this.debugInitialRadius =
-                pursuer.trackingParams.initialRadius ?? DEFAULT_TRACKING_PARAMS.initialRadius;
-              const ringGeo = new RingGeometry(
-                this.debugInitialRadius,
-                this.debugInitialRadius + 0.1,
-                64
-              );
-              ringGeo.rotateX(-Math.PI / 2);
-              const ringMat = new MeshBasicMaterial({
-                color: 0xffff00,
-                transparent: true,
-                opacity: 0.4,
-                side: DoubleSide
-              });
-              this.searchRing = new Mesh(ringGeo, ringMat);
-              this.debugGroup.add(this.searchRing);
-            }
-            const scale =
-              this.debugInitialRadius > 0 ? pursuer.searchRadius / this.debugInitialRadius : 1;
-            this.searchRing.scale.setScalar(scale);
-          } else if (this.searchRing) {
-            this.debugGroup.remove(this.searchRing);
-            this.searchRing.geometry.dispose();
-            (this.searchRing.material as MeshBasicMaterial).dispose();
-            this.searchRing = null;
-          }
 
           // --- Heading Arrow ---
           if (this.showHeadingArrow) {
