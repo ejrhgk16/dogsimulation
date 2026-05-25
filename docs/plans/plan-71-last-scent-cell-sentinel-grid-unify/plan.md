@@ -17,6 +17,7 @@
 | 1 | sgrid-api | `src/types/scent.ts`, `src/services/scentGrid.ts` | `ScentGrid` 인터페이스에 `worldToCell()`, `cellToWorld()` 추가, `ScentGridImpl` 구현 |
 | 2 | pursuer-fix | `src/services/Pursuer.ts` | sentinel `null`로 변경, grid API 사용으로 전환, lost 탐색 cellToWorld 사용 |
 | 3 | runtime-sampler-align | `src/runtime/sceneRuntime.ts`, `src/services/scentSampler.ts`, `src/types/pursuer.ts` | sceneRuntime sentinel 조건 수정, scentSampler visited 필터 grid API 사용, PursuerState 타입 수정 |
+| 4 | fix-cellkey | `src/runtime/sceneRuntime.ts` | `rebuildGridCells` cellKey 를 origin-centric 잔재에서 ScentGrid col/row index로 수정 |
 
 ## 의존성
 
@@ -24,6 +25,8 @@
 task-1-sgrid-api
   ├── task-2-pursuer-fix       (순차)
   └── task-3-runtime-sampler-align  (병렬)
+       └── (완료)
+task-4-fix-cellkey → task-1/2/3 완료 후 실행
 ```
 
-task-2와 task-3은 task-1 완료 후 병렬 실행 가능.
+task-2와 task-3은 task-1 완료 후 병렬 실행 가능. task-4는 1~3 완료 후 단독 실행.

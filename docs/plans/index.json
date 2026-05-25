@@ -313,7 +313,8 @@
     },
     {
       "dir": "plan-71-last-scent-cell-sentinel-grid-unify",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-05-26T08:24:07+0900"
     }
   ]
 }

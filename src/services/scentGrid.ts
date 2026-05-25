@@ -36,19 +36,27 @@ export class ScentGridImpl implements ScentGrid {
     }
   }
 
-  /** 세계좌표(x,z) → 그리드 셀 인덱스. 범위 밖이면 null */
-  private worldToCell(x: number, z: number): { col: number; row: number } | null {
-    const col = Math.floor((x - this.worldLeft) / this.scentCellSize);
-    const row = Math.floor((z - this.worldTop) / this.scentCellSize);
-    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
-    return { col, row };
+  /** 세계좌표(x,y) → cell 인덱스. 범위 밖이면 null */
+  worldToCell(x: number, y: number): { cx: number; cy: number } | null {
+    const cx = Math.floor((x - this.worldLeft) / this.scentCellSize);
+    const cy = Math.floor((y - this.worldTop) / this.scentCellSize);
+    if (cx < 0 || cx >= this.cols || cy < 0 || cy >= this.rows) return null;
+    return { cx, cy };
+  }
+
+  /** cell 인덱스 → cell 중심 세계좌표 */
+  cellToWorld(cx: number, cy: number): { x: number; y: number } {
+    return {
+      x: this.worldLeft + (cx + 0.5) * this.scentCellSize,
+      y: this.worldTop + (cy + 0.5) * this.scentCellSize
+    };
   }
 
   /** 향기 점을 해당 셀에 삽입 */
   insert(point: ScentPoint): void {
     const cell = this.worldToCell(point.x, point.y);
     if (!cell) return;
-    this.grid[cell.col][cell.row].push(point);
+    this.grid[cell.cx][cell.cy].push(point);
   }
 
   /** decay < 0.01 이면 제거 (GPU step(0.01)과 동일 기준) */

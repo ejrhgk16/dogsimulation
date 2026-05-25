@@ -57,13 +57,13 @@ export function getAllVisitedCells(pursuers: { visitedCells: Set<string> }[]): S
   return visited;
 }
 
-/** 마지막 냄새 탐지 셀 (주황) — _lastScentGridX/Y >= 0 인 셀 key Set 반환 */
+/** 마지막 냄새 탐지 셀 (주황) — _lastScentGridX/Y !== null 인 셀 key Set 반환 */
 export function getOrangeCellKeys(pursuers: { visitedCells: Set<string> }[]): Set<string> {
   const orange = new Set<string>();
   for (const p of pursuers) {
-    const gx = (p as unknown as { _lastScentGridX: number })._lastScentGridX;
-    const gy = (p as unknown as { _lastScentGridY: number })._lastScentGridY;
-    if (gx >= 0 && gy >= 0) {
+    const gx = (p as unknown as { _lastScentGridX: number | null })._lastScentGridX;
+    const gy = (p as unknown as { _lastScentGridY: number | null })._lastScentGridY;
+    if (gx !== null && gy !== null) {
       orange.add(`${gx},${gy}`);
     }
   }
@@ -77,9 +77,9 @@ export function getPurpleCellKeys(
   const purple = new Set<string>();
   for (const p of pursuers) {
     if (p.state !== 'lost') continue;
-    const gx = (p as unknown as { _lastScentGridX: number })._lastScentGridX;
-    const gy = (p as unknown as { _lastScentGridY: number })._lastScentGridY;
-    if (gx < 0 || gy < 0) continue;
+    const gx = (p as unknown as { _lastScentGridX: number | null })._lastScentGridX;
+    const gy = (p as unknown as { _lastScentGridY: number | null })._lastScentGridY;
+    if (gx === null || gy === null) continue;
     for (let r = 1; r <= 3; r++) {
       for (let dx = -r; dx <= r; dx++) {
         for (let dy = -r; dy <= r; dy++) {
@@ -536,9 +536,7 @@ export class SceneRuntime {
       ]);
       const geo = new BufferGeometry();
       geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-      const centerX = left + cs / 2;
-      const centerZ = top + cs / 2;
-      const cellKey = `${Math.floor(centerX / cs)},${Math.floor(centerZ / cs)}`;
+      const cellKey = `${entry.cx},${entry.cy}`;
       const baseOpacity = 0.15 + 0.5 * (entry.count / maxCount);
       const mat = new LineBasicMaterial({
         color: 0x88ccff,
@@ -604,8 +602,8 @@ export class SceneRuntime {
       p.lostTime = 0;
       p.searchRadius = 0;
       p.visitedCells.clear();
-      (p as unknown as { _lastScentGridX: number })._lastScentGridX = -1;
-      (p as unknown as { _lastScentGridY: number })._lastScentGridY = -1;
+      (p as unknown as { _lastScentGridX: number | null })._lastScentGridX = null;
+      (p as unknown as { _lastScentGridY: number | null })._lastScentGridY = null;
       p.sigma = p.trackingParams.sigmaBase;
       p.estimatedHeading = p.rotationAngle;
       p.targetHeading = p.rotationAngle;
@@ -658,8 +656,8 @@ export class SceneRuntime {
     this.fakeTrails = [];
     for (const p of this.pursuers) {
       p.visitedCells.clear();
-      (p as unknown as { _lastScentGridX: number })._lastScentGridX = -1;
-      (p as unknown as { _lastScentGridY: number })._lastScentGridY = -1;
+      (p as unknown as { _lastScentGridX: number | null })._lastScentGridX = null;
+      (p as unknown as { _lastScentGridY: number | null })._lastScentGridY = null;
     }
     this.rebuildGridCells();
   }
