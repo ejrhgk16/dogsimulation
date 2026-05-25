@@ -1,6 +1,7 @@
 import type { MapData } from '../types/map';
 import type { ObstacleAvoidanceParams, ObstacleAvoidanceResult } from '../types/obstacleAvoidance';
 import { isObstacleInFootprint } from './mapService';
+import { DEFAULT_SCENT_CELL_SIZE } from '../config/scentConfig';
 
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
@@ -206,10 +207,10 @@ export function findBestUnvisitedAngle(
   x: number,
   y: number,
   heading: number,
-  visitedCells: Set<string>,
-  cellSize: number
+  visitedCells: Set<string>
 ): number | null {
   const scanRadius = 3;
+  const cellSize = DEFAULT_SCENT_CELL_SIZE;
   const sx = Math.floor(x / cellSize);
   const sy = Math.floor(y / cellSize);
   let bestAngle: number | null = null;
@@ -250,7 +251,6 @@ export function resolveStuck(
   mapData: MapData,
   params: ObstacleAvoidanceParams,
   visitedCells: Set<string>,
-  gridCellSize: number,
   scentSample?: ScentSectorSignals
 ): { heading: number; shouldBacktrack: boolean } {
   const avoidanceResult = avoidObstacle(x, y, heading, mapData, params);
@@ -266,7 +266,7 @@ export function resolveStuck(
 
   if (wallResult.shouldBacktrack) {
     // Backtrack: steer toward nearby unvisited cell
-    const bestAngle = findBestUnvisitedAngle(x, y, heading, visitedCells, gridCellSize);
+    const bestAngle = findBestUnvisitedAngle(x, y, heading, visitedCells);
     if (bestAngle !== null) {
       return { heading: normalizeAngle(bestAngle), shouldBacktrack: true };
     }

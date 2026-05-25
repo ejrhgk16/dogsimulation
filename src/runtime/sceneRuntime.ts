@@ -47,6 +47,17 @@ import type { ScentRender } from './scentRender';
 import { createAnimalRender } from './animalRender';
 import type { AnimalRender } from './animalRender';
 
+/** 모든 pursuer의 visitedCells를 합집합으로 반환 */
+export function getAllVisitedCells(pursuers: { visitedCells: Set<string> }[]): Set<string> {
+  const visited = new Set<string>();
+  for (const p of pursuers) {
+    for (const key of p.visitedCells) {
+      visited.add(key);
+    }
+  }
+  return visited;
+}
+
 /** 씬/카메라/렌더러/컨트롤 초기화, 추적자·피추적자·향기 객체 생성 */
 export class SceneRuntime {
   private renderer: WebGLRenderer;
@@ -87,6 +98,8 @@ export class SceneRuntime {
 
   private debugGroup: Group | null = null;
   private gridCellGroup: Group | null = null;
+  private gridCellEntries: { line: LineSegments; cellKey: string; baseOpacity: number }[] | null =
+    null;
   private searchRing: Mesh | null = null;
   private headingArrow: Line | null = null;
   private targetHeadingArrow: Line | null = null;
@@ -458,6 +471,8 @@ export class SceneRuntime {
     const x0 = this.trailGrid.worldLeft;
     const z0 = this.trailGrid.worldTop;
 
+    this.gridCellEntries = [];
+
     for (const entry of entries) {
       const left = x0 + entry.cx * cs;
       const right = left + cs;
@@ -491,12 +506,33 @@ export class SceneRuntime {
       ]);
       const geo = new BufferGeometry();
       geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-      const opacity = 0.15 + 0.5 * (entry.count / maxCount);
-      const mat = new LineBasicMaterial({ color: 0x88ccff, transparent: true, opacity });
-      this.gridCellGroup.add(new LineSegments(geo, mat));
+      const centerX = left + cs / 2;
+      const centerZ = top + cs / 2;
+      const cellKey = `${Math.floor(centerX / cs)},${Math.floor(centerZ / cs)}`;
+      const baseOpacity = 0.15 + 0.5 * (entry.count / maxCount);
+      const mat = new LineBasicMaterial({
+        color: 0x88ccff,
+        transparent: true,
+        opacity: baseOpacity
+      });
+      const line = new LineSegments(geo, mat);
+      this.gridCellGroup.add(line);
+      this.gridCellEntries.push({ line, cellKey, baseOpacity });
     }
 
     this.scene.add(this.gridCellGroup);
+    this.updateGridCellColors();
+  }
+
+  private updateGridCellColors(): void {
+    if (!this.gridCellEntries) return;
+    const visited = getAllVisitedCells(this.pursuers);
+    for (const { line, cellKey, baseOpacity } of this.gridCellEntries) {
+      const mat = line.material as LineBasicMaterial;
+      const isVisited = visited.has(cellKey);
+      mat.color.setHex(isVisited ? 0xffff00 : 0x88ccff);
+      mat.opacity = isVisited ? 0.5 : baseOpacity;
+    }
   }
 
   private disposeGridCellGroup(): void {
@@ -507,6 +543,7 @@ export class SceneRuntime {
         (child.material as LineBasicMaterial).dispose();
       }
     }
+    this.gridCellEntries = null;
   }
 
   /** 모든 Pursuer/Pursued를 초기 위치로 리셋 */
@@ -569,11 +606,17 @@ export class SceneRuntime {
     if (this.showGridCells) this.rebuildGridCells();
   }
 
-  /** 모든 상태(위치+향기+가짜 향기) 리셋 */
+  /** 모든 상태(위치+향기+가짜 향기+방문 그리드) 리셋 */
   resetAll(): void {
     this.resetPositions();
     this.resetScent();
     this.fakeTrails = [];
+    for (const p of this.pursuers) {
+      p.visitedCells.clear();
+      (p as unknown as { _lastScentGridX: number })._lastScentGridX = -1;
+      (p as unknown as { _lastScentGridY: number })._lastScentGridY = -1;
+    }
+    this.rebuildGridCells();
   }
 
   /** 프레임 루프: 카메라 복귀 → 시간 계산 → onFrame → render */
@@ -1060,8 +1103,10 @@ export class SceneRuntime {
       }
     }
 
-    // Grid cell overlay (world-space, not per-pursuer)
-    if (this.showGridCells && !this.gridCellGroup) {
+    // Grid cell overlay — update visited colors each frame
+    if (this.showGridCells && this.gridCellGroup) {
+      this.updateGridCellColors();
+    } else if (this.showGridCells && !this.gridCellGroup) {
       this.rebuildGridCells();
     }
   }

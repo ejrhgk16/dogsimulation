@@ -48,4 +48,8 @@ export interface PursuerState {
   hasVisionContact: boolean;
   /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
   visitedCells: Set<string>;
+  /** 마지막 scent 감지 위치의 grid cell X 좌표 */
+  lastScentGridX?: number;
+  /** 마지막 scent 감지 위치의 grid cell Y 좌표 */
+  lastScentGridY?: number;
 }

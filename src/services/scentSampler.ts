@@ -82,7 +82,7 @@ export function sampleScentInSector(
   now: number,
   params: ScentSamplerParams,
   visitedCells?: Set<string>,
-  gridCellSize?: number
+  cellSize?: number
 ): ScentSampleDetail {
   const spreadSigma = DEFAULT_SCENT_PARAMS.scentSpreadSigma;
   const twoSigmaSq = 2 * spreadSigma * spreadSigma;
@@ -112,9 +112,9 @@ export function sampleScentInSector(
       if (normalizedAngle < sectorMinAngle || normalizedAngle > sectorMaxAngle) continue;
 
       // visited cell filter: skip point whose grid cell has been visited
-      if (visitedCells && gridCellSize) {
-        const cellX = Math.floor(point.x / gridCellSize);
-        const cellY = Math.floor(point.y / gridCellSize);
+      if (visitedCells && cellSize) {
+        const cellX = Math.floor(point.x / cellSize);
+        const cellY = Math.floor(point.y / cellSize);
         if (visitedCells.has(`${cellX},${cellY}`)) continue;
       }
 

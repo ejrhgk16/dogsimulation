@@ -7,7 +7,7 @@ import {
   HEIGHT_SPEED_FACTOR
 } from '../config/animalConfig';
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
-import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
+import { DEFAULT_SCENT_CELL_SIZE, DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
 import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
 import { resolveStuck } from './obstacleAvoidance';
@@ -70,6 +70,10 @@ export class Pursuer {
   private _prevY: number | undefined;
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
+  /** 마지막 scent 감지 위치 grid cell X (-1 = 미감지) */
+  _lastScentGridX: number = -1;
+  /** 마지막 scent 감지 위치 grid cell Y (-1 = 미감지) */
+  _lastScentGridY: number = -1;
   private _baseBoundary: number = 0;
   private _halfSectorAngle: number = 0;
   private _currentFlipScale: number;
@@ -134,6 +138,8 @@ export class Pursuer {
     this.hasVisionContact = false;
     this.lastTrailSignal = 0;
     this.visitedCells = new Set<string>();
+    this._lastScentGridX = -1;
+    this._lastScentGridY = -1;
     this._stuckFrameCount = 0;
   }
 
@@ -171,6 +177,10 @@ export class Pursuer {
       this.lostTime = 0;
       this.searchRadius = 0;
       this.state = 'track';
+
+      // Record last scent detection grid cell
+      this._lastScentGridX = Math.floor(this.x / DEFAULT_SCENT_CELL_SIZE);
+      this._lastScentGridY = Math.floor(this.y / DEFAULT_SCENT_CELL_SIZE);
 
       this.lastContacts.push({
         x: this.x,
@@ -281,54 +291,44 @@ export class Pursuer {
 
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
     } else {
-      // lost: scan nearby grid for unvisited cells, steer toward highest density
-      const cellSize = this.trackingParams.gridCellSize;
-      const scanRadius = 5; // scan half-extent in grid cells
-      let bestAngle = this.targetHeading;
-      let bestUnvisited = 0;
+      // lost: search unvisited cells around last scent detection grid cell
+      // If _lastScentGridX/Y is -1 (no scent detected yet), keep current heading
+      if (this._lastScentGridX >= 0 && this._lastScentGridY >= 0) {
+        const cellSize = DEFAULT_SCENT_CELL_SIZE;
+        const cx = this._lastScentGridX;
+        const cy = this._lastScentGridY;
 
-      // divide 360° into N sectors, count unvisited cells in each
-      const N = 8; // 8 angular sectors (45° each)
-      const cx = Math.floor(this.x / cellSize);
-      const cy = Math.floor(this.y / cellSize);
+        // Search radii 1 → 2 → 3 around last scent cell
+        for (let radius = 1; radius <= 3; radius++) {
+          let foundThisRadius = false;
 
-      for (let i = 0; i < N; i++) {
-        const sectorAngle = (i / N) * TWO_PI;
-        let unvisitedCount = 0;
-        let totalCount = 0;
+          for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+              // Only check perimeter cells at this radius
+              if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
 
-        // scan grid cells within the angular sector
-        for (let dx = -scanRadius; dx <= scanRadius; dx++) {
-          for (let dy = -scanRadius; dy <= scanRadius; dy++) {
-            const gx = cx + dx;
-            const gy = cy + dy;
-            const cellCenterX = (gx + 0.5) * cellSize;
-            const cellCenterY = (gy + 0.5) * cellSize;
-            const angleToCell = Math.atan2(cellCenterY - this.y, cellCenterX - this.x);
-            const diff = this.normalizeAngle(angleToCell - sectorAngle);
-            const sectorHalfWidth = Math.PI / N;
+              const gx = cx + dx;
+              const gy = cy + dy;
+              const key = `${gx},${gy}`;
 
-            if (Math.abs(diff) <= sectorHalfWidth) {
-              totalCount++;
-              if (!this.visitedCells.has(`${gx},${gy}`)) {
-                unvisitedCount++;
+              if (!this.visitedCells.has(key)) {
+                // Found unvisited cell — steer toward its center
+                const cellCenterX = (gx + 0.5) * cellSize;
+                const cellCenterY = (gy + 0.5) * cellSize;
+                this.targetHeading = Math.atan2(cellCenterY - this.y, cellCenterX - this.x);
+                foundThisRadius = true;
+                break;
               }
             }
+            if (foundThisRadius) break;
           }
-        }
 
-        const ratio = totalCount > 0 ? unvisitedCount / totalCount : 0;
-        if (ratio > bestUnvisited) {
-          bestUnvisited = ratio;
-          bestAngle = sectorAngle;
+          if (foundThisRadius) break;
+          // If no unvisited cell found in this radius, continue to next radius
         }
       }
+      // If all cells visited or no lastScent, keep current heading
 
-      // blend toward bestAngle instead of random turn
-      const turnRate = this.trackingParams.lostTurnRate * dt;
-      const angleDiff = this.shortestAngleDiff(bestAngle, this.targetHeading);
-      const maxTurn = Math.min(Math.abs(angleDiff), turnRate);
-      this.targetHeading += Math.sign(angleDiff) * maxTurn;
       moveSpeed = this.trackingParams.minSpeed;
     }
 
@@ -463,7 +463,6 @@ export class Pursuer {
           mapData,
           this._avoidanceParams,
           this.visitedCells,
-          this.trackingParams.gridCellSize,
           scentSignals
         );
       } else {
@@ -475,7 +474,6 @@ export class Pursuer {
           mapData,
           this._avoidanceParams,
           this.visitedCells,
-          this.trackingParams.gridCellSize,
           scentSignals
         );
       }
@@ -647,7 +645,7 @@ export class Pursuer {
   /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
   private buildDogScentSample(grid: ScentGrid, now: number): ScentSample {
     // visited cell 기록: 현재 위치를 grid cell로 변환해 Set에 추가
-    const cellSize = this.trackingParams.gridCellSize;
+    const cellSize = DEFAULT_SCENT_CELL_SIZE;
     const cx = Math.floor(this.x / cellSize);
     const cy = Math.floor(this.y / cellSize);
     this.visitedCells.add(`${cx},${cy}`);
@@ -659,10 +657,10 @@ export class Pursuer {
     const origin = { x: this.x, y: this.y };
     const facing = this.rotationAngle;
 
-    // track/cast 상태에서만 visited cell 필터 적용
-    const filterVisited = this.state === 'track' || this.state === 'cast';
+    // visited cell 필터: track/cast/lost에서만 적용 (surge는 전체 고려)
+    const filterVisited = this.state === 'track' || this.state === 'cast' || this.state === 'lost';
     const visitedParam = filterVisited ? this.visitedCells : undefined;
-    const cellSizeParam = filterVisited ? this.trackingParams.gridCellSize : undefined;
+    const cellSizeParam = filterVisited ? DEFAULT_SCENT_CELL_SIZE : undefined;
 
     const params = {
       ...DEFAULT_SCENT_PARAMS,
