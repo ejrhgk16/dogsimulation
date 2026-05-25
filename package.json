@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "harness": "node tools/scripts/execute.mjs",
     "test": "npm run test:unit",
-    "test:unit": "vitest run --passWithNoTests tests/unit src/services/__tests__",
+    "test:unit": "vitest run --passWithNoTests tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "lint": "eslint . --max-warnings 0 && node tools/linters/check-quality.mjs",
