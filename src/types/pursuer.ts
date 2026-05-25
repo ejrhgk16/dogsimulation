@@ -12,6 +12,8 @@ export interface ScentSample {
   signalDirection: number; // radians
   directionConfidence: number; // 0~1
   netBias: number;
+  /** 좌/우 섹터 totalSignal — wallFollow scent 우선순위 판단용 */
+  sectorSignals: { left: number; right: number };
 }
 
 export interface SensorPositions {

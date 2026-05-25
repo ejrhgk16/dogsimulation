@@ -351,7 +351,8 @@ export class Pursuer {
       dt,
       moveSpeed,
       mapData,
-      otherEntities
+      otherEntities,
+      sample.sectorSignals
     );
 
     this.x = newX;
@@ -369,7 +370,8 @@ export class Pursuer {
     dt: number,
     speed: number,
     mapData: MapData,
-    otherEntities: ReadonlyArray<{ x: number; y: number }> = []
+    otherEntities: ReadonlyArray<{ x: number; y: number }> = [],
+    scentSignals?: { left: number; right: number }
   ): { newX: number; newY: number; newHeight: number } {
     const speedScaled = speed * dt;
 
@@ -456,7 +458,8 @@ export class Pursuer {
           this.castSide,
           mapData,
           this._avoidanceParams,
-          this.trailMemory
+          this.trailMemory,
+          scentSignals
         );
       } else if (this.state === 'lost' && this._isRetracing) {
         if (this._retraceStuckTime > this._avoidanceParams.retraceTimeout) {
@@ -471,7 +474,8 @@ export class Pursuer {
           this.castSide,
           mapData,
           this._avoidanceParams,
-          this.trailMemory
+          this.trailMemory,
+          scentSignals
         );
       } else {
         avoidResult = resolveStuck(
@@ -481,7 +485,8 @@ export class Pursuer {
           this.castSide,
           mapData,
           this._avoidanceParams,
-          this.trailMemory
+          this.trailMemory,
+          scentSignals
         );
       }
 
@@ -745,19 +750,14 @@ export class Pursuer {
           }
         }
       }
-      return {
-        totalSignal,
-        signalDirection: trailHeading,
-        directionConfidence: 0,
-        netBias
-      };
     }
 
     return {
       totalSignal,
       signalDirection,
       directionConfidence: confidence,
-      netBias
+      netBias,
+      sectorSignals: { left: left.totalSignal, right: right.totalSignal }
     };
   }
 }
