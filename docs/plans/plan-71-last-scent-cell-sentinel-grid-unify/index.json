@@ -1,0 +1,9 @@
+{
+  "plan": "plan-71-last-scent-cell-sentinel-grid-unify",
+  "status": "pending",
+  "tasks": [
+    { "name": "task-1-sgrid-api", "status": "pending", "depends_on": [] },
+    { "name": "task-2-pursuer-fix", "status": "pending", "depends_on": ["task-1-sgrid-api"] },
+    { "name": "task-3-runtime-sampler-align", "status": "pending", "depends_on": ["task-1-sgrid-api"] }
+  ]
+}
