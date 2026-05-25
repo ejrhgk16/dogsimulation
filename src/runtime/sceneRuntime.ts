@@ -92,8 +92,9 @@ export class SceneRuntime {
   private targetHeadingArrow: Line | null = null;
   private debugInitialRadius = 0;
   private sensorFanMeshes: Mesh[] = [];
-  private lastSensorRadius = 0;
   private lastSensorSectorCount = 0;
+  private fanCircleSize: number = DEFAULT_TRACKING_PARAMS.sensorRadius;
+  private lastFanCircleSize = 0;
   private lastVisionRange = 0;
   private lastVisionConeAngle = 0;
 
@@ -391,6 +392,14 @@ export class SceneRuntime {
     for (const p of this.pursuers) p.updateTrackingParam(key, value);
   }
   // slider
+
+  /** 센서팬 디버그 viz 원 크기 설정 (tracking param과 별개) */
+  setFanCircleSize(v: number): void {
+    this.fanCircleSize = v;
+  }
+  getFanCircleSize(): number {
+    return this.fanCircleSize;
+  }
 
   /** 모든 추적자 추적 중지 */
   stopTracking(): void {
@@ -766,8 +775,7 @@ export class SceneRuntime {
 
           // --- Sensor Fan ---
           if (this.showSensorFan) {
-            const drawRadius =
-              pursuer.trackingParams.sensorRadius ?? DEFAULT_TRACKING_PARAMS.sensorRadius;
+            const drawRadius = this.fanCircleSize;
             const sectorCount =
               pursuer.trackingParams.sensorSectorCount ?? DEFAULT_TRACKING_PARAMS.sensorSectorCount;
 
@@ -776,14 +784,13 @@ export class SceneRuntime {
               for (const mesh of this.sensorFanMeshes) {
                 this.debugGroup.add(mesh);
               }
-              this.lastSensorRadius = drawRadius;
+              this.lastFanCircleSize = drawRadius;
               this.lastSensorSectorCount = sectorCount;
             }
 
-            const currentRadius = pursuer.trackingParams.sensorRadius;
             const currentCount = pursuer.trackingParams.sensorSectorCount;
             if (
-              Math.abs(currentRadius - this.lastSensorRadius) > 0.001 ||
+              Math.abs(this.fanCircleSize - this.lastFanCircleSize) > 0.001 ||
               currentCount !== this.lastSensorSectorCount
             ) {
               for (const mesh of this.sensorFanMeshes) {
@@ -792,11 +799,14 @@ export class SceneRuntime {
                 (mesh.material as MeshBasicMaterial).dispose();
               }
               this.sensorFanMeshes = [];
-              this.sensorFanMeshes = this.buildSensorFanSectorMeshes(currentRadius, currentCount);
+              this.sensorFanMeshes = this.buildSensorFanSectorMeshes(
+                this.fanCircleSize,
+                currentCount
+              );
               for (const mesh of this.sensorFanMeshes) {
                 this.debugGroup.add(mesh);
               }
-              this.lastSensorRadius = currentRadius;
+              this.lastFanCircleSize = this.fanCircleSize;
               this.lastSensorSectorCount = currentCount;
             }
 
