@@ -264,6 +264,7 @@ trackingPanel.innerHTML = `
     <label><span>sensorOffset</span><input type="range" id="tp-sensorOffset" min="0" max="5" step="0.1" value="1.0" /><span class="slider-value" id="tpv-sensorOffset">1.00</span></label>
     <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="0.5" /><span class="slider-value" id="tpv-castLostScale">0.5</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
+    <label><span>castThreshold</span><input type="range" id="tp-castThreshold" min="0.1" max="3.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castThreshold">0.50</span></label>
     <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.7" /><span class="slider-value" id="tpv-castFlipScaleMax">1.7</span></label>
     <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="0.7" /><span class="slider-value" id="tpv-flipRampStart">0.70</span></label>
     <label><span>flipRampStep</span><input type="range" id="tp-flipRampStep" min="0.05" max="0.5" step="0.05" value="0.1" /><span class="slider-value" id="tpv-flipRampStep">0.10</span></label>
@@ -296,6 +297,7 @@ const tpKeys = [
   'kSpeedSigma',
   'castLostScale',
   'castFlipMargin',
+  'castThreshold',
   'castFlipScaleMax',
   'flipRampStart',
   'flipRampStep',

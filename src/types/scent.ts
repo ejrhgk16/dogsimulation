@@ -60,6 +60,8 @@ export interface TrackingParams {
   initialRadius: number;
   kRadius: number;
   castAngleMax: number;
+  /** cast 진입 sigma 임계값. sigma > castThreshold 이면 surge→cast 전환. 기본 1.0 */
+  castThreshold: number;
   castTurnTolerance: number;
   lostRadius: number;
   lostTurnRate: number;

@@ -30,6 +30,7 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   kRadial: 0.01,
   castLostScale: 0.5,
   castFlipMargin: 0.5,
+  castThreshold: 0.5,
   castFlipScaleMax: 1.7,
   flipRampStart: 0.7,
   flipRampStep: 0.1,

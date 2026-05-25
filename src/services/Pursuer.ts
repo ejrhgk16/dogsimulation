@@ -226,7 +226,7 @@ export class Pursuer {
         rFromContact = Math.hypot(this.x - last.x, this.y - last.y);
       }
       const effectiveSigma = this.sigma + this.trackingParams.kRadial * rFromContact;
-      if (this.sigma > this.trackingParams.theta0) {
+      if (this.sigma > this.trackingParams.castThreshold) {
         this.state = 'cast';
         this.castOriginX = this.x;
         this.castOriginY = this.y;
@@ -275,7 +275,7 @@ export class Pursuer {
         moveSpeed = this.trackingParams.maxSpeed;
       }
     } else if (this.state === 'track') {
-      this.targetHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
+      this.targetHeading = sample.signalDirection;
 
       if (this.isReversingTrail()) {
         this.targetHeading = this.normalizeAngle(this.targetHeading + Math.PI);
