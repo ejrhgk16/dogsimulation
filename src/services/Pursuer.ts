@@ -41,15 +41,13 @@ export class Pursuer {
   state: TrackState;
   /** 최근 접촉점 기록 */
   lastContacts: ContactPoint[];
-  /** 지나온 경로 (몸통 위치) */
-  trailMemory: { x: number; y: number; age?: number }[];
   /** 마지막 감지 이후 경과 시간 */
   lostTime: number;
   /** cast/lost 탐색 반경 */
   searchRadius: number;
   /** 추적 불확실도 (sigma) */
   sigma: number;
-  /** trailMemory 기반 추정 이동 방향 */
+  /** lastContacts 기반 추정 이동 방향 */
   estimatedHeading: number;
   /** 조향 목표 방향 */
   targetHeading: number;
@@ -65,16 +63,17 @@ export class Pursuer {
   trackingParams: TrackingParams;
   /** 추적 활성 여부 */
   isTracking: boolean;
+  /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
+  visitedCells: Set<string>;
+  /** 직전 프레임 위치 (estimatedHeading 계산용) */
+  private _prevX: number | undefined;
+  private _prevY: number | undefined;
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
   private _baseBoundary: number = 0;
   private _halfSectorAngle: number = 0;
   private _currentFlipScale: number;
-  private _retraceTargetX: number = 0;
-  private _retraceTargetY: number = 0;
-  private _isRetracing: boolean = false;
   private _avoidanceParams = DEFAULT_AVOIDANCE_PARAMS;
-  private _retraceStuckTime: number = 0;
   private _stuckFrameCount: number = 0;
   currentSpeed: number = 0;
 
@@ -100,7 +99,6 @@ export class Pursuer {
     this.targetId = null;
     this.state = 'track';
     this.lastContacts = [];
-    this.trailMemory = [];
     this.lostTime = 0;
     this.searchRadius = 0;
     this.trackingParams = trackingParams ?? DEFAULT_TRACKING_PARAMS;
@@ -112,16 +110,17 @@ export class Pursuer {
     this.visionTargetId = null;
     this.hasVisionContact = false;
     this.isTracking = false;
+    this.visitedCells = new Set<string>();
     this._prevXi = this.trackingParams.xi;
     this._currentFlipScale = this.trackingParams.flipRampStart;
+    this._stuckFrameCount = 0;
   }
 
-  /** 주어진 위치로 순간이동 (텔레포트) — 위치·높이·상태·trailMemory 전면 초기화, direction은 유지 */
+  /** 주어진 위치로 순간이동 (텔레포트) — 위치·높이·상태·visitedCells 전면 초기화, direction은 유지 */
   setPosition(x: number, y: number, mapData: MapData): void {
     this.x = x;
     this.y = y;
     this.height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
-    this.trailMemory = [];
     this.state = 'track';
     this.lastContacts = [];
     this.lostTime = 0;
@@ -134,16 +133,8 @@ export class Pursuer {
     this.visionTargetId = null;
     this.hasVisionContact = false;
     this.lastTrailSignal = 0;
-    this._isRetracing = false;
-    this._retraceStuckTime = 0;
+    this.visitedCells = new Set<string>();
     this._stuckFrameCount = 0;
-  }
-
-  /** trailMemory 마지막 3개 entry age가 단조 증가 → trail 역주행 중 */
-  isReversingTrail(): boolean {
-    if (this.trailMemory.length < 3) return false;
-    const last3 = this.trailMemory.slice(-3);
-    return last3[0].age! < last3[1].age! && last3[1].age! < last3[2].age!;
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -180,7 +171,6 @@ export class Pursuer {
       this.lostTime = 0;
       this.searchRadius = 0;
       this.state = 'track';
-      this._isRetracing = false;
 
       this.lastContacts.push({
         x: this.x,
@@ -198,17 +188,6 @@ export class Pursuer {
 
     const lastContactDistance = getLastContactDistance(this.lastContacts);
     const patchiness = estimatePatchiness(this.lastContacts, now);
-
-    // Update estimatedHeading from trailMemory (frozen during cast)
-    if (this.state !== 'cast' && this.trailMemory.length >= 2) {
-      const prev = this.trailMemory[this.trailMemory.length - 2];
-      const last = this.trailMemory[this.trailMemory.length - 1];
-      const dx = last.x - prev.x;
-      const dy = last.y - prev.y;
-      if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) {
-        this.estimatedHeading = Math.atan2(dy, dx);
-      }
-    }
 
     this.sigma = this.updateSigma(lastContactDistance, this.lostTime, patchiness);
     this.searchRadius = Math.min(
@@ -241,23 +220,10 @@ export class Pursuer {
       }
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
-      this.trailMemory = [];
-      if (this.lastContacts.length > 0) {
-        const last = this.lastContacts[this.lastContacts.length - 1];
-        this._retraceTargetX = last.x;
-        this._retraceTargetY = last.y;
-        this._isRetracing = true;
-      }
-      this.estimatedHeading = this.rotationAngle;
     }
 
     const sigma = this.sigma;
     let moveSpeed: number;
-
-    // Fallback: when trailMemory is empty but tracking/surging, use current facing
-    if ((this.state === 'track' || this.state === 'surge') && this.trailMemory.length < 2) {
-      this.estimatedHeading = this.rotationAngle;
-    }
 
     // Vision override: approach target, stop when within stopDistance
     if (visionTarget) {
@@ -276,11 +242,6 @@ export class Pursuer {
     } else if (this.state === 'track') {
       this.targetHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
 
-      if (this.isReversingTrail()) {
-        this.targetHeading = this.normalizeAngle(this.targetHeading + Math.PI);
-        this.trailMemory = [];
-      }
-
       moveSpeed = this.dynamicSpeed(sigma);
     } else if (this.state === 'surge') {
       this.targetHeading = this.blendHeading(
@@ -288,11 +249,6 @@ export class Pursuer {
         sample.signalDirection,
         0.5 * sample.directionConfidence
       );
-
-      if (this.isReversingTrail()) {
-        this.targetHeading = this.normalizeAngle(this.targetHeading + Math.PI);
-        this.trailMemory = [];
-      }
 
       moveSpeed = this.dynamicSpeed(sigma) * 0.8;
     } else if (this.state === 'cast') {
@@ -324,19 +280,55 @@ export class Pursuer {
       }
 
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
-    } else if (this._isRetracing) {
-      const dx = this._retraceTargetX - this.x;
-      const dy = this._retraceTargetY - this.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 0.5) {
-        this._isRetracing = false;
-        moveSpeed = this.trackingParams.minSpeed;
-      } else {
-        this.targetHeading = Math.atan2(dy, dx);
-        moveSpeed = this.trackingParams.minSpeed * 1.5;
-      }
     } else {
-      this.targetHeading += this.trackingParams.lostTurnRate * dt;
+      // lost: scan nearby grid for unvisited cells, steer toward highest density
+      const cellSize = this.trackingParams.gridCellSize;
+      const scanRadius = 5; // scan half-extent in grid cells
+      let bestAngle = this.targetHeading;
+      let bestUnvisited = 0;
+
+      // divide 360° into N sectors, count unvisited cells in each
+      const N = 8; // 8 angular sectors (45° each)
+      const cx = Math.floor(this.x / cellSize);
+      const cy = Math.floor(this.y / cellSize);
+
+      for (let i = 0; i < N; i++) {
+        const sectorAngle = (i / N) * TWO_PI;
+        let unvisitedCount = 0;
+        let totalCount = 0;
+
+        // scan grid cells within the angular sector
+        for (let dx = -scanRadius; dx <= scanRadius; dx++) {
+          for (let dy = -scanRadius; dy <= scanRadius; dy++) {
+            const gx = cx + dx;
+            const gy = cy + dy;
+            const cellCenterX = (gx + 0.5) * cellSize;
+            const cellCenterY = (gy + 0.5) * cellSize;
+            const angleToCell = Math.atan2(cellCenterY - this.y, cellCenterX - this.x);
+            const diff = this.normalizeAngle(angleToCell - sectorAngle);
+            const sectorHalfWidth = Math.PI / N;
+
+            if (Math.abs(diff) <= sectorHalfWidth) {
+              totalCount++;
+              if (!this.visitedCells.has(`${gx},${gy}`)) {
+                unvisitedCount++;
+              }
+            }
+          }
+        }
+
+        const ratio = totalCount > 0 ? unvisitedCount / totalCount : 0;
+        if (ratio > bestUnvisited) {
+          bestUnvisited = ratio;
+          bestAngle = sectorAngle;
+        }
+      }
+
+      // blend toward bestAngle instead of random turn
+      const turnRate = this.trackingParams.lostTurnRate * dt;
+      const angleDiff = this.shortestAngleDiff(bestAngle, this.targetHeading);
+      const maxTurn = Math.min(Math.abs(angleDiff), turnRate);
+      this.targetHeading += Math.sign(angleDiff) * maxTurn;
       moveSpeed = this.trackingParams.minSpeed;
     }
 
@@ -361,6 +353,22 @@ export class Pursuer {
     const angleDiff = this.shortestAngleDiff(this.targetHeading, this.rotationAngle);
     const turnRate = this.state === 'cast' ? this.trackingParams.flipTurnRate : 8;
     this.rotationAngle += angleDiff * Math.min(1, turnRate * dt);
+
+    // Update estimatedHeading from previous movement (frozen during cast)
+    if (this.state !== 'cast' && this._prevX !== undefined && this._prevY !== undefined) {
+      const dx = this.x - this._prevX;
+      const dy = this.y - this._prevY;
+      if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) {
+        this.estimatedHeading = Math.atan2(dy, dx);
+      }
+    }
+    // Fallback: first frame has no previous position
+    if ((this.state === 'track' || this.state === 'surge') && this._prevX === undefined) {
+      this.estimatedHeading = this.rotationAngle;
+    }
+    // Save position for next frame's heading computation
+    this._prevX = this.x;
+    this._prevY = this.y;
   }
 
   /** 장애물·충돌·경사 고려 실제 이동 계산 */
@@ -433,12 +441,8 @@ export class Pursuer {
 
     if (isStuck) {
       this._stuckFrameCount++;
-      if (this.state === 'lost' && this._isRetracing) {
-        this._retraceStuckTime += dt;
-      }
     } else {
       this._stuckFrameCount = 0;
-      this._retraceStuckTime = 0;
     }
 
     if (this._stuckFrameCount >= 2) {
@@ -458,23 +462,8 @@ export class Pursuer {
           this.castSide,
           mapData,
           this._avoidanceParams,
-          this.trailMemory,
-          scentSignals
-        );
-      } else if (this.state === 'lost' && this._isRetracing) {
-        if (this._retraceStuckTime > this._avoidanceParams.retraceTimeout) {
-          this._isRetracing = false;
-          this._retraceStuckTime = 0;
-          this.targetHeading = this.rotationAngle + Math.PI; // 180° turn
-        }
-        avoidResult = resolveStuck(
-          this.x,
-          this.y,
-          this.targetHeading,
-          this.castSide,
-          mapData,
-          this._avoidanceParams,
-          this.trailMemory,
+          this.visitedCells,
+          this.trackingParams.gridCellSize,
           scentSignals
         );
       } else {
@@ -485,7 +474,8 @@ export class Pursuer {
           this.castSide,
           mapData,
           this._avoidanceParams,
-          this.trailMemory,
+          this.visitedCells,
+          this.trackingParams.gridCellSize,
           scentSignals
         );
       }
@@ -656,12 +646,23 @@ export class Pursuer {
 
   /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
   private buildDogScentSample(grid: ScentGrid, now: number): ScentSample {
+    // visited cell 기록: 현재 위치를 grid cell로 변환해 Set에 추가
+    const cellSize = this.trackingParams.gridCellSize;
+    const cx = Math.floor(this.x / cellSize);
+    const cy = Math.floor(this.y / cellSize);
+    this.visitedCells.add(`${cx},${cy}`);
+
     const fanAngle = this.trackingParams.sensorFanAngle;
     const halfFan = fanAngle / 2;
     const sectorWidth = fanAngle / 3;
     const maxRadius = this.trackingParams.sensorRadius;
     const origin = { x: this.x, y: this.y };
     const facing = this.rotationAngle;
+
+    // track/cast 상태에서만 visited cell 필터 적용
+    const filterVisited = this.state === 'track' || this.state === 'cast';
+    const visitedParam = filterVisited ? this.visitedCells : undefined;
+    const cellSizeParam = filterVisited ? this.trackingParams.gridCellSize : undefined;
 
     const params = {
       ...DEFAULT_SCENT_PARAMS,
@@ -675,7 +676,9 @@ export class Pursuer {
       maxRadius,
       grid,
       now,
-      params
+      params,
+      visitedParam,
+      cellSizeParam
     );
     const left = sampleScentInSector(
       origin,
@@ -685,7 +688,9 @@ export class Pursuer {
       maxRadius,
       grid,
       now,
-      params
+      params,
+      visitedParam,
+      cellSizeParam
     );
     const right = sampleScentInSector(
       origin,
@@ -695,20 +700,12 @@ export class Pursuer {
       maxRadius,
       grid,
       now,
-      params
+      params,
+      visitedParam,
+      cellSizeParam
     );
 
-    // Estimate heading from trailMemory, fallback to current facing when empty
-    let trailHeading = this.trailMemory.length >= 2 ? this.estimatedHeading : this.rotationAngle;
-    if (this.trailMemory.length >= 2) {
-      const prev = this.trailMemory[this.trailMemory.length - 2];
-      const last = this.trailMemory[this.trailMemory.length - 1];
-      const dx = last.x - prev.x;
-      const dy = last.y - prev.y;
-      if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) {
-        trailHeading = Math.atan2(dy, dx);
-      }
-    }
+    let trailHeading = this.estimatedHeading;
 
     const ages = [
       { side: -1, age: left.avgAge },
@@ -734,23 +731,6 @@ export class Pursuer {
     const maxTurn = Math.PI / 6;
     const signalDirection = trailHeading + maxTurn * netBias;
     const totalSignal = Math.max(center.totalSignal, left.totalSignal, right.totalSignal);
-
-    if (confidence < 1e-3) {
-      if (isFinite(center.avgAge)) {
-        const shouldPush =
-          this.trailMemory.length === 0 ||
-          Math.hypot(
-            this.x - this.trailMemory[this.trailMemory.length - 1].x,
-            this.y - this.trailMemory[this.trailMemory.length - 1].y
-          ) > 0.1;
-        if (shouldPush) {
-          this.trailMemory.push({ x: this.x, y: this.y, age: center.avgAge });
-          if (this.trailMemory.length > 5) {
-            this.trailMemory.shift();
-          }
-        }
-      }
-    }
 
     return {
       totalSignal,

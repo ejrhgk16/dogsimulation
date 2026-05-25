@@ -33,7 +33,8 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   flipRampStep: 0.1,
   flipTurnRate: 8,
   visionRange: 3.5,
-  visionConeAngle: Math.PI / 6
+  visionConeAngle: Math.PI / 6,
+  gridCellSize: 0.5
 };
 
 export const DEFAULT_VISION_PARAMS: VisionParams = {

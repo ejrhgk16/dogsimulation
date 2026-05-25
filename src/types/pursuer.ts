@@ -35,7 +35,6 @@ export interface PursuerState {
   targetId: string | null;
   state: TrackState;
   lastContacts: ContactPoint[];
-  trailMemory: { x: number; y: number; age?: number }[];
   lostTime: number;
   searchRadius: number;
   sigma: number;
@@ -47,4 +46,6 @@ export interface PursuerState {
   visionTargetId: string | null;
   /** 시야 감지 여부 (현재 프레임) */
   hasVisionContact: boolean;
+  /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
+  visitedCells: Set<string>;
 }

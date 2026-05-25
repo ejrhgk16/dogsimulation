@@ -522,7 +522,6 @@ export class SceneRuntime {
       p.rotationAngle = Math.atan2(1, 0);
       p.state = 'track';
       p.lastContacts = [];
-      p.trailMemory = [];
       p.lostTime = 0;
       p.searchRadius = 0;
       p.sigma = p.trackingParams.sigmaBase;

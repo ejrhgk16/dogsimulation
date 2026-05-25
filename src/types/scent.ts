@@ -84,6 +84,8 @@ export interface TrackingParams {
   visionRange: number;
   /** 시야 cone 반각 (라디안). 전체 cone 각도 = 2 * visionConeAngle */
   visionConeAngle: number;
+  /** visited cell grid 해상도 (m) */
+  gridCellSize: number;
 }
 
 /** scent spatial grid — cell 단위로 scent point 공간 인덱싱 */

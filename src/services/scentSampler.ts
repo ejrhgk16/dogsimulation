@@ -80,7 +80,9 @@ export function sampleScentInSector(
   maxRadius: number,
   grid: ScentGrid,
   now: number,
-  params: ScentSamplerParams
+  params: ScentSamplerParams,
+  visitedCells?: Set<string>,
+  gridCellSize?: number
 ): ScentSampleDetail {
   const spreadSigma = DEFAULT_SCENT_PARAMS.scentSpreadSigma;
   const twoSigmaSq = 2 * spreadSigma * spreadSigma;
@@ -108,6 +110,13 @@ export function sampleScentInSector(
       const pointAngle = Math.atan2(dy, dx) - facingAngle;
       const normalizedAngle = Math.atan2(Math.sin(pointAngle), Math.cos(pointAngle));
       if (normalizedAngle < sectorMinAngle || normalizedAngle > sectorMaxAngle) continue;
+
+      // visited cell filter: skip point whose grid cell has been visited
+      if (visitedCells && gridCellSize) {
+        const cellX = Math.floor(point.x / gridCellSize);
+        const cellY = Math.floor(point.y / gridCellSize);
+        if (visitedCells.has(`${cellX},${cellY}`)) continue;
+      }
 
       const tauDecay = point.tauDecay ?? params.tauDecay;
       const timeDecay = Math.exp(-(now - point.t) / tauDecay);

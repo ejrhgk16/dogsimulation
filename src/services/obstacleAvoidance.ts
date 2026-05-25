@@ -197,8 +197,50 @@ export function wallFollow(
 }
 
 /**
+ * Find the best unvisited direction to steer toward when backtracking.
+ * Scans a 7x7 grid (radius 3) around the pursuer, collects angles of
+ * unvisited cells within 120° of current heading, returns average angle.
+ * Returns null if all nearby cells are visited.
+ */
+export function findBestUnvisitedAngle(
+  x: number,
+  y: number,
+  heading: number,
+  visitedCells: Set<string>,
+  cellSize: number
+): number | null {
+  const scanRadius = 3;
+  const sx = Math.floor(x / cellSize);
+  const sy = Math.floor(y / cellSize);
+  let bestAngle: number | null = null;
+  let bestCount = 0;
+
+  for (let dx = -scanRadius; dx <= scanRadius; dx++) {
+    for (let dy = -scanRadius; dy <= scanRadius; dy++) {
+      if (dx === 0 && dy === 0) continue;
+      const key = `${sx + dx},${sy + dy}`;
+      if (visitedCells.has(key)) continue;
+
+      const angle = Math.atan2(dy, dx);
+      // prefer going forward-ish (within 120° of heading)
+      const diff = normalizeAngle(angle - heading);
+      if (Math.abs(diff) > (2 * Math.PI) / 3) continue;
+
+      if (bestAngle === null) {
+        bestAngle = angle;
+        bestCount = 1;
+      } else {
+        bestAngle = (bestAngle * bestCount + angle) / (bestCount + 1);
+        bestCount++;
+      }
+    }
+  }
+  return bestAngle;
+}
+
+/**
  * Resolve stuck state: try avoidObstacle, fall back to wall-follow,
- * then backtrack if needed using trailMemory.
+ * then backtrack if needed.
  */
 export function resolveStuck(
   x: number,
@@ -207,7 +249,8 @@ export function resolveStuck(
   castSide: number,
   mapData: MapData,
   params: ObstacleAvoidanceParams,
-  trailMemory: { x: number; y: number }[],
+  visitedCells: Set<string>,
+  gridCellSize: number,
   scentSample?: ScentSectorSignals
 ): { heading: number; shouldBacktrack: boolean } {
   const avoidanceResult = avoidObstacle(x, y, heading, mapData, params);
@@ -222,15 +265,10 @@ export function resolveStuck(
   const wallResult = wallFollow(x, y, heading, castSide, mapData, params, scentSample);
 
   if (wallResult.shouldBacktrack) {
-    // Backtrack: prefer trailMemory direction, else reverse
-    if (trailMemory.length >= 2) {
-      const prev = trailMemory[trailMemory.length - 2];
-      const dx = prev.x - x;
-      const dy = prev.y - y;
-      if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) {
-        const backtrackHeading = Math.atan2(dy, dx);
-        return { heading: normalizeAngle(backtrackHeading), shouldBacktrack: true };
-      }
+    // Backtrack: steer toward nearby unvisited cell
+    const bestAngle = findBestUnvisitedAngle(x, y, heading, visitedCells, gridCellSize);
+    if (bestAngle !== null) {
+      return { heading: normalizeAngle(bestAngle), shouldBacktrack: true };
     }
     // Fallback: reverse direction
     return { heading: normalizeAngle(heading + Math.PI), shouldBacktrack: true };
