@@ -12,7 +12,9 @@ import {
   MOUSE,
   Mesh,
   MeshBasicMaterial,
+  MeshStandardMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   Raycaster,
   Scene,
   Shape,
@@ -40,7 +42,6 @@ import {
 } from '../config/scentConfig';
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { defaultSceneConfig } from '../config/sceneConfig';
-import { buildMapRender } from './mapRender';
 import { createScentRender } from './scentRender';
 import type { ScentRender } from './scentRender';
 import { createAnimalRender } from './animalRender';
@@ -218,14 +219,17 @@ export class SceneRuntime {
     const directionalLight = new DirectionalLight(0xfff4ea, 1.2);
     directionalLight.position.set(5, 10, 4);
 
-    const { terrainMesh, obstacleMeshes } = buildMapRender(this.mapData, defaultSceneConfig);
+    const mapWidth = this.mapData.width * this.mapData.cellSize;
+    const mapDepth = this.mapData.depth * this.mapData.cellSize;
+    const planeGeo = new PlaneGeometry(mapWidth, mapDepth);
+    const planeMat = new MeshStandardMaterial({ color: 0x4a6b4a });
+    const terrainMesh = new Mesh(planeGeo, planeMat);
+    terrainMesh.rotation.x = -Math.PI / 2;
     this.terrainMesh = terrainMesh;
     this.raycaster = new Raycaster();
     this.mouseNDC = new Vector2();
 
     this.scene.add(ambientLight, directionalLight, terrainMesh);
-    if (obstacleMeshes.shaped) this.scene.add(obstacleMeshes.shaped);
-    if (obstacleMeshes.single) this.scene.add(obstacleMeshes.single);
 
     this.controllers = new Map();
     for (const p of this.pursuers) {

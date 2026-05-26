@@ -679,9 +679,8 @@ export class Pursuer {
     const origin = { x: this.x, y: this.y };
     const facing = this.rotationAngle;
 
-    // visited cell 필터: track/cast/lost에서만 적용 (surge는 전체 고려)
-    const filterVisited = this.state === 'track' || this.state === 'cast' || this.state === 'lost';
-    const visitedParam = filterVisited ? this.visitedCells : undefined;
+    // visited cell 필터 비활성화: 모든 scent 감지
+    const visitedParam = undefined;
 
     const params = {
       ...DEFAULT_SCENT_PARAMS,
