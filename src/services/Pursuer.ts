@@ -79,6 +79,8 @@ export class Pursuer {
   private _currentFlipScale: number;
   private _avoidanceParams = DEFAULT_AVOIDANCE_PARAMS;
   private _stuckFrameCount: number = 0;
+  /** lost 상태 탐색 중인 현재 동심원 거리 (1→2→3 순차) */
+  _currentLostSearchRadius: number = 1;
   currentSpeed: number = 0;
 
   get castBoundaryAngle(): number {
@@ -87,6 +89,10 @@ export class Pursuer {
 
   get flipScale(): number {
     return this._currentFlipScale;
+  }
+
+  get currentLostSearchRadius(): number {
+    return this._currentLostSearchRadius;
   }
 
   get lastScentGridX(): number | null {
@@ -149,6 +155,7 @@ export class Pursuer {
     this._lastScentGridX = null;
     this._lastScentGridY = null;
     this._stuckFrameCount = 0;
+    this._currentLostSearchRadius = 1;
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -311,8 +318,8 @@ export class Pursuer {
         const cx = this._lastScentGridX;
         const cy = this._lastScentGridY;
 
-        // Search radii 1 → 2 → 3 around last scent cell
-        for (let radius = 1; radius <= 3; radius++) {
+        // Search radii 1 → 8 around last scent cell (8 × 2 = 16 unit, matching old 3 × 5 = 15 unit)
+        for (let radius = 1; radius <= 8; radius++) {
           let foundThisRadius = false;
 
           for (let dx = -radius; dx <= radius; dx++) {
@@ -335,7 +342,10 @@ export class Pursuer {
             if (foundThisRadius) break;
           }
 
-          if (foundThisRadius) break;
+          if (foundThisRadius) {
+            this._currentLostSearchRadius = radius;
+            break;
+          }
           // If no unvisited cell found in this radius, continue to next radius
         }
       }

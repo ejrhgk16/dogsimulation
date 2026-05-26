@@ -95,7 +95,7 @@ export function buildMapRender(
         const x = col * mapData.cellSize - mapWidth / 2 + mapData.cellSize / 2;
         const z = row * mapData.cellSize - mapDepth / 2 + mapData.cellSize / 2;
         const isShaped = cell.shape === 'L' || cell.shape === 'reverse-L';
-        const yOffset = isShaped ? mapData.cellSize * 0.6 : 0.25;
+        const yOffset = isShaped ? mapData.cellSize * 1.2 : 0.5;
         obstaclePositions.push({ x, y: yOffset, z, shape: cell.shape });
       }
     }
@@ -110,7 +110,7 @@ export function buildMapRender(
   if (shapedPositions.length > 0) {
     const geo = new BoxGeometry(
       mapData.cellSize * 0.8,
-      mapData.cellSize * 1.2,
+      mapData.cellSize * 2.4,
       mapData.cellSize * 0.8
     );
     const mat = new MeshStandardMaterial({ color: 0x3d2e1f });
@@ -127,7 +127,7 @@ export function buildMapRender(
 
   let singleMesh: InstancedMesh | null = null;
   if (singlePositions.length > 0) {
-    const boxGeo = new BoxGeometry(mapData.cellSize * 0.8, 0.5, mapData.cellSize * 0.8);
+    const boxGeo = new BoxGeometry(mapData.cellSize * 0.8, 1.0, mapData.cellSize * 0.8);
     const boxMat = new MeshStandardMaterial({ color: 0x5c4a33 });
     const mesh = new InstancedMesh(boxGeo, boxMat, singlePositions.length);
     const temp = new Object3D();

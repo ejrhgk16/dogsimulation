@@ -1,8 +1,8 @@
 import { ANIMAL_SCALE } from './animalConfig';
 import type { AnimalScentProfile, ScentParams, ScentVisualConfig } from '../types/scent';
 
-/** scent grid cell 크기 (map cellSize와 독립적). 기본 5 (지형 1×1 셀보다 넓은 인덱스). */
-export const DEFAULT_SCENT_CELL_SIZE = 5;
+/** scent grid cell 크기 (map cellSize와 독립적). 기본 2 (더 세밀한 그리드). */
+export const DEFAULT_SCENT_CELL_SIZE = 2;
 
 export const DEFAULT_SCENT_PARAMS: ScentParams = {
   tauDecay: 8000,

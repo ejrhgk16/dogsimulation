@@ -70,9 +70,9 @@ export function getOrangeCellKeys(pursuers: { visitedCells: Set<string> }[]): Se
   return orange;
 }
 
-/** lost 상태 pursuer의 동심원 perimeter 미방문 셀 (보라) Set 반환 */
+/** lost 상태 pursuer의 동심원 perimeter 미방문 셀 (보라) Set 반환 — 현재 탐색 거리만 표시 */
 export function getPurpleCellKeys(
-  pursuers: { visitedCells: Set<string>; state: string }[]
+  pursuers: { visitedCells: Set<string>; state: string; currentLostSearchRadius: number }[]
 ): Set<string> {
   const purple = new Set<string>();
   for (const p of pursuers) {
@@ -80,14 +80,13 @@ export function getPurpleCellKeys(
     const gx = (p as unknown as { _lastScentGridX: number | null })._lastScentGridX;
     const gy = (p as unknown as { _lastScentGridY: number | null })._lastScentGridY;
     if (gx === null || gy === null) continue;
-    for (let r = 1; r <= 3; r++) {
-      for (let dx = -r; dx <= r; dx++) {
-        for (let dy = -r; dy <= r; dy++) {
-          if (Math.abs(dx) === r || Math.abs(dy) === r) {
-            const key = `${gx + dx},${gy + dy}`;
-            if (!p.visitedCells.has(key)) {
-              purple.add(key);
-            }
+    const r = p.currentLostSearchRadius;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        if (Math.abs(dx) === r || Math.abs(dy) === r) {
+          const key = `${gx + dx},${gy + dy}`;
+          if (!p.visitedCells.has(key)) {
+            purple.add(key);
           }
         }
       }
@@ -162,6 +161,7 @@ export class SceneRuntime {
   private readonly homeTarget = new Vector3(0, 0, 0);
 
   readonly alpacaId: string;
+  readonly dogId: string;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -176,6 +176,7 @@ export class SceneRuntime {
     this.pursuers = externalPursuers ?? [dogPursuer];
     this.pursuedList = externalPursuedList ?? [alpacaPursued];
     this.alpacaId = this.pursuedList.find((p) => p.animalType === 'alpaca')?.id ?? 'alpaca';
+    this.dogId = this.pursuers[0]?.id ?? 'dog-1';
 
     this.initialPursuerPositions = this.pursuers.map((p) => ({ x: p.x, y: p.y }));
     this.initialPursuedPositions = this.pursuedList.map((p) => ({ x: p.x, y: p.y }));

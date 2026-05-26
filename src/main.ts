@@ -17,6 +17,7 @@ app.appendChild(canvas);
 
 const runtime = new SceneRuntime(canvas);
 const ALPACA_ID = runtime.alpacaId;
+const DOG_ID = runtime.dogId;
 
 const leftPanels = document.createElement('div');
 leftPanels.id = 'left-panels';
@@ -149,6 +150,7 @@ scaleSlider.addEventListener('input', () => {
   const val = parseFloat(scaleSlider.value);
   scaleValue.textContent = val.toFixed(2);
   runtime.setAnimalScale(ALPACA_ID, val);
+  runtime.setAnimalScale(DOG_ID, val);
 });
 
 const rotationSlider = controlsPanel.querySelector<HTMLInputElement>('#rotation-slider')!;
@@ -194,6 +196,7 @@ const scaleDefault = String(ANIMAL_SCALE);
 scaleSlider.value = scaleDefault;
 scaleValue.textContent = ANIMAL_SCALE.toFixed(2);
 runtime.setAnimalScale(ALPACA_ID, ANIMAL_SCALE);
+runtime.setAnimalScale(DOG_ID, ANIMAL_SCALE);
 
 // Rotation: ANIMAL_TYPES.dog.rotationSpeed
 const rotDefault = String(ANIMAL_TYPES.dog.rotationSpeed!);
