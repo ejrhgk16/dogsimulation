@@ -9,8 +9,6 @@ export interface ObstacleAvoidanceParams {
   weightHeading: number;
   /** obstacleDistance 가중치 (0~1) */
   weightObstacle: number;
-  /** 맵 경계 접근 시 패널티 거리 (m) */
-  boundaryMargin: number;
   /** wall-follow stuck timeout (초), retrace에서 이 시간 초과 시 포기 */
   retraceTimeout: number;
 }

@@ -6,6 +6,5 @@ export const DEFAULT_AVOIDANCE_PARAMS: ObstacleAvoidanceParams = {
   rayMaxDist: 5,
   weightHeading: 0.4,
   weightObstacle: 0.6,
-  boundaryMargin: 1.0,
   retraceTimeout: 5
 };
