@@ -1,6 +1,6 @@
 export interface ContactPoint {
-  x: number;
-  y: number;
+  cx: number; // grid cell X
+  cy: number; // grid cell Y
   t: number; // timestamp (ms)
   confidence: number; // 0~1, signal strength ratio
 }
@@ -48,8 +48,4 @@ export interface PursuerState {
   hasVisionContact: boolean;
   /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
   visitedCells: Set<string>;
-  /** 마지막 scent 감지 위치의 grid cell X 좌표 (null=미감지) */
-  lastScentGridX: number | null;
-  /** 마지막 scent 감지 위치의 grid cell Y 좌표 (null=미감지) */
-  lastScentGridY: number | null;
 }

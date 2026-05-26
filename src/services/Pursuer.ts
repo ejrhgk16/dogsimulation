@@ -12,6 +12,7 @@ import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from 
 import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
 import { resolveStuck } from './obstacleAvoidance';
 import { DEFAULT_AVOIDANCE_PARAMS } from '../config/avoidanceConfig';
+import { gwlcSigma, estimateTrailHeading } from './gwlc';
 
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
@@ -65,15 +66,8 @@ export class Pursuer {
   isTracking: boolean;
   /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
   visitedCells: Set<string>;
-  /** 직전 프레임 위치 (estimatedHeading 계산용) */
-  private _prevX: number | undefined;
-  private _prevY: number | undefined;
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
-  /** 마지막 scent 감지 위치 grid cell X (null = 미감지) */
-  _lastScentGridX: number | null = null;
-  /** 마지막 scent 감지 위치 grid cell Y (null = 미감지) */
-  _lastScentGridY: number | null = null;
   private _baseBoundary: number = 0;
   private _halfSectorAngle: number = 0;
   private _currentFlipScale: number;
@@ -93,14 +87,6 @@ export class Pursuer {
 
   get currentLostSearchRadius(): number {
     return this._currentLostSearchRadius;
-  }
-
-  get lastScentGridX(): number | null {
-    return this._lastScentGridX;
-  }
-
-  get lastScentGridY(): number | null {
-    return this._lastScentGridY;
   }
 
   /** 추적자 생성 (위치/추적 파라미터 초기화) */
@@ -152,8 +138,6 @@ export class Pursuer {
     this.hasVisionContact = false;
     this.lastTrailSignal = 0;
     this.visitedCells = new Set<string>();
-    this._lastScentGridX = null;
-    this._lastScentGridY = null;
     this._stuckFrameCount = 0;
     this._currentLostSearchRadius = 1;
   }
@@ -193,34 +177,40 @@ export class Pursuer {
       this.searchRadius = 0;
       this.state = 'track';
 
-      // Record last scent detection grid cell via ScentGrid API
+      // Record contact in grid cell coordinates via ScentGrid API
       const cell = grid.worldToCell(this.x, this.y);
       if (cell) {
-        this._lastScentGridX = cell.cx;
-        this._lastScentGridY = cell.cy;
-      } else {
-        this._lastScentGridX = null;
-        this._lastScentGridY = null;
+        // Filter duplicate cell: skip if same cell as the last contact
+        const lastContact =
+          this.lastContacts.length > 0 ? this.lastContacts[this.lastContacts.length - 1] : null;
+        if (!lastContact || lastContact.cx !== cell.cx || lastContact.cy !== cell.cy) {
+          this.lastContacts.push({
+            cx: cell.cx,
+            cy: cell.cy,
+            t: now,
+            confidence: Math.min(1, sample.totalSignal / this.trackingParams.detectThreshold)
+          });
+          if (this.lastContacts.length > this.trackingParams.maxContacts) {
+            this.lastContacts.splice(0, this.lastContacts.length - this.trackingParams.maxContacts);
+          }
+        }
       }
 
-      this.lastContacts.push({
-        x: this.x,
-        y: this.y,
-        t: now,
-        confidence: Math.min(1, sample.totalSignal / this.trackingParams.detectThreshold)
-      });
-      if (this.lastContacts.length > this.trackingParams.maxContacts) {
-        this.lastContacts.splice(0, this.lastContacts.length - this.trackingParams.maxContacts);
-      }
+      this.updateHeading(grid);
     } else {
       const scale = this.state === 'cast' ? this.trackingParams.castLostScale : 1;
       this.lostTime += dt * scale;
     }
 
-    const lastContactDistance = getLastContactDistance(this.lastContacts);
+    const lastContactDistance = getLastContactDistance(this.lastContacts, grid.scentCellSize);
     const patchiness = estimatePatchiness(this.lastContacts, now);
 
-    this.sigma = this.updateSigma(lastContactDistance, this.lostTime, patchiness);
+    this.sigma = this.updateSigma(
+      lastContactDistance,
+      this.lostTime,
+      patchiness,
+      grid.scentCellSize
+    );
     this.searchRadius = Math.min(
       this.trackingParams.initialRadius + this.trackingParams.kRadius * this.lostTime,
       this.trackingParams.lostRadius * 2
@@ -232,7 +222,8 @@ export class Pursuer {
       let rFromContact = 0;
       if (this.lastContacts.length > 0) {
         const last = this.lastContacts[this.lastContacts.length - 1];
-        rFromContact = Math.hypot(this.x - last.x, this.y - last.y);
+        const worldPos = grid.cellToWorld(last.cx, last.cy);
+        rFromContact = Math.hypot(this.x - worldPos.x, this.y - worldPos.y);
       }
       const effectiveSigma = this.sigma + this.trackingParams.kRadial * rFromContact;
       if (effectiveSigma * this.trackingParams.theta0 > this.trackingParams.sensorFanAngle / 2) {
@@ -313,10 +304,12 @@ export class Pursuer {
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
     } else {
       // lost: search unvisited cells around last scent detection grid cell
-      // If _lastScentGridX/Y is null (no scent detected yet), keep current heading
-      if (this._lastScentGridX !== null && this._lastScentGridY !== null) {
-        const cx = this._lastScentGridX;
-        const cy = this._lastScentGridY;
+      // If no lastContacts, keep current heading
+      const lastContact =
+        this.lastContacts.length > 0 ? this.lastContacts[this.lastContacts.length - 1] : null;
+      if (lastContact) {
+        const cx = lastContact.cx;
+        const cy = lastContact.cy;
 
         // Search radii 1 → 8 around last scent cell (8 × 2 = 16 unit, matching old 3 × 5 = 15 unit)
         for (let radius = 1; radius <= 8; radius++) {
@@ -349,7 +342,7 @@ export class Pursuer {
           // If no unvisited cell found in this radius, continue to next radius
         }
       }
-      // If all cells visited or no lastScent, keep current heading
+      // If no last contact, keep current heading
 
       moveSpeed = this.trackingParams.minSpeed;
     }
@@ -375,22 +368,6 @@ export class Pursuer {
     const angleDiff = this.shortestAngleDiff(this.targetHeading, this.rotationAngle);
     const turnRate = this.state === 'cast' ? this.trackingParams.flipTurnRate : 8;
     this.rotationAngle += angleDiff * Math.min(1, turnRate * dt);
-
-    // Update estimatedHeading from previous movement (frozen during cast)
-    if (this.state !== 'cast' && this._prevX !== undefined && this._prevY !== undefined) {
-      const dx = this.x - this._prevX;
-      const dy = this.y - this._prevY;
-      if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) {
-        this.estimatedHeading = Math.atan2(dy, dx);
-      }
-    }
-    // Fallback: first frame has no previous position
-    if ((this.state === 'track' || this.state === 'surge') && this._prevX === undefined) {
-      this.estimatedHeading = this.rotationAngle;
-    }
-    // Save position for next frame's heading computation
-    this._prevX = this.x;
-    this._prevY = this.y;
   }
 
   /** 장애물·충돌·경사 고려 실제 이동 계산 */
@@ -558,25 +535,29 @@ export class Pursuer {
     return angle;
   }
 
-  /** sigma 업데이트: 동적 xi + GWLC regime 보간 + lost·patch 반영 */
-  private updateSigma(lastContactDistance: number, lostTime: number, patchiness: number): number {
+  /** lastContacts 기반 trail heading 추정 (GWLC propagator).
+   *  contacts.length >= 2 일 때 estimateTrailHeading으로 갱신, 미만이면 유지. */
+  private updateHeading(_grid: ScentGrid): void {
+    if (this.lastContacts.length < 2) return;
     const tp = this.trackingParams;
-    const xi = this.estimateCurvatureRadius();
+    const heading = estimateTrailHeading(this.lastContacts, tp.lambda, tp.xi);
+    if (!isNaN(heading)) {
+      this.estimatedHeading = heading;
+    }
+  }
+
+  /** sigma 업데이트: gwlcSigma + lost·patch 반영 */
+  private updateSigma(
+    lastContactDistance: number,
+    lostTime: number,
+    patchiness: number,
+    cellSize: number
+  ): number {
+    const tp = this.trackingParams;
+    const xi = this.estimateCurvatureRadius(cellSize);
     const L = lastContactDistance;
-    const lam = tp.lambda;
 
-    // GWLC regime interpolation: w ∈ [0,1]
-    // L ≪ λ → w ≈ 0 (curvature dominated)
-    // L ≫ λ → w ≈ 1 (diffusive dominated)
-    const denom = L + lam;
-    const w = denom > 0 ? L / denom : 0;
-
-    const curvatureTerm = (L * L) / (4 * xi * xi);
-    const diffusiveTerm = (2 * lam * L) / (3 * xi * xi);
-
-    const sigmaTrail = Math.sqrt(
-      tp.sigmaBase * tp.sigmaBase + (1 - w) * curvatureTerm + w * diffusiveTerm
-    );
+    const sigmaTrail = gwlcSigma(L, tp.lambda, xi);
 
     return this.clamp(
       sigmaTrail + tp.kLost * lostTime + tp.kPatch * patchiness,
@@ -586,8 +567,7 @@ export class Pursuer {
   }
 
   /** lastContacts의 최근 3개 접촉점으로 외접원 반지름(곡률) 계산 후 EMA smoothing */
-  // Internal: will be wired by task-2-update-sigma-gwlc
-  estimateCurvatureRadius(): number {
+  estimateCurvatureRadius(cellSize: number): number {
     const contacts = this.lastContacts;
     if (contacts.length < 3) {
       this._prevXi = this.trackingParams.xi;
@@ -598,9 +578,9 @@ export class Pursuer {
     const p1 = contacts[contacts.length - 2];
     const p2 = contacts[contacts.length - 1];
 
-    const a = Math.hypot(p1.x - p0.x, p1.y - p0.y);
-    const b = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const c = Math.hypot(p2.x - p0.x, p2.y - p0.y);
+    const a = Math.hypot((p1.cx - p0.cx) * cellSize, (p1.cy - p0.cy) * cellSize);
+    const b = Math.hypot((p2.cx - p1.cx) * cellSize, (p2.cy - p1.cy) * cellSize);
+    const c = Math.hypot((p2.cx - p0.cx) * cellSize, (p2.cy - p0.cy) * cellSize);
 
     const s = (a + b + c) / 2;
     const areaSq = s * (s - a) * (s - b) * (s - c);

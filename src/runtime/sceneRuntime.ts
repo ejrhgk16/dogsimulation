@@ -58,14 +58,15 @@ export function getAllVisitedCells(pursuers: { visitedCells: Set<string> }[]): S
   return visited;
 }
 
-/** 마지막 냄새 탐지 셀 (주황) — _lastScentGridX/Y !== null 인 셀 key Set 반환 */
-export function getOrangeCellKeys(pursuers: { visitedCells: Set<string> }[]): Set<string> {
+/** 마지막 냄새 탐지 셀 (주황) — lastContacts 마지막 항목의 cx,cy 셀 key Set 반환 */
+export function getOrangeCellKeys(
+  pursuers: { lastContacts: { cx: number; cy: number }[] }[]
+): Set<string> {
   const orange = new Set<string>();
   for (const p of pursuers) {
-    const gx = (p as unknown as { _lastScentGridX: number | null })._lastScentGridX;
-    const gy = (p as unknown as { _lastScentGridY: number | null })._lastScentGridY;
-    if (gx !== null && gy !== null) {
-      orange.add(`${gx},${gy}`);
+    if (p.lastContacts.length > 0) {
+      const last = p.lastContacts[p.lastContacts.length - 1];
+      orange.add(`${last.cx},${last.cy}`);
     }
   }
   return orange;
@@ -73,14 +74,20 @@ export function getOrangeCellKeys(pursuers: { visitedCells: Set<string> }[]): Se
 
 /** lost 상태 pursuer의 동심원 perimeter 미방문 셀 (보라) Set 반환 — 현재 탐색 거리만 표시 */
 export function getPurpleCellKeys(
-  pursuers: { visitedCells: Set<string>; state: string; currentLostSearchRadius: number }[]
+  pursuers: {
+    visitedCells: Set<string>;
+    state: string;
+    currentLostSearchRadius: number;
+    lastContacts: { cx: number; cy: number }[];
+  }[]
 ): Set<string> {
   const purple = new Set<string>();
   for (const p of pursuers) {
     if (p.state !== 'lost') continue;
-    const gx = (p as unknown as { _lastScentGridX: number | null })._lastScentGridX;
-    const gy = (p as unknown as { _lastScentGridY: number | null })._lastScentGridY;
-    if (gx === null || gy === null) continue;
+    if (p.lastContacts.length === 0) continue;
+    const last = p.lastContacts[p.lastContacts.length - 1];
+    const gx = last.cx;
+    const gy = last.cy;
     const r = p.currentLostSearchRadius;
     for (let dx = -r; dx <= r; dx++) {
       for (let dy = -r; dy <= r; dy++) {
@@ -607,8 +614,6 @@ export class SceneRuntime {
       p.lostTime = 0;
       p.searchRadius = 0;
       p.visitedCells.clear();
-      (p as unknown as { _lastScentGridX: number | null })._lastScentGridX = null;
-      (p as unknown as { _lastScentGridY: number | null })._lastScentGridY = null;
       p.sigma = p.trackingParams.sigmaBase;
       p.estimatedHeading = p.rotationAngle;
       p.targetHeading = p.rotationAngle;
@@ -661,8 +666,6 @@ export class SceneRuntime {
     this.fakeTrails = [];
     for (const p of this.pursuers) {
       p.visitedCells.clear();
-      (p as unknown as { _lastScentGridX: number | null })._lastScentGridX = null;
-      (p as unknown as { _lastScentGridY: number | null })._lastScentGridY = null;
     }
     this.rebuildGridCells();
   }
