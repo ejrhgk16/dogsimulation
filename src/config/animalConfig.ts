@@ -13,7 +13,7 @@ export interface AnimalTypeConfig {
   };
 }
 
-export const ANIMAL_SCALE = 0.2;
+export const ANIMAL_SCALE = 0.5;
 
 export const HEIGHT_SPEED_FACTOR = 0.3;
 
