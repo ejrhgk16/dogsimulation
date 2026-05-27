@@ -56,6 +56,10 @@ export class Pursuer {
   castSide: number;
   /** 마지막 프레임 감지 신호 */
   lastTrailSignal: number;
+  /** 최근 2개 contact 간 거리 (Chebyshev, world 단위) */
+  lastContactDistance: number;
+  /** 곡률 반지름 추정값 (EMA smoothing) */
+  curvatureRadius: number;
   /** 시야로 감지한 대상 ID (없으면 null) */
   visionTargetId: string | null;
   /** 시야 감지 여부 (현재 프레임) */
@@ -111,6 +115,8 @@ export class Pursuer {
     this.targetHeading = this.rotationAngle;
     this.castSide = Math.random() < 0.5 ? 1 : -1;
     this.lastTrailSignal = 0;
+    this.lastContactDistance = 0;
+    this.curvatureRadius = this.trackingParams.xi;
     this.visionTargetId = null;
     this.hasVisionContact = false;
     this.isTracking = false;
@@ -137,6 +143,8 @@ export class Pursuer {
     this.visionTargetId = null;
     this.hasVisionContact = false;
     this.lastTrailSignal = 0;
+    this.lastContactDistance = 0;
+    this.curvatureRadius = this.trackingParams.xi;
     this.visitedCells = new Set<string>();
     this._stuckFrameCount = 0;
     this._currentLostSearchRadius = 1;
@@ -187,6 +195,8 @@ export class Pursuer {
           this.lastContacts.push({
             cx: cell.cx,
             cy: cell.cy,
+            wx: this.x,
+            wy: this.y,
             t: now,
             confidence: Math.min(1, sample.totalSignal / this.trackingParams.detectThreshold)
           });
@@ -202,15 +212,13 @@ export class Pursuer {
       this.lostTime += dt * scale;
     }
 
-    const lastContactDistance = getLastContactDistance(this.lastContacts, grid.scentCellSize);
+    const lastContactDistance = getLastContactDistance(this.lastContacts);
     const patchiness = estimatePatchiness(this.lastContacts, now);
 
-    this.sigma = this.updateSigma(
-      lastContactDistance,
-      this.lostTime,
-      patchiness,
-      grid.scentCellSize
-    );
+    this.lastContactDistance = lastContactDistance;
+
+    this.sigma = this.updateSigma(lastContactDistance, this.lostTime, patchiness);
+    this.curvatureRadius = this._prevXi;
     this.searchRadius = Math.min(
       this.trackingParams.initialRadius + this.trackingParams.kRadius * this.lostTime,
       this.trackingParams.lostRadius * 2
@@ -547,14 +555,9 @@ export class Pursuer {
   }
 
   /** sigma 업데이트: gwlcSigma + lost·patch 반영 */
-  private updateSigma(
-    lastContactDistance: number,
-    lostTime: number,
-    patchiness: number,
-    cellSize: number
-  ): number {
+  private updateSigma(lastContactDistance: number, lostTime: number, patchiness: number): number {
     const tp = this.trackingParams;
-    const xi = this.estimateCurvatureRadius(cellSize);
+    const xi = this.estimateCurvatureRadius();
     const L = lastContactDistance;
 
     const sigmaTrail = gwlcSigma(L, tp.lambda, xi);
@@ -567,7 +570,7 @@ export class Pursuer {
   }
 
   /** lastContacts의 최근 3개 접촉점으로 외접원 반지름(곡률) 계산 후 EMA smoothing */
-  estimateCurvatureRadius(cellSize: number): number {
+  estimateCurvatureRadius(): number {
     const contacts = this.lastContacts;
     if (contacts.length < 3) {
       this._prevXi = this.trackingParams.xi;
@@ -578,9 +581,9 @@ export class Pursuer {
     const p1 = contacts[contacts.length - 2];
     const p2 = contacts[contacts.length - 1];
 
-    const a = Math.hypot((p1.cx - p0.cx) * cellSize, (p1.cy - p0.cy) * cellSize);
-    const b = Math.hypot((p2.cx - p1.cx) * cellSize, (p2.cy - p1.cy) * cellSize);
-    const c = Math.hypot((p2.cx - p0.cx) * cellSize, (p2.cy - p0.cy) * cellSize);
+    const a = Math.max(Math.abs(p1.wx - p0.wx), Math.abs(p1.wy - p0.wy));
+    const b = Math.max(Math.abs(p2.wx - p1.wx), Math.abs(p2.wy - p1.wy));
+    const c = Math.max(Math.abs(p2.wx - p0.wx), Math.abs(p2.wy - p0.wy));
 
     const s = (a + b + c) / 2;
     const areaSq = s * (s - a) * (s - b) * (s - c);

@@ -131,21 +131,18 @@ export function sampleScentInSector(
 }
 
 /**
- * 마지막 두 접촉점 사이 유클리드 거리 반환 (world 좌표 기준).
- * 접촉점 2개 미만이면 0. cx,cy cell 좌표를 cellSize로 변환.
+ * 마지막 두 접촉점 사이 체비셰프 거리 반환 (world 좌표 wx,wy 기준).
+ * 접촉점 2개 미만이면 0.
  */
-export function getLastContactDistance(
-  contacts: readonly ContactPoint[],
-  cellSize: number
-): number {
+export function getLastContactDistance(contacts: readonly ContactPoint[]): number {
   if (contacts.length < 2) return 0;
 
   const prev = contacts[contacts.length - 2];
   const last = contacts[contacts.length - 1];
-  const dx = (last.cx - prev.cx) * cellSize;
-  const dy = (last.cy - prev.cy) * cellSize;
+  const dx = last.wx - prev.wx;
+  const dy = last.wy - prev.wy;
 
-  return Math.sqrt(dx * dx + dy * dy);
+  return Math.max(Math.abs(dx), Math.abs(dy));
 }
 
 /**

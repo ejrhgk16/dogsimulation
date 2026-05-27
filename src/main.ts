@@ -373,6 +373,8 @@ debugPanel.innerHTML = `
     <div class="debug-row"><span>searchR</span><span id="dv-searchRadius">-</span></div>
     <div class="debug-row"><span>lostTime</span><span id="dv-lostTime">-</span></div>
     <div class="debug-row"><span>trailSig</span><span id="dv-lastTrailSignal">-</span></div>
+    <div class="debug-row"><span>L</span><span id="dv-lastContactDistance">-</span></div>
+    <div class="debug-row"><span>xi</span><span id="dv-curvatureRadius">-</span></div>
     <div class="debug-row"><span>castSide</span><span id="dv-castSide">-</span></div>
     <div class="debug-row"><span>flipScale</span><span id="dv-flipScale">-</span></div>
     <div class="debug-row"><span>speed</span><span id="dv-currentSpeed">-</span></div>
@@ -392,6 +394,8 @@ const debugKeys = [
   'searchRadius',
   'lostTime',
   'lastTrailSignal',
+  'lastContactDistance',
+  'curvatureRadius',
   'castSide',
   'flipScale',
   'currentSpeed',

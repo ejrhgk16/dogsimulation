@@ -1,6 +1,8 @@
 export interface ContactPoint {
   cx: number; // grid cell X
   cy: number; // grid cell Y
+  wx: number; // world X at contact time
+  wy: number; // world Y at contact time
   t: number; // timestamp (ms)
   confidence: number; // 0~1, signal strength ratio
 }

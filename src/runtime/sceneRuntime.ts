@@ -463,6 +463,8 @@ export class SceneRuntime {
     searchRadius: number;
     lostTime: number;
     lastTrailSignal: number;
+    lastContactDistance: number;
+    curvatureRadius: number;
     castSide: number;
     castOriginX: number;
     castOriginY: number;
@@ -484,6 +486,8 @@ export class SceneRuntime {
       searchRadius: p.searchRadius,
       lostTime: p.lostTime,
       lastTrailSignal: p.lastTrailSignal,
+      lastContactDistance: p.lastContactDistance,
+      curvatureRadius: p.curvatureRadius,
       castSide: p.castSide,
       castOriginX: p.castOriginX,
       castOriginY: p.castOriginY,
