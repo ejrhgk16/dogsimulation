@@ -8,7 +8,7 @@ import {
 } from '../config/animalConfig';
 import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
-import { sampleScentInSector, computeAvgContactInterval, estimatePatchiness } from './scentSampler';
+import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
 import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
 import { resolveStuck } from './obstacleAvoidance';
 import { DEFAULT_AVOIDANCE_PARAMS } from '../config/avoidanceConfig';
@@ -202,15 +202,15 @@ export class Pursuer {
       this.lostTime += dt * scale;
     }
 
-    const prevSpeed = this.currentSpeed;
-    const avgInterval = computeAvgContactInterval(this.lastContacts);
-    // avgInterval = Infinity if contacts < 2 → effectiveL will be large → sigma high (safe)
-    const effectiveL = Number.isFinite(avgInterval)
-      ? avgInterval * prevSpeed
-      : this.trackingParams.lambda;
+    const lastContactDistance = getLastContactDistance(this.lastContacts, grid.scentCellSize);
     const patchiness = estimatePatchiness(this.lastContacts, now);
 
-    this.sigma = this.updateSigma(effectiveL, this.lostTime, patchiness, grid.scentCellSize);
+    this.sigma = this.updateSigma(
+      lastContactDistance,
+      this.lostTime,
+      patchiness,
+      grid.scentCellSize
+    );
     this.searchRadius = Math.min(
       this.trackingParams.initialRadius + this.trackingParams.kRadius * this.lostTime,
       this.trackingParams.lostRadius * 2
@@ -548,14 +548,14 @@ export class Pursuer {
 
   /** sigma 업데이트: gwlcSigma + lost·patch 반영 */
   private updateSigma(
-    effectiveL: number,
+    lastContactDistance: number,
     lostTime: number,
     patchiness: number,
     cellSize: number
   ): number {
     const tp = this.trackingParams;
     const xi = this.estimateCurvatureRadius(cellSize);
-    const L = effectiveL;
+    const L = lastContactDistance;
 
     const sigmaTrail = gwlcSigma(L, tp.lambda, xi);
 
