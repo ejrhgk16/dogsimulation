@@ -75,11 +75,11 @@ visualPanel.id = 'visual-panel';
 visualPanel.innerHTML = `
   <fieldset>
     <legend>Visual</legend>
-    <label><input type="checkbox" id="vis-heading-arrow" checked /> Heading Arrow</label>
+    <label><input type="checkbox" id="vis-heading-arrow" checked /> Est. Heading</label>
     <label><input type="checkbox" id="vis-target-heading-arrow" checked /> Target Heading</label>
-    <label><input type="checkbox" id="vis-sensor-fan" checked /> Sensor Fan</label>
+    <label><input type="checkbox" id="vis-sensor-fan" checked /> Scent Sensor</label>
+    <label><input type="checkbox" id="vis-vision-debug" checked /> Vision Sensor</label>
     <label><input type="checkbox" id="vis-cast-debug" checked /> Cast Sector</label>
-    <label><input type="checkbox" id="vis-vision-debug" checked /> Vision Cone</label>
     <label><input type="checkbox" id="vis-grid-cells" checked /> Grid Cells</label>
     <label><input type="checkbox" id="vis-scent" checked /> Scent Trail</label>
     <button id="reset-btn" type="button">Reset (Pos+Scent+Camera)</button>

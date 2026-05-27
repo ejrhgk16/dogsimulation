@@ -95,8 +95,8 @@ export class Pursuer {
     this.x = x;
     this.y = y;
     this.height = getHeightAt(mapData, x, y) + ANIMAL_HEIGHT_OFFSET;
-    this.directionX = 1;
-    this.directionY = 0;
+    this.directionX = 0;
+    this.directionY = 1;
     this.rotationAngle = Math.atan2(1, 0);
     this.castOriginX = x;
     this.castOriginY = y;

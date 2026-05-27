@@ -180,7 +180,7 @@ export class SceneRuntime {
     this.mapData = externalMapData ?? generateMap(defaultSceneConfig.mapConfig);
 
     const dogPursuer = new Pursuer('dog-1', -4, -2, this.mapData, DEFAULT_TRACKING_PARAMS);
-    const alpacaPursued = new Pursued('alpaca', 'alpaca', 0, 3, this.mapData, 5.0);
+    const alpacaPursued = new Pursued('alpaca', 'alpaca', -4, 1, this.mapData, 5.0);
     this.pursuers = externalPursuers ?? [dogPursuer];
     this.pursuedList = externalPursuedList ?? [alpacaPursued];
     this.alpacaId = this.pursuedList.find((p) => p.animalType === 'alpaca')?.id ?? 'alpaca';
@@ -606,8 +606,8 @@ export class SceneRuntime {
       p.x = init.x;
       p.y = init.y;
       p.height = getHeightAt(this.mapData, p.x, p.y) + ANIMAL_HEIGHT_OFFSET;
-      p.directionX = 1;
-      p.directionY = 0;
+      p.directionX = 0;
+      p.directionY = 1;
       p.rotationAngle = Math.atan2(1, 0);
       p.state = 'track';
       p.lastContacts = [];
@@ -629,8 +629,8 @@ export class SceneRuntime {
       p.x = init.x;
       p.y = init.y;
       p.height = getHeightAt(this.mapData, p.x, p.y) + ANIMAL_HEIGHT_OFFSET;
-      p.directionX = 1;
-      p.directionY = 0;
+      p.directionX = 0;
+      p.directionY = 1;
       p.rotationAngle = Math.atan2(1, 0);
       this.controllers.get(p.id)?.update(p);
     }
