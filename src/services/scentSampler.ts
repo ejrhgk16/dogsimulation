@@ -181,3 +181,20 @@ export function estimatePatchiness(contacts: readonly ContactPoint[], _now: numb
 
   return Math.min(1, cv * 2);
 }
+
+/**
+ * 최근 N개 contact 간 평균 시간 간격을 초 단위로 반환.
+ * contacts.length < 2 이면 Infinity(간격 무한대 = contact 희박) 반환.
+ */
+export function computeAvgContactInterval(
+  contacts: readonly ContactPoint[],
+  windowSize: number = 4
+): number {
+  if (contacts.length < 2) return Infinity;
+
+  const N = Math.min(windowSize, contacts.length);
+  const newest = contacts[contacts.length - 1];
+  const oldest = contacts[contacts.length - N];
+
+  return (newest.t - oldest.t) / (N - 1);
+}
