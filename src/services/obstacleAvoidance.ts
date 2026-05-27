@@ -6,25 +6,25 @@ import { DEFAULT_SCENT_CELL_SIZE } from '../config/scentConfig';
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
 
-/** Module-level wall-follow side persistence (random choice stays sticky) */
+/** 모듈 수준 wall-follow 방향 지속성 (랜덤 선택 유지) */
 let _wallFollowSide: number | null = null;
 
-/** Reset wall-follow side state (for tests / unstuck) */
+/** wall-follow 방향 상태 리셋 (테스트/언스턱) */
 export function resetWallFollowSide(): void {
   _wallFollowSide = null;
 }
 
-/** Get current wall-follow side state */
+/** 현재 wall-follow 방향 상태 조회 */
 export function getWallFollowSide(): number | null {
   return _wallFollowSide;
 }
 
-/** Set wall-follow side state */
+/** wall-follow 방향 상태 설정 */
 export function setWallFollowSide(side: number | null): void {
   _wallFollowSide = side;
 }
 
-/** Normalize angle to [-PI, PI] */
+/** 각도를 [-PI, PI] 범위로 정규화 */
 function normalizeAngle(angle: number): number {
   angle = angle % TWO_PI;
   if (angle > Math.PI) angle -= TWO_PI;
@@ -32,14 +32,14 @@ function normalizeAngle(angle: number): number {
   return angle;
 }
 
-/** Shortest signed angle difference target - current in [-PI, PI] */
+/** 목표-현재 사이 최단 부호 각도 차이 [-PI, PI] */
 function shortestAngleDiff(target: number, current: number): number {
   return ((((target - current) % TWO_PI) + THREE_PI) % TWO_PI) - Math.PI;
 }
 
 /**
- * Ray-cast in given direction, stepping by stepDist until obstacle/boundary or maxDist.
- * Returns distance to first blocked point, or maxDist if clear.
+ * 주어진 방향으로 레이캐스트, stepDist 간격으로 장애물/경계 또는 maxDist까지 전진
+ * 첫 장애물까지 거리 반환, 없으면 maxDist
  */
 export function rayDistance(
   x: number,
@@ -64,8 +64,8 @@ export function rayDistance(
 }
 
 /**
- * Score a candidate direction based on heading alignment and obstacle distance.
- * Returns weighted sum: params.weightHeading * headingAlignment + params.weightObstacle * obstacleScore
+ * 후보 방향 점수 산정 (헤딩 정렬 + 장애물 거리)
+ * 가중합 반환: params.weightHeading * headingAlignment + params.weightObstacle * obstacleScore
  */
 export function scoreDirection(
   desiredHeading: number,
@@ -79,7 +79,7 @@ export function scoreDirection(
 }
 
 /**
- * Scent sample with left/right sector signals for wall-follow direction priority.
+ * wall-follow 방향 우선순위용 좌/우 섹터 신호를 가진 향 샘플
  */
 export interface ScentSectorSignals {
   left: number;
@@ -87,8 +87,8 @@ export interface ScentSectorSignals {
 }
 
 /**
- * Score front directions, pick best clear one. If all blocked, enter wall-follow.
- * @param scentBias Optional netBias from scent sampling (-1..1, negative=left, positive=right)
+ * 전방 방향 점수 산정, 최적 방향 선택. 전부 막혔으면 wall-follow 진입
+ * @param scentBias 향 샘플링 netBias (-1..1, 음수=좌, 양수=우)
  */
 export function avoidObstacle(
   x: number,
@@ -98,7 +98,7 @@ export function avoidObstacle(
   params: ObstacleAvoidanceParams,
   scentBias?: number
 ): ObstacleAvoidanceResult {
-  // Apply scent bias to desired heading
+  // 향 바이어스를 desired heading에 적용
   const adjustedHeading =
     scentBias !== undefined ? desiredHeading + scentBias * (Math.PI / 6) : desiredHeading;
 
@@ -113,7 +113,7 @@ export function avoidObstacle(
     const sampleAngle = normalizeAngle(adjustedHeading - halfSpan + t * (2 * halfSpan));
     const dist = rayDistance(x, y, sampleAngle, mapData, params.rayMaxDist, params.rayStepDist);
 
-    // Consider a direction "clear" if it gets past at least one step
+    // 최소 한 스텝 이상 진행 가능하면 clear로 간주
     const isClear = dist > params.rayStepDist;
 
     if (isClear) {
@@ -134,13 +134,13 @@ export function avoidObstacle(
     };
   }
 
-  // All blocked → wall-follow
+  // 전부 막힘 → wall-follow
   return wallFollow(x, y, bestAngle, 1, mapData, params);
 }
 
 /**
- * Wall-follow mode: measure left/right clearance, apply priority rules to pick direction.
- * Priority: 1) scent signal side 2) longer ray side 3) castSide 4) random (sticky)
+ * Wall-follow 모드: 좌/우 여유 공간 측정, 우선순위 규칙으로 방향 선택
+ * 우선순위: 1) 향 신호 2) 더 긴 레이 3) castSide 4) 랜덤(고정)
  */
 export function wallFollow(
   x: number,
@@ -167,7 +167,7 @@ export function wallFollow(
     };
   }
 
-  // Priority 1: scent signal
+  // 우선순위 1: 향 신호
   if (scentSample) {
     if (scentSample.right > scentSample.left) {
       return { heading: normalizeAngle(rightAngle), shouldBacktrack: false, isWallFollowing: true };
@@ -177,19 +177,19 @@ export function wallFollow(
     }
   }
 
-  // Priority 2: longer ray distance
+  // 우선순위 2: 더 긴 레이 거리
   if (Math.abs(leftDist - rightDist) > params.rayStepDist * 0.5) {
     const chosenAngle = leftDist > rightDist ? leftAngle : rightAngle;
     return { heading: normalizeAngle(chosenAngle), shouldBacktrack: false, isWallFollowing: true };
   }
 
-  // Priority 3: castSide
+  // 우선순위 3: castSide
   if (castSide !== 0) {
     const chosenAngle = castSide > 0 ? leftAngle : rightAngle;
     return { heading: normalizeAngle(chosenAngle), shouldBacktrack: false, isWallFollowing: true };
   }
 
-  // Priority 4: random (sticky)
+  // 우선순위 4: 랜덤(고정)
   if (_wallFollowSide === null) {
     _wallFollowSide = Math.random() < 0.5 ? 1 : -1;
   }
@@ -198,10 +198,9 @@ export function wallFollow(
 }
 
 /**
- * Find the best unvisited direction to steer toward when backtracking.
- * Scans a 7x7 grid (radius 3) around the pursuer, collects angles of
- * unvisited cells within 120° of current heading, returns average angle.
- * Returns null if all nearby cells are visited.
+ * 백트래킹 시 방문하지 않은 최적 방향 탐색
+ * 추적자 주변 7x7 그리드(반경 3) 스캔, 현재 헤딩 기준 120° 이내 미방문 셀 각도 수집, 평균 각도 반환
+ * 모든 셀 방문 시 null 반환
  */
 export function findBestUnvisitedAngle(
   x: number,
@@ -223,7 +222,7 @@ export function findBestUnvisitedAngle(
       if (visitedCells.has(key)) continue;
 
       const angle = Math.atan2(dy, dx);
-      // prefer going forward-ish (within 120° of heading)
+      // 전방 진행 선호 (헤딩 기준 120° 이내)
       const diff = normalizeAngle(angle - heading);
       if (Math.abs(diff) > (2 * Math.PI) / 3) continue;
 
@@ -240,8 +239,7 @@ export function findBestUnvisitedAngle(
 }
 
 /**
- * Resolve stuck state: try avoidObstacle, fall back to wall-follow,
- * then backtrack if needed.
+ * 스턱 상태 해결: avoidObstacle 시도, 실패 시 wall-follow, 필요 시 backtrack
  */
 export function resolveStuck(
   x: number,
@@ -256,21 +254,21 @@ export function resolveStuck(
   const avoidanceResult = avoidObstacle(x, y, heading, mapData, params);
 
   if (!avoidanceResult.isWallFollowing) {
-    // Found a clear direction
+    // clear 방향 발견
     _wallFollowSide = null;
     return { heading: avoidanceResult.heading, shouldBacktrack: false };
   }
 
-  // All blocked → wall-follow
+  // 전부 막힘 → wall-follow
   const wallResult = wallFollow(x, y, heading, castSide, mapData, params, scentSample);
 
   if (wallResult.shouldBacktrack) {
-    // Backtrack: steer toward nearby unvisited cell
+    // 백트래킹: 근처 미방문 셀로 방향 전환
     const bestAngle = findBestUnvisitedAngle(x, y, heading, visitedCells);
     if (bestAngle !== null) {
       return { heading: normalizeAngle(bestAngle), shouldBacktrack: true };
     }
-    // Fallback: reverse direction
+    // 폴백: 반대 방향 회전
     return { heading: normalizeAngle(heading + Math.PI), shouldBacktrack: true };
   }
 

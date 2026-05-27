@@ -125,8 +125,3 @@ export interface ScentGrid {
   /** 모든 셀의 위치와 점 개수를 배열로 반환 (시각화용) */
   getAllCellEntries(): Array<{ cx: number; cy: number; count: number }>;
 }
-
-export interface ScentWorldState {
-  trailPoints: ScentPoint[];
-  emitters: Map<string, EmitAccumulator>;
-}
