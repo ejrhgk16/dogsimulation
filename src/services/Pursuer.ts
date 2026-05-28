@@ -1,5 +1,5 @@
 import type { MapData } from '../types/map';
-import type { ContactPoint, TrackState, ScentSample } from '../types/pursuer';
+import type { ContactPoint, TrackState, ScentSample, PursuerState } from '../types/pursuer';
 import type { TrackingParams, ScentGrid } from '../types/scent';
 import {
   ANIMAL_HEIGHT_OFFSET,
@@ -155,6 +155,35 @@ export class Pursuer {
     this.trackingParams[key] = value;
   }
   // slider
+
+  /** 현재 상태를 PursuerState로 반환 */
+  toState(): PursuerState {
+    return {
+      id: this.id,
+      x: this.x,
+      y: this.y,
+      height: this.height,
+      directionX: this.directionX,
+      directionY: this.directionY,
+      rotationAngle: this.rotationAngle,
+      castOriginX: this.castOriginX,
+      castOriginY: this.castOriginY,
+      targetId: this.targetId,
+      state: this.state,
+      lastContacts: [...this.lastContacts],
+      lostTime: this.lostTime,
+      searchRadius: this.searchRadius,
+      sigma: this.sigma,
+      estimatedHeading: this.estimatedHeading,
+      targetHeading: this.targetHeading,
+      castSide: this.castSide,
+      lastTrailSignal: this.lastTrailSignal,
+      visionTargetId: this.visionTargetId,
+      hasVisionContact: this.hasVisionContact,
+      visitedCells: new Set(this.visitedCells),
+      speed: this.currentSpeed
+    };
+  }
 
   /** 강아지 추적 상태머신: scent 샘플링 → 상태 전환 → 속도/조향 결정 → 이동 */
   updateDogState(

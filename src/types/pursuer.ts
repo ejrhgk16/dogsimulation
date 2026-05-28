@@ -50,4 +50,6 @@ export interface PursuerState {
   hasVisionContact: boolean;
   /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
   visitedCells: Set<string>;
+  /** 현재 이동 속도 */
+  speed: number;
 }

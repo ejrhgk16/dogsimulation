@@ -1,6 +1,7 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { AnimationClip, AnimationMixer } from 'three';
 import type { Group } from 'three';
+import { ANIMAL_TYPES } from '../config/animalConfig';
 
 const HEAD_BONES = [
   'Head',
@@ -28,6 +29,10 @@ export interface LoadedModel {
   mixer: AnimationMixer;
   animations: AnimationClip[];
   eatingClip?: AnimationClip;
+  gallopClip?: AnimationClip;
+  headDownClip?: AnimationClip;
+  headBobClip?: AnimationClip;
+  headUpClip?: AnimationClip;
 }
 
 /** 특정 시간 구간의 머리 애니메이션 트랙만 추출 */
@@ -97,6 +102,45 @@ export function loadModel(path: string, _animalType?: string): Promise<LoadedMod
         }
 
         const result: LoadedModel = { group: gltf.scene, mixer, animations: gltf.animations };
+
+        // Find gallop clip
+        const gallopClip = gltf.animations.find((c: AnimationClip) =>
+          c.name.toLowerCase().includes('gallop')
+        );
+        if (gallopClip) {
+          result.gallopClip = gallopClip;
+        }
+
+        // Find eating clip
+        const eatingClip = gltf.animations.find((c: AnimationClip) =>
+          c.name.toLowerCase().includes('eat')
+        );
+        if (eatingClip) {
+          result.eatingClip = eatingClip;
+        }
+
+        // Create head sub-clips from eating clip if headFrameRanges defined
+        const headRanges = ANIMAL_TYPES[_animalType || '']?.headFrameRanges;
+        if (headRanges && eatingClip) {
+          result.headDownClip = createSubClip(
+            eatingClip,
+            'headDown',
+            headRanges.downStart,
+            headRanges.downEnd
+          );
+          result.headBobClip = createSubClip(
+            eatingClip,
+            'headBob',
+            headRanges.bobStart,
+            headRanges.bobEnd
+          );
+          result.headUpClip = createSubClip(
+            eatingClip,
+            'headUp',
+            headRanges.raiseStart,
+            headRanges.raiseEnd
+          );
+        }
 
         resolve(result);
       },

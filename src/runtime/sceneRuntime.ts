@@ -240,7 +240,7 @@ export class SceneRuntime {
 
     this.controllers = new Map();
     for (const p of this.pursuers) {
-      this.controllers.set(p.id, createAnimalRender(this.scene, this.mapData, 'dog', p));
+      this.controllers.set(p.id, createAnimalRender(this.scene, this.mapData, 'dog', p.toState()));
     }
     for (const p of this.pursuedList) {
       this.controllers.set(p.id, createAnimalRender(this.scene, this.mapData, p.animalType, p));
@@ -337,7 +337,7 @@ export class SceneRuntime {
       const point = intersects[0].point;
       for (const pursuer of this.pursuers) {
         pursuer.setPosition(point.x, point.z, this.mapData);
-        this.controllers.get(pursuer.id)?.update(pursuer);
+        this.controllers.get(pursuer.id)?.update(pursuer.toState());
       }
     }
   }
@@ -624,7 +624,7 @@ export class SceneRuntime {
       p.castOriginX = p.x;
       p.castOriginY = p.y;
       (p as unknown as { _prevXi: number })._prevXi = p.trackingParams.xi;
-      this.controllers.get(p.id)?.update(p);
+      this.controllers.get(p.id)?.update(p.toState());
     }
 
     for (let i = 0; i < this.pursuedList.length; i++) {
@@ -740,14 +740,14 @@ export class SceneRuntime {
     // 4. pursuer 업데이트 (grid 전달)
     for (const pursuer of this.pursuers) {
       if (!pursuer.isTracking) {
-        this.controllers.get(pursuer.id)?.update(pursuer);
+        this.controllers.get(pursuer.id)?.update(pursuer.toState());
         continue;
       }
       const others = this.pursuedList.map((p) => ({ id: p.id, x: p.x, y: p.y }));
       pursuer.updateDogState(this.trailGrid, now, dt, this.mapData, others);
       const turnRate = pursuer.state === 'cast' ? pursuer.trackingParams.flipTurnRate : 8;
       this.controllers.get(pursuer.id)?.setRotationSpeed(turnRate);
-      this.controllers.get(pursuer.id)?.update(pursuer);
+      this.controllers.get(pursuer.id)?.update(pursuer.toState());
     }
 
     // 5. scentRender

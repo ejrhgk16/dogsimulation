@@ -1,5 +1,14 @@
 import type { Object3D, Scene } from 'three';
-import { Box3, BoxGeometry, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
+import {
+  Box3,
+  BoxGeometry,
+  LoopOnce,
+  LoopRepeat,
+  Mesh,
+  MeshStandardMaterial,
+  Quaternion,
+  Vector3
+} from 'three';
 import type { AnimationAction } from 'three';
 import type { MapData } from '../types/map';
 import type { PursuerState } from '../types/pursuer';
@@ -19,6 +28,11 @@ interface UpdateState {
   currentAnimName: string | null;
   walkAction: AnimationAction | null;
   idleAction: AnimationAction | null;
+  gallopAction: AnimationAction | null;
+  headDownAction: AnimationAction | null;
+  headBobAction: AnimationAction | null;
+  headUpAction: AnimationAction | null;
+  headAnimName: string | null;
   groundOffset: number;
 }
 
@@ -62,6 +76,10 @@ function setupLoadedModel(
   loadedModel: LoadedModel;
   walkAction: AnimationAction | null;
   idleAction: AnimationAction | null;
+  gallopAction: AnimationAction | null;
+  headDownAction: AnimationAction | null;
+  headBobAction: AnimationAction | null;
+  headUpAction: AnimationAction | null;
   groundOffset: number;
 } {
   scene.remove(fallbackMesh);
@@ -80,8 +98,22 @@ function setupLoadedModel(
     ) ?? null;
   const walkAction = walkClip ? loaded.mixer.clipAction(walkClip) : null;
   const idleAction = idleClip ? loaded.mixer.clipAction(idleClip) : null;
+  const gallopAction = loaded.gallopClip ? loaded.mixer.clipAction(loaded.gallopClip) : null;
+  const headDownAction = loaded.headDownClip ? loaded.mixer.clipAction(loaded.headDownClip) : null;
+  const headBobAction = loaded.headBobClip ? loaded.mixer.clipAction(loaded.headBobClip) : null;
+  const headUpAction = loaded.headUpClip ? loaded.mixer.clipAction(loaded.headUpClip) : null;
 
-  return { object: loaded.group, loadedModel: loaded, walkAction, idleAction, groundOffset };
+  return {
+    object: loaded.group,
+    loadedModel: loaded,
+    walkAction,
+    idleAction,
+    gallopAction,
+    headDownAction,
+    headBobAction,
+    headUpAction,
+    groundOffset
+  };
 }
 
 /** 두 애니메이션 간 크로스페이드 전환 */
@@ -153,6 +185,118 @@ function updateWalkIdleAnimation(
   return currentAnimName;
 }
 
+/** Pursuer 속도 기반 본체 애니메이션 선택 (idle/walk/gallop) */
+function updateSpeedAnimation(
+  speed: number,
+  idleAction: AnimationAction | null,
+  walkAction: AnimationAction | null,
+  gallopAction: AnimationAction | null,
+  currentAnimName: string | null
+): string | null {
+  const targetAnim: string =
+    speed < 0.01 ? 'idle' : speed < 3.5 ? 'walk' : gallopAction ? 'gallop' : 'walk';
+
+  if (targetAnim === currentAnimName) return currentAnimName;
+
+  const actionMap: Record<string, AnimationAction | null> = {
+    idle: idleAction,
+    walk: walkAction,
+    gallop: gallopAction
+  };
+  const nextAction = actionMap[targetAnim];
+  const prevAction = currentAnimName ? actionMap[currentAnimName] : null;
+
+  if (nextAction) {
+    crossFadeTo(nextAction, prevAction ?? null);
+  }
+
+  return targetAnim;
+}
+
+/** Pursuer 머리 애니메이션 재생 (headDown→headBob / headUp) */
+function updateHeadAnimation(
+  speed: number,
+  headDownAction: AnimationAction | null,
+  headBobAction: AnimationAction | null,
+  headUpAction: AnimationAction | null,
+  currentHeadAnim: string | null
+): string | null {
+  // Guard: no head clips
+  if (!headDownAction && !headBobAction && !headUpAction) return null;
+
+  // Stopped: stop all head animations
+  if (speed < 0.01) {
+    if (currentHeadAnim !== null) {
+      headDownAction?.stop();
+      headBobAction?.stop();
+      headUpAction?.stop();
+    }
+    return null;
+  }
+
+  // Low speed: headDown (one-shot → loop) or headBob loop
+  if (speed < 3.5) {
+    // Already playing headDown, check if finished
+    if (currentHeadAnim === 'headDown') {
+      const clip = headDownAction?.getClip();
+      if (clip && (headDownAction?.time ?? 0) >= clip.duration - 0.01) {
+        headDownAction?.stop();
+        if (headBobAction) {
+          headBobAction.reset();
+          headBobAction.setLoop(LoopRepeat, Infinity);
+          headBobAction.play();
+          return 'headBob';
+        }
+      }
+      return 'headDown';
+    }
+
+    // Already playing headBob, keep it
+    if (currentHeadAnim === 'headBob') {
+      return 'headBob';
+    }
+
+    // Starting head sequence (currentHeadAnim is null or 'headUp')
+    headDownAction?.stop();
+    headBobAction?.stop();
+    headUpAction?.stop();
+
+    if (headDownAction) {
+      headDownAction.reset();
+      headDownAction.setLoop(LoopOnce, 1);
+      headDownAction.clampWhenFinished = true;
+      headDownAction.play();
+      return 'headDown';
+    }
+    // Fallback: no headDown, play headBob directly
+    if (headBobAction) {
+      headBobAction.reset();
+      headBobAction.setLoop(LoopRepeat, Infinity);
+      headBobAction.play();
+      return 'headBob';
+    }
+
+    return currentHeadAnim;
+  }
+
+  // High speed: headUp (one-shot)
+  if (headUpAction) {
+    if (currentHeadAnim !== 'headUp') {
+      headDownAction?.stop();
+      headBobAction?.stop();
+      headUpAction.stop();
+
+      headUpAction.reset();
+      headUpAction.setLoop(LoopOnce, 1);
+      headUpAction.clampWhenFinished = true;
+      headUpAction.play();
+    }
+    return 'headUp';
+  }
+
+  return currentHeadAnim;
+}
+
 /** 동물 3D 컨트롤러 생성 (폴백박스 → GLTF 모델) */
 export function createAnimalRender(
   scene: Scene,
@@ -175,6 +319,11 @@ export function createAnimalRender(
     currentAnimName: null,
     walkAction: null,
     idleAction: null,
+    gallopAction: null,
+    headDownAction: null,
+    headBobAction: null,
+    headUpAction: null,
+    headAnimName: null,
     groundOffset: 0
   };
 
@@ -207,6 +356,10 @@ export function createAnimalRender(
           loadedModel = result.loadedModel;
           updateState.walkAction = result.walkAction;
           updateState.idleAction = result.idleAction;
+          updateState.gallopAction = result.gallopAction;
+          updateState.headDownAction = result.headDownAction;
+          updateState.headBobAction = result.headBobAction;
+          updateState.headUpAction = result.headUpAction;
           updateState.groundOffset = result.groundOffset;
 
           if (updateState.idleAction) {
@@ -236,16 +389,46 @@ export function createAnimalRender(
 
     if (!loadedModel) return;
 
-    const isMoving = o.x !== updateState.prevX || o.y !== updateState.prevY;
-    updateState.prevX = o.x;
-    updateState.prevY = o.y;
+    // Type guard: PursuerState has castOriginX, PursuedState does not
+    if ('castOriginX' in o) {
+      // Pursuer: speed 기반 애니메이션
+      const speed = (o as PursuerState).speed;
 
-    updateState.currentAnimName = updateWalkIdleAnimation(
-      isMoving,
-      updateState.walkAction,
-      updateState.idleAction,
-      updateState.currentAnimName
-    );
+      // Body animation
+      updateState.currentAnimName = updateSpeedAnimation(
+        speed,
+        updateState.idleAction,
+        updateState.walkAction,
+        updateState.gallopAction,
+        updateState.currentAnimName
+      );
+
+      // Head animation (dog only)
+      if (animalType === 'dog') {
+        updateState.headAnimName = updateHeadAnimation(
+          speed,
+          updateState.headDownAction,
+          updateState.headBobAction,
+          updateState.headUpAction,
+          updateState.headAnimName
+        );
+      }
+
+      updateState.prevX = o.x;
+      updateState.prevY = o.y;
+    } else {
+      // Pursued: 기존 isMoving 기반 walk/idle (변경 없음)
+      const isMoving = o.x !== updateState.prevX || o.y !== updateState.prevY;
+      updateState.prevX = o.x;
+      updateState.prevY = o.y;
+
+      updateState.currentAnimName = updateWalkIdleAnimation(
+        isMoving,
+        updateState.walkAction,
+        updateState.idleAction,
+        updateState.currentAnimName
+      );
+    }
   };
 
   /** 모델 스케일 변경 */
