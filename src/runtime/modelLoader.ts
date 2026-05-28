@@ -1,7 +1,6 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { AnimationClip, AnimationMixer } from 'three';
 import type { Group } from 'three';
-import { ANIMAL_TYPES } from '../config/animalConfig';
 
 const HEAD_BONES = [
   'Head',
@@ -119,27 +118,26 @@ export function loadModel(path: string, _animalType?: string): Promise<LoadedMod
           result.eatingClip = eatingClip;
         }
 
-        // Create head sub-clips from eating clip if headFrameRanges defined
-        const headRanges = ANIMAL_TYPES[_animalType || '']?.headFrameRanges;
-        if (headRanges && eatingClip) {
-          result.headDownClip = createSubClip(
-            eatingClip,
-            'headDown',
-            headRanges.downStart,
-            headRanges.downEnd
-          );
-          result.headBobClip = createSubClip(
-            eatingClip,
-            'headBob',
-            headRanges.bobStart,
-            headRanges.bobEnd
-          );
-          result.headUpClip = createSubClip(
-            eatingClip,
-            'headUp',
-            headRanges.raiseStart,
-            headRanges.raiseEnd
-          );
+        // Create head sub-clips (plan-26 hardcoded frame ranges)
+        if (_animalType === 'dog') {
+          const eatingClip = gltf.animations.find((clip: AnimationClip) => clip.name === 'Eating');
+          if (eatingClip) {
+            result.eatingClip = eatingClip;
+            const fps = 30;
+            // Based on actual Eating animation data:
+            // Frame 0: deep eating (Torso3=34.8°, Neck1=17.7°)
+            // Frame 10: neutral (Torso3=0.9°, Neck1=2.7°)
+            // Frames 15-60: moderate eating (Torso3=5.6°, Neck1=12.3°)
+            // Frame 65: neutral (Torso3=0.1°, Neck1=9.4°)
+            // Frame 80: deep eating (Torso3=34.8°, Neck1=17.7°)
+            const t1 = 0 / fps;
+            const t2 = 10 / fps;
+            const t3 = 60 / fps;
+            const t4 = 70 / fps;
+            result.headDownClip = createSubClip(eatingClip, 'headDown', t1, t2);
+            result.headBobClip = createSubClip(eatingClip, 'headBobbing', t2, t3);
+            result.headUpClip = createSubClip(eatingClip, 'headUp', t3, t4);
+          }
         }
 
         resolve(result);

@@ -3,14 +3,6 @@ export interface AnimalTypeConfig {
   color: number;
   scale: number;
   rotationSpeed?: number;
-  headFrameRanges?: {
-    downStart: number;
-    downEnd: number;
-    bobStart: number;
-    bobEnd: number;
-    raiseStart: number;
-    raiseEnd: number;
-  };
 }
 
 export const ANIMAL_SCALE = 0.5;
@@ -26,15 +18,7 @@ export const ANIMAL_TYPES: Record<string, AnimalTypeConfig> = {
     modelPath: '/models/ShibaInu.gltf',
     color: 0xff9933,
     scale: ANIMAL_SCALE,
-    rotationSpeed: 8.0,
-    headFrameRanges: {
-      downStart: 0,
-      downEnd: 20,
-      bobStart: 20,
-      bobEnd: 60,
-      raiseStart: 60,
-      raiseEnd: 80
-    }
+    rotationSpeed: 8.0
   },
   alpaca: {
     modelPath: '/models/Alpaca.gltf',

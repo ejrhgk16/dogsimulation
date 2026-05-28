@@ -36,7 +36,7 @@ export const defaultMapConfig: MapConfig = {
   depth: 60,
   cellSize: 1,
   baseHeight: 0,
-  hillHeight: 2,
+  hillHeight: 0,
   obstacleRatio: 0,
   seed: 42,
   zones: { flatRatio: 0.5 },

@@ -14,43 +14,29 @@ function seededRandom(seed: number): () => number {
 
 /** MapConfig → MapData 그리드 생성 (지형·장애물 배치) */
 export function generateMap(config: MapConfig): MapData {
-  const { width, depth, cellSize, baseHeight, hillHeight, obstacleRatio, seed } = config;
+  const { width, depth, cellSize, baseHeight, obstacleRatio, seed } = config;
 
   const zones = config.zones ?? { flatRatio: 0 };
   const obstacleShapes = config.obstacleShapes ?? ['single'];
 
   const rng = seededRandom(seed);
   const grid: MapCell[][] = [];
-  const flatStartCol = Math.floor(width * (1 - zones.flatRatio));
-
   for (let row = 0; row < depth; row++) {
     const rowCells: MapCell[] = [];
     for (let col = 0; col < width; col++) {
-      const isFlatZone = col >= flatStartCol && zones.flatRatio > 0;
-
-      if (isFlatZone) {
-        rowCells.push({
-          x: col * cellSize,
-          z: row * cellSize,
-          height: baseHeight,
-          terrain: 'flat'
-        });
-      } else {
-        const terrainRand = rng();
-        const terrain = terrainRand < obstacleRatio + 0.3 ? 'hill' : 'flat';
-        const heightRand = rng();
-        rowCells.push({
-          x: col * cellSize,
-          z: row * cellSize,
-          height: terrain === 'flat' ? baseHeight : baseHeight + heightRand * hillHeight,
-          terrain
-        });
-      }
+      rowCells.push({
+        x: col * cellSize,
+        z: row * cellSize,
+        height: baseHeight,
+        terrain: 'flat'
+      });
     }
     grid.push(rowCells);
   }
 
   const maxObstacleCells = Math.round(width * depth * obstacleRatio);
+
+  const flatStartCol = Math.floor(width * (1 - zones.flatRatio));
 
   if (maxObstacleCells <= 0) {
     return { grid, cellSize, width, depth };
