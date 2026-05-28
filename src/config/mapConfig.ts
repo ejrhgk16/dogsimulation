@@ -37,8 +37,8 @@ export const defaultMapConfig: MapConfig = {
   cellSize: 1,
   baseHeight: 0,
   hillHeight: 0,
-  obstacleRatio: 0,
+  obstacleRatio: 0.03,
   seed: 42,
-  zones: { flatRatio: 0.5 },
-  obstacleShapes: []
+  zones: { flatRatio: 0 },
+  obstacleShapes: ['L', 'reverse-L', 'single']
 };

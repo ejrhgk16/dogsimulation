@@ -71,21 +71,22 @@ function createTerrainGeometry(mapData: MapData): BufferGeometry {
   return geometry;
 }
 
-/** 지형 메시 + 장애물 InstancedMesh 생성 */
-export function buildMapRender(
-  mapData: MapData,
-  _config: SceneConfig
-): {
-  terrainMesh: Mesh;
-  obstacleMeshes: { shaped: InstancedMesh | null; single: InstancedMesh | null };
-} {
-  const mapWidth = mapData.width * mapData.cellSize;
-  const mapDepth = mapData.depth * mapData.cellSize;
-
+/** 지형 Mesh 생성 */
+export function createTerrainMesh(mapData: MapData): Mesh {
   const terrainGeo = createTerrainGeometry(mapData);
   const terrainMat = new MeshStandardMaterial({ color: 0x4a6b4a });
   const terrainMesh = new Mesh(terrainGeo, terrainMat);
   terrainMesh.frustumCulled = false;
+  return terrainMesh;
+}
+
+/** 장애물 InstancedMesh 생성 */
+export function createObstacleMeshes(mapData: MapData): {
+  shaped: InstancedMesh | null;
+  single: InstancedMesh | null;
+} {
+  const mapWidth = mapData.width * mapData.cellSize;
+  const mapDepth = mapData.depth * mapData.cellSize;
 
   const obstaclePositions: ObstaclePos[] = [];
   for (let row = 0; row < mapData.depth; row++) {
@@ -140,8 +141,13 @@ export function buildMapRender(
     singleMesh = mesh;
   }
 
-  return {
-    terrainMesh,
-    obstacleMeshes: { shaped: shapedMesh, single: singleMesh }
-  };
+  return { shaped: shapedMesh, single: singleMesh };
+}
+
+/** 장애물 mesh만 반환 (기존 인터페이스 유지) */
+export function buildMapRender(
+  mapData: MapData,
+  _config: SceneConfig
+): { shaped: InstancedMesh | null; single: InstancedMesh | null } {
+  return createObstacleMeshes(mapData);
 }

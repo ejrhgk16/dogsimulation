@@ -23,6 +23,7 @@ import {
   Vector3,
   WebGLRenderer
 } from 'three';
+import type { InstancedMesh } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MapData } from '../types/map';
 import type { ScentPoint, TrackingParams } from '../types/scent';
@@ -46,6 +47,7 @@ import { createScentRender } from './scentRender';
 import type { ScentRender } from './scentRender';
 import { createAnimalRender } from './animalRender';
 import type { AnimalRender } from './animalRender';
+import { buildMapRender } from './mapRender';
 
 /** 모든 pursuer의 visitedCells를 합집합으로 반환 */
 export function getAllVisitedCells(pursuers: { visitedCells: Set<string> }[]): Set<string> {
@@ -111,6 +113,7 @@ export class SceneRuntime {
   private controls: OrbitControls;
 
   private terrainMesh: Mesh;
+  private obstacleMeshes: { shaped: InstancedMesh | null; single: InstancedMesh | null };
   private raycaster: Raycaster;
   private mouseNDC: Vector2;
 
@@ -238,6 +241,17 @@ export class SceneRuntime {
 
     this.scene.add(ambientLight, directionalLight, terrainMesh);
 
+    const obstacleResult = buildMapRender(this.mapData, defaultSceneConfig);
+    this.obstacleMeshes = { shaped: null, single: null };
+    if (obstacleResult.shaped) {
+      this.scene.add(obstacleResult.shaped);
+      this.obstacleMeshes.shaped = obstacleResult.shaped;
+    }
+    if (obstacleResult.single) {
+      this.scene.add(obstacleResult.single);
+      this.obstacleMeshes.single = obstacleResult.single;
+    }
+
     this.controllers = new Map();
     for (const p of this.pursuers) {
       this.controllers.set(p.id, createAnimalRender(this.scene, this.mapData, 'dog', p.toState()));
@@ -315,6 +329,21 @@ export class SceneRuntime {
       clearInterval(this.stressIntervalId);
       this.stressIntervalId = null;
     }
+    this.disposeObstacleMeshes();
+  }
+
+  private disposeObstacleMeshes(): void {
+    if (this.obstacleMeshes.shaped) {
+      this.obstacleMeshes.shaped.geometry.dispose();
+      (this.obstacleMeshes.shaped.material as MeshStandardMaterial).dispose();
+      this.scene.remove(this.obstacleMeshes.shaped);
+    }
+    if (this.obstacleMeshes.single) {
+      this.obstacleMeshes.single.geometry.dispose();
+      (this.obstacleMeshes.single.material as MeshStandardMaterial).dispose();
+      this.scene.remove(this.obstacleMeshes.single);
+    }
+    this.obstacleMeshes = { shaped: null, single: null };
   }
 
   /** Shift+좌클릭 → Raycaster 지형 선택 → 모든 pursuer 순간이동 */
