@@ -50,14 +50,14 @@ import type { AnimalRender } from './animalRender';
 import { buildMapRender } from './mapRender';
 
 /** 모든 pursuer의 visitedCells를 합집합으로 반환 */
-export function getAllVisitedCells(pursuers: { visitedCells: Set<string> }[]): Set<string> {
+export function getAllVisitedCells(pursuers: { visitedCells: string[] }[]): string[] {
   const visited = new Set<string>();
   for (const p of pursuers) {
     for (const key of p.visitedCells) {
       visited.add(key);
     }
   }
-  return visited;
+  return [...visited];
 }
 
 /** 마지막 냄새 탐지 셀 (주황) — lastContacts 마지막 항목의 cx,cy 셀 key Set 반환 */
@@ -77,7 +77,7 @@ export function getOrangeCellKeys(
 /** lost 상태 pursuer의 동심원 perimeter 미방문 셀 (보라) Set 반환 — 현재 탐색 거리만 표시 */
 export function getPurpleCellKeys(
   pursuers: {
-    visitedCells: Set<string>;
+    visitedCells: string[];
     state: string;
     currentLostSearchRadius: number;
     lastContacts: { cx: number; cy: number }[];
@@ -95,7 +95,7 @@ export function getPurpleCellKeys(
       for (let dy = -r; dy <= r; dy++) {
         if (Math.abs(dx) === r || Math.abs(dy) === r) {
           const key = `${gx + dx},${gy + dy}`;
-          if (!p.visitedCells.has(key)) {
+          if (!p.visitedCells.includes(key)) {
             purple.add(key);
           }
         }
@@ -465,29 +465,6 @@ export class SceneRuntime {
   }
   // slider
 
-  /** 본체 애니메이션 override 설정 */
-  setBodyAnimationOverride(id: string, name: string, play: boolean): void {
-    this.controllers.get(id)?.setBodyAnimationOverride(name, play);
-  }
-
-  /** 머리 애니메이션 override 설정 */
-  setHeadAnimationOverride(id: string, name: string, play: boolean): void {
-    this.controllers.get(id)?.setHeadAnimationOverride(name, play);
-  }
-
-  /** 머리 애니메이션 프레임 구간 재설정 (frame index 기준) */
-  setHeadFrameRanges(
-    id: string,
-    ds: number,
-    de: number,
-    bs: number,
-    be: number,
-    rs: number,
-    re: number
-  ): void {
-    this.controllers.get(id)?.setHeadFrameRanges(ds, de, bs, be, rs, re);
-  }
-
   /** 모든 추적자 추적 시작 */
   startTracking(): void {
     for (const p of this.pursuers) p.isTracking = true;
@@ -633,7 +610,7 @@ export class SceneRuntime {
       } else if (purpleSet.has(cellKey)) {
         mat.color.setHex(0x9944ff);
         mat.opacity = 0.4;
-      } else if (visited.has(cellKey)) {
+      } else if (visited.includes(cellKey)) {
         mat.color.setHex(0xffff00);
         mat.opacity = 0.5;
       } else {
@@ -669,7 +646,7 @@ export class SceneRuntime {
       p.lastContacts = [];
       p.lostTime = 0;
       p.searchRadius = 0;
-      p.visitedCells.clear();
+      p.visitedCells = [];
       p.sigma = p.trackingParams.sigmaBase;
       p.estimatedHeading = p.rotationAngle;
       p.targetHeading = p.rotationAngle;
@@ -721,7 +698,7 @@ export class SceneRuntime {
     this.resetScent();
     this.fakeTrails = [];
     for (const p of this.pursuers) {
-      p.visitedCells.clear();
+      p.visitedCells = [];
     }
     this.rebuildGridCells();
   }

@@ -206,7 +206,7 @@ export function findBestUnvisitedAngle(
   x: number,
   y: number,
   heading: number,
-  visitedCells: Set<string>
+  visitedCells: string[]
 ): number | null {
   const scanRadius = 3;
   const cellSize = DEFAULT_SCENT_CELL_SIZE;
@@ -219,7 +219,7 @@ export function findBestUnvisitedAngle(
     for (let dy = -scanRadius; dy <= scanRadius; dy++) {
       if (dx === 0 && dy === 0) continue;
       const key = `${sx + dx},${sy + dy}`;
-      if (visitedCells.has(key)) continue;
+      if (visitedCells.includes(key)) continue;
 
       const angle = Math.atan2(dy, dx);
       // 전방 진행 선호 (헤딩 기준 120° 이내)
@@ -248,7 +248,7 @@ export function resolveStuck(
   castSide: number,
   mapData: MapData,
   params: ObstacleAvoidanceParams,
-  visitedCells: Set<string>,
+  visitedCells: string[],
   scentSample?: ScentSectorSignals
 ): { heading: number; shouldBacktrack: boolean } {
   const avoidanceResult = avoidObstacle(x, y, heading, mapData, params);

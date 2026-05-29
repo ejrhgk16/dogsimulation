@@ -14,7 +14,7 @@ import type { MapData } from '../types/map';
 import type { PursuerState } from '../types/pursuer';
 import type { PursuedState } from '../types/pursued';
 import type { LoadedModel } from './modelLoader';
-import { loadModel, createSubClip } from './modelLoader';
+import { loadModel } from './modelLoader';
 import { ANIMAL_TYPES, ANIMAL_HEIGHT_OFFSET } from '../config/animalConfig';
 import { getTerrainNormal } from '../services/mapService';
 
@@ -34,8 +34,6 @@ interface UpdateState {
   headUpAction: AnimationAction | null;
   headAnimName: string | null;
   groundOffset: number;
-  bodyOverrides: Set<string>;
-  headOverrides: Set<string>;
 }
 
 export interface AnimalRender {
@@ -44,16 +42,6 @@ export interface AnimalRender {
   setRotationSpeed: (radPerSec: number) => void;
   getObject: () => Object3D | null;
   getLoadedModel: () => LoadedModel | null;
-  setBodyAnimationOverride: (name: string, play: boolean) => void;
-  setHeadAnimationOverride: (name: string, play: boolean) => void;
-  setHeadFrameRanges: (
-    ds: number,
-    de: number,
-    bs: number,
-    be: number,
-    rs: number,
-    re: number
-  ) => void;
 }
 
 /** GLTF 로딩 전 대체 박스 메시 생성 */
@@ -340,9 +328,7 @@ export function createAnimalRender(
     headBobAction: null,
     headUpAction: null,
     headAnimName: null,
-    groundOffset: 0,
-    bodyOverrides: new Set(),
-    headOverrides: new Set()
+    groundOffset: 0
   };
 
   if (state) {
@@ -411,56 +397,24 @@ export function createAnimalRender(
     if ('castOriginX' in o) {
       const speed = (o as PursuerState).speed;
 
-      // Body animation — override or speed-based
-      if (updateState.bodyOverrides.size > 0) {
-        const bodyNames = ['walk', 'idle', 'gallop'];
-        const bodyActionMap: Record<string, AnimationAction | null> = {
-          walk: updateState.walkAction,
-          idle: updateState.idleAction,
-          gallop: updateState.gallopAction
-        };
-        for (const name of bodyNames) {
-          const action = bodyActionMap[name];
-          if (!action) continue;
-          if (!updateState.bodyOverrides.has(name)) {
-            action.stop();
-          }
-        }
-      } else {
-        updateState.currentAnimName = updateSpeedAnimation(
-          speed,
-          updateState.idleAction,
-          updateState.walkAction,
-          updateState.gallopAction,
-          updateState.currentAnimName
-        );
-      }
+      // Body animation — speed-based
+      updateState.currentAnimName = updateSpeedAnimation(
+        speed,
+        updateState.idleAction,
+        updateState.walkAction,
+        updateState.gallopAction,
+        updateState.currentAnimName
+      );
 
-      // Head animation — override or speed-based (dog only)
+      // Head animation — speed-based (dog only)
       if (animalType === 'dog') {
-        if (updateState.headOverrides.size > 0) {
-          const headNames = ['headDown', 'headBob', 'headUp'];
-          const headActionMap: Record<string, AnimationAction | null> = {
-            headDown: updateState.headDownAction,
-            headBob: updateState.headBobAction,
-            headUp: updateState.headUpAction
-          };
-          for (const name of headNames) {
-            const action = headActionMap[name];
-            if (!action) continue;
-            if (!updateState.headOverrides.has(name)) {
-              action.stop();
-            }
-          }
-        } else {
-          updateState.headAnimName = updateHeadAnimation(
-            speed,
-            updateState.headDownAction,
-            updateState.headBobAction,
-            updateState.headUpAction,
-            updateState.headAnimName
-          );
-        }
+        updateState.headAnimName = updateHeadAnimation(
+          speed,
+          updateState.headDownAction,
+          updateState.headBobAction,
+          updateState.headUpAction,
+          updateState.headAnimName
+        );
       }
 
       updateState.prevX = o.x;
@@ -493,96 +447,11 @@ export function createAnimalRender(
     rotationSpeed = radPerSec;
   };
 
-  /** 본체 애니메이션 override 추가/제거 */
-  const setBodyAnimationOverride = (name: string, play: boolean): void => {
-    const bodyActionMap: Record<string, AnimationAction | null> = {
-      walk: updateState.walkAction,
-      idle: updateState.idleAction,
-      gallop: updateState.gallopAction
-    };
-    const action = bodyActionMap[name];
-    if (!action) return;
-    if (play) {
-      updateState.bodyOverrides.add(name);
-      action.reset();
-      action.setLoop(LoopRepeat, Infinity);
-      action.clampWhenFinished = false;
-      action.play();
-    } else {
-      updateState.bodyOverrides.delete(name);
-      action.stop();
-    }
-  };
-
-  /** 머리 애니메이션 override 추가/제거 */
-  const setHeadAnimationOverride = (name: string, play: boolean): void => {
-    const headActionMap: Record<string, AnimationAction | null> = {
-      headDown: updateState.headDownAction,
-      headBob: updateState.headBobAction,
-      headUp: updateState.headUpAction
-    };
-    const action = headActionMap[name];
-    if (!action) return;
-    if (play) {
-      updateState.headOverrides.add(name);
-      action.reset();
-      action.setLoop(LoopOnce, 1);
-      action.clampWhenFinished = true;
-      action.weight = 999;
-      action.play();
-    } else {
-      updateState.headOverrides.delete(name);
-      action.stop();
-    }
-  };
-
-  /** 머리 애니메이션 프레임 구간 재설정 */
-  const setHeadFrameRanges = (
-    ds: number,
-    de: number,
-    bs: number,
-    be: number,
-    rs: number,
-    re: number
-  ): void => {
-    const model = loadedModel;
-    if (!model?.eatingClip || !model?.mixer) return;
-    const fps = 30;
-
-    updateState.headDownAction?.stop();
-    updateState.headBobAction?.stop();
-    updateState.headUpAction?.stop();
-    const hadOverrides = updateState.headOverrides.size > 0;
-    updateState.headOverrides.clear();
-
-    model.headDownClip = createSubClip(model.eatingClip, 'headDown', ds / fps, de / fps);
-    model.headBobClip = createSubClip(model.eatingClip, 'headBob', bs / fps, be / fps);
-    model.headUpClip = createSubClip(model.eatingClip, 'headUp', rs / fps, re / fps);
-
-    updateState.headDownAction = model.mixer.clipAction(model.headDownClip);
-    updateState.headBobAction = model.mixer.clipAction(model.headBobClip);
-    updateState.headUpAction = model.mixer.clipAction(model.headUpClip);
-    for (const a of [
-      updateState.headDownAction,
-      updateState.headBobAction,
-      updateState.headUpAction
-    ]) {
-      if (a) a.weight = 999;
-    }
-
-    if (hadOverrides) {
-      console.debug('[HeadFrameRanges] overrides cleared after frame change');
-    }
-  };
-
   return {
     update,
     setScale,
     setRotationSpeed,
     getObject: () => obj,
-    getLoadedModel: () => loadedModel,
-    setBodyAnimationOverride,
-    setHeadAnimationOverride,
-    setHeadFrameRanges
+    getLoadedModel: () => loadedModel
   };
 }

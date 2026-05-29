@@ -68,8 +68,8 @@ export class Pursuer {
   trackingParams: TrackingParams;
   /** 추적 활성 여부 */
   isTracking: boolean;
-  /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
-  visitedCells: Set<string>;
+  /** 지나온 grid cell 배열 (key: "ix,iy" 형식), 최근 10개 유지 */
+  visitedCells: string[];
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
   private _baseBoundary: number = 0;
@@ -120,7 +120,7 @@ export class Pursuer {
     this.visionTargetId = null;
     this.hasVisionContact = false;
     this.isTracking = false;
-    this.visitedCells = new Set<string>();
+    this.visitedCells = [];
     this._prevXi = this.trackingParams.xi;
     this._currentFlipScale = this.trackingParams.flipRampStart;
     this._stuckFrameCount = 0;
@@ -145,7 +145,7 @@ export class Pursuer {
     this.lastTrailSignal = 0;
     this.lastContactDistance = 0;
     this.curvatureRadius = this.trackingParams.xi;
-    this.visitedCells = new Set<string>();
+    this.visitedCells = [];
     this._stuckFrameCount = 0;
     this._currentLostSearchRadius = 1;
   }
@@ -180,7 +180,7 @@ export class Pursuer {
       lastTrailSignal: this.lastTrailSignal,
       visionTargetId: this.visionTargetId,
       hasVisionContact: this.hasVisionContact,
-      visitedCells: new Set(this.visitedCells),
+      visitedCells: [...this.visitedCells],
       speed: this.currentSpeed
     };
   }
@@ -388,7 +388,7 @@ export class Pursuer {
               const gy = cy + dy;
               const key = `${gx},${gy}`;
 
-              if (!this.visitedCells.has(key)) {
+              if (!this.visitedCells.includes(key)) {
                 // Found unvisited cell — steer toward its center via ScentGrid API
                 const center = grid.cellToWorld(gx, gy);
                 this.targetHeading = Math.atan2(center.y - this.y, center.x - this.x);
@@ -715,10 +715,16 @@ export class Pursuer {
 
   /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
   private buildDogScentSample(grid: ScentGrid, now: number): ScentSample {
-    // visited cell 기록: ScentGrid API 사용
+    // visited cell 기록: 최근 10개 유지 (FIFO)
     const cell = grid.worldToCell(this.x, this.y);
     if (cell) {
-      this.visitedCells.add(`${cell.cx},${cell.cy}`);
+      const key = `${cell.cx},${cell.cy}`;
+      if (!this.visitedCells.includes(key)) {
+        this.visitedCells.push(key);
+        if (this.visitedCells.length > 10) {
+          this.visitedCells.shift();
+        }
+      }
     }
 
     const fanAngle = this.trackingParams.sensorFanAngle;
@@ -728,8 +734,7 @@ export class Pursuer {
     const origin = { x: this.x, y: this.y };
     const facing = this.rotationAngle;
 
-    // visited cell 필터 비활성화: 모든 scent 감지
-    const visitedParam = undefined;
+    const visitedParam = this.visitedCells;
 
     const params = {
       ...DEFAULT_SCENT_PARAMS,

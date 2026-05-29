@@ -81,7 +81,7 @@ export function sampleScentInSector(
   grid: ScentGrid,
   now: number,
   params: ScentSamplerParams,
-  visitedCells?: Set<string>
+  visitedCells?: string[]
 ): ScentSampleDetail {
   const spreadSigma = DEFAULT_SCENT_PARAMS.scentSpreadSigma;
   const twoSigmaSq = 2 * spreadSigma * spreadSigma;
@@ -113,7 +113,7 @@ export function sampleScentInSector(
       // visited cell filter: skip point whose grid cell has been visited
       if (visitedCells) {
         const cell = grid.worldToCell(point.x, point.y);
-        if (cell && visitedCells.has(`${cell.cx},${cell.cy}`)) continue;
+        if (cell && visitedCells.includes(`${cell.cx},${cell.cy}`)) continue;
       }
 
       const tauDecay = point.tauDecay ?? params.tauDecay;

@@ -48,8 +48,8 @@ export interface PursuerState {
   visionTargetId: string | null;
   /** 시야 감지 여부 (현재 프레임) */
   hasVisionContact: boolean;
-  /** 지나온 grid cell 집합 (key: "ix,iy" 형식) */
-  visitedCells: Set<string>;
+  /** 지나온 grid cell 배열 (key: "ix,iy" 형식), 최근 10개 유지 */
+  visitedCells: string[];
   /** 현재 이동 속도 */
   speed: number;
 }
