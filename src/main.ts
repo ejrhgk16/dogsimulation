@@ -276,6 +276,68 @@ trackingPanel.innerHTML = `
 
 app.appendChild(trackingPanel);
 
+// Animation Override panel
+const animPanel = document.createElement('div');
+animPanel.id = 'anim-panel';
+animPanel.innerHTML = `
+  <fieldset>
+    <legend>Animation Override</legend>
+    <label><input type="checkbox" id="anim-walk" /> Walk</label>
+    <label><input type="checkbox" id="anim-idle" /> Idle</label>
+    <label><input type="checkbox" id="anim-gallop" /> Gallop</label>
+    <label><input type="checkbox" id="anim-headDown" /> HeadDown</label>
+    <label><input type="checkbox" id="anim-headBob" /> HeadBob</label>
+    <label><input type="checkbox" id="anim-headUp" /> HeadUp</label>
+  </fieldset>
+  <fieldset>
+    <legend>Frame Ranges</legend>
+    <label><span>Down</span><input type="number" id="fr-downStart" min="0" max="80" value="0" class="fr-input" /><span>-</span><input type="number" id="fr-downEnd" min="0" max="80" value="20" class="fr-input" /></label>
+    <label><span>Bob</span><input type="number" id="fr-bobStart" min="0" max="80" value="20" class="fr-input" /><span>-</span><input type="number" id="fr-bobEnd" min="0" max="80" value="60" class="fr-input" /></label>
+    <label><span>Raise</span><input type="number" id="fr-raiseStart" min="0" max="80" value="60" class="fr-input" /><span>-</span><input type="number" id="fr-raiseEnd" min="0" max="80" value="80" class="fr-input" /></label>
+    <button id="fr-apply">Apply</button>
+  </fieldset>
+`;
+leftPanels.appendChild(animPanel);
+
+const animWalk = animPanel.querySelector<HTMLInputElement>('#anim-walk')!;
+animWalk.addEventListener('change', () => {
+  runtime.setBodyAnimationOverride(DOG_ID, 'walk', animWalk.checked);
+});
+const animIdle = animPanel.querySelector<HTMLInputElement>('#anim-idle')!;
+animIdle.addEventListener('change', () => {
+  runtime.setBodyAnimationOverride(DOG_ID, 'idle', animIdle.checked);
+});
+const animGallop = animPanel.querySelector<HTMLInputElement>('#anim-gallop')!;
+animGallop.addEventListener('change', () => {
+  runtime.setBodyAnimationOverride(DOG_ID, 'gallop', animGallop.checked);
+});
+const animHeadDown = animPanel.querySelector<HTMLInputElement>('#anim-headDown')!;
+animHeadDown.addEventListener('change', () => {
+  runtime.setHeadAnimationOverride(DOG_ID, 'headDown', animHeadDown.checked);
+});
+const animHeadBob = animPanel.querySelector<HTMLInputElement>('#anim-headBob')!;
+animHeadBob.addEventListener('change', () => {
+  runtime.setHeadAnimationOverride(DOG_ID, 'headBob', animHeadBob.checked);
+});
+const animHeadUp = animPanel.querySelector<HTMLInputElement>('#anim-headUp')!;
+animHeadUp.addEventListener('change', () => {
+  runtime.setHeadAnimationOverride(DOG_ID, 'headUp', animHeadUp.checked);
+});
+
+// Frame range Apply button
+const frApply = animPanel.querySelector<HTMLButtonElement>('#fr-apply')!;
+frApply.addEventListener('click', () => {
+  const getVal = (id: string) =>
+    parseInt(animPanel.querySelector<HTMLInputElement>(`#${id}`)!.value, 10);
+  const ds = getVal('fr-downStart');
+  const de = getVal('fr-downEnd');
+  const bs = getVal('fr-bobStart');
+  const be = getVal('fr-bobEnd');
+  const rs = getVal('fr-raiseStart');
+  const re = getVal('fr-raiseEnd');
+  runtime.setHeadFrameRanges(DOG_ID, ds, de, bs, be, rs, re);
+});
+
 const tpKeys = [
   'sensorRadius',
   'sensorFanAngle',

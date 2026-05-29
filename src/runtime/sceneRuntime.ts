@@ -465,6 +465,29 @@ export class SceneRuntime {
   }
   // slider
 
+  /** 본체 애니메이션 override 설정 */
+  setBodyAnimationOverride(id: string, name: string, play: boolean): void {
+    this.controllers.get(id)?.setBodyAnimationOverride(name, play);
+  }
+
+  /** 머리 애니메이션 override 설정 */
+  setHeadAnimationOverride(id: string, name: string, play: boolean): void {
+    this.controllers.get(id)?.setHeadAnimationOverride(name, play);
+  }
+
+  /** 머리 애니메이션 프레임 구간 재설정 (frame index 기준) */
+  setHeadFrameRanges(
+    id: string,
+    ds: number,
+    de: number,
+    bs: number,
+    be: number,
+    rs: number,
+    re: number
+  ): void {
+    this.controllers.get(id)?.setHeadFrameRanges(ds, de, bs, be, rs, re);
+  }
+
   /** 모든 추적자 추적 시작 */
   startTracking(): void {
     for (const p of this.pursuers) p.isTracking = true;

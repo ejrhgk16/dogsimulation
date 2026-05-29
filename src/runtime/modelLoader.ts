@@ -125,15 +125,13 @@ export function loadModel(path: string, _animalType?: string): Promise<LoadedMod
             result.eatingClip = eatingClip;
             const fps = 30;
             // Based on actual Eating animation data:
-            // Frame 0: deep eating (Torso3=34.8°, Neck1=17.7°)
-            // Frame 10: neutral (Torso3=0.9°, Neck1=2.7°)
-            // Frames 15-60: moderate eating (Torso3=5.6°, Neck1=12.3°)
-            // Frame 65: neutral (Torso3=0.1°, Neck1=9.4°)
-            // Frame 80: deep eating (Torso3=34.8°, Neck1=17.7°)
+            // Frame 0-20: head lowering to deep eating, recovering past neutral
+            // Frame 20-60: moderate eating (head bobbing)
+            // Frame 60-80: head raising back, then lowering to deep eating
             const t1 = 0 / fps;
-            const t2 = 10 / fps;
+            const t2 = 20 / fps;
             const t3 = 60 / fps;
-            const t4 = 70 / fps;
+            const t4 = 80 / fps;
             result.headDownClip = createSubClip(eatingClip, 'headDown', t1, t2);
             result.headBobClip = createSubClip(eatingClip, 'headBobbing', t2, t3);
             result.headUpClip = createSubClip(eatingClip, 'headUp', t3, t4);

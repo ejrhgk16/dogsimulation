@@ -276,6 +276,19 @@ export class Pursuer {
         this.targetHeading = this.normalizeAngle(
           this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
         );
+        // Fix 1: cast entry boundary check — flip castSide if heading points to boundary
+        if (
+          isObstacleInFootprint(
+            mapData,
+            this.x + Math.cos(this.targetHeading) * 0.3,
+            this.y + Math.sin(this.targetHeading) * 0.3
+          )
+        ) {
+          this.castSide *= -1;
+          this.targetHeading = this.normalizeAngle(
+            this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
+          );
+        }
       }
     } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
@@ -328,14 +341,28 @@ export class Pursuer {
       const tanAngle = lateralDist / Math.max(forwardDist, 0.001);
 
       if (tanAngle >= this._baseBoundary && this.castSide * cross > 0) {
+        const oldCastSide = this.castSide;
+        const oldHeading = this.targetHeading;
         this.castSide *= -1;
         this.targetHeading = this.normalizeAngle(
           this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
         );
-        this._currentFlipScale = Math.min(
-          this._currentFlipScale + this.trackingParams.flipRampStep,
-          this.trackingParams.castFlipScaleMax
-        );
+        // Fix 2: cancel flip if new heading points toward boundary
+        if (
+          isObstacleInFootprint(
+            mapData,
+            this.x + Math.cos(this.targetHeading) * 0.3,
+            this.y + Math.sin(this.targetHeading) * 0.3
+          )
+        ) {
+          this.castSide = oldCastSide;
+          this.targetHeading = oldHeading;
+        } else {
+          this._currentFlipScale = Math.min(
+            this._currentFlipScale + this.trackingParams.flipRampStep,
+            this.trackingParams.castFlipScaleMax
+          );
+        }
       }
 
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
@@ -486,11 +513,21 @@ export class Pursuer {
       let avoidResult: { heading: number; shouldBacktrack: boolean };
 
       if (this.state === 'cast') {
-        // cast: 장애물 만나면 즉시 flip
-        this.castSide *= -1;
-        this.targetHeading = this.normalizeAngle(
-          this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
+        // cast: 장애물 만나면 즉시 flip (경계 방향이면 무시)
+        const newCastSide = this.castSide * -1;
+        const newHeading = this.normalizeAngle(
+          this.estimatedHeading + newCastSide * this._halfSectorAngle * this._currentFlipScale
         );
+        if (
+          !isObstacleInFootprint(
+            mapData,
+            this.x + Math.cos(newHeading) * 0.3,
+            this.y + Math.sin(newHeading) * 0.3
+          )
+        ) {
+          this.castSide = newCastSide;
+          this.targetHeading = newHeading;
+        }
         avoidResult = resolveStuck(
           this.x,
           this.y,

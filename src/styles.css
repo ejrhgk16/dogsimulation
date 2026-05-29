@@ -255,3 +255,66 @@ body {
 #visual-panel button:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+#anim-panel {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+#anim-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0;
+}
+
+#anim-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#anim-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+#anim-panel input[type='checkbox'] {
+  accent-color: #ff9933;
+  cursor: pointer;
+}
+
+#anim-panel .fr-input {
+  width: 40px;
+  padding: 1px 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 11px;
+  font-family: inherit;
+  text-align: center;
+}
+
+#anim-panel button {
+  margin-top: 4px;
+  padding: 2px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+#anim-panel button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
