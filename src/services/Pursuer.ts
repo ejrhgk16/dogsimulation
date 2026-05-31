@@ -235,6 +235,18 @@ export class Pursuer {
         }
       }
 
+      // visitedCells: scent 감지된 셀만 기록
+      const visitedCell = grid.worldToCell(this.x, this.y);
+      if (visitedCell) {
+        const visitedKey = `${visitedCell.cx},${visitedCell.cy}`;
+        if (!this.visitedCells.includes(visitedKey)) {
+          this.visitedCells.push(visitedKey);
+          if (this.visitedCells.length > 10) {
+            this.visitedCells.shift();
+          }
+        }
+      }
+
       this.updateHeading(grid);
     } else {
       const scale = this.state === 'cast' ? this.trackingParams.castLostScale : 1;
@@ -715,18 +727,6 @@ export class Pursuer {
 
   /** 센서 3섹터(좌·중·우) 샘플링 → netBias·signalDirection·confidence 산출 */
   private buildDogScentSample(grid: ScentGrid, now: number): ScentSample {
-    // visited cell 기록: 최근 10개 유지 (FIFO)
-    const cell = grid.worldToCell(this.x, this.y);
-    if (cell) {
-      const key = `${cell.cx},${cell.cy}`;
-      if (!this.visitedCells.includes(key)) {
-        this.visitedCells.push(key);
-        if (this.visitedCells.length > 10) {
-          this.visitedCells.shift();
-        }
-      }
-    }
-
     const fanAngle = this.trackingParams.sensorFanAngle;
     const halfFan = fanAngle / 2;
     const sectorWidth = fanAngle / 3;
