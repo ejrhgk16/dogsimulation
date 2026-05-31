@@ -79,6 +79,8 @@ export class Pursuer {
   private _stuckFrameCount: number = 0;
   /** lost 상태 탐색 중인 현재 동심원 거리 (1→2→3 순차) */
   _currentLostSearchRadius: number = 1;
+  /** lost 상태에서 장애물/경계로 실패한 셀 Set (key: "gx,gy") */
+  private _triedLostCells: Set<string>;
   currentSpeed: number = 0;
 
   get castBoundaryAngle(): number {
@@ -124,6 +126,7 @@ export class Pursuer {
     this._prevXi = this.trackingParams.xi;
     this._currentFlipScale = this.trackingParams.flipRampStart;
     this._stuckFrameCount = 0;
+    this._triedLostCells = new Set();
   }
 
   /** 주어진 위치로 순간이동 (텔레포트) — 위치·높이·상태·visitedCells 전면 초기화, direction은 유지 */
@@ -148,6 +151,7 @@ export class Pursuer {
     this.visitedCells = [];
     this._stuckFrameCount = 0;
     this._currentLostSearchRadius = 1;
+    this._triedLostCells = new Set();
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -212,6 +216,7 @@ export class Pursuer {
       this.lastTrailSignal = sample.totalSignal;
       this.lostTime = 0;
       this.searchRadius = 0;
+      if (this.state === 'lost') this._triedLostCells.clear();
       this.state = 'track';
 
       // Record contact in grid cell coordinates via ScentGrid API
@@ -272,7 +277,9 @@ export class Pursuer {
       if (this.lastContacts.length > 0) {
         const last = this.lastContacts[this.lastContacts.length - 1];
         const worldPos = grid.cellToWorld(last.cx, last.cy);
-        rFromContact = Math.hypot(this.x - worldPos.x, this.y - worldPos.y);
+        if (worldPos) {
+          rFromContact = Math.hypot(this.x - worldPos.x, this.y - worldPos.y);
+        }
       }
       const effectiveSigma = this.sigma + this.trackingParams.kRadial * rFromContact;
       if (effectiveSigma * this.trackingParams.theta0 > this.trackingParams.sensorFanAngle / 2) {
@@ -400,9 +407,20 @@ export class Pursuer {
               const gy = cy + dy;
               const key = `${gx},${gy}`;
 
+              if (this._triedLostCells.has(key)) continue;
               if (!this.visitedCells.includes(key)) {
-                // Found unvisited cell — steer toward its center via ScentGrid API
                 const center = grid.cellToWorld(gx, gy);
+                if (!center) {
+                  // Out of scent grid bounds — mark as tried
+                  this._triedLostCells.add(key);
+                  continue;
+                }
+                // Check if cell center is on an obstacle
+                if (isObstacleInFootprint(mapData, center.x, center.y)) {
+                  this._triedLostCells.add(key);
+                  continue;
+                }
+                // Found unvisited, non-obstacle cell — steer toward its center
                 this.targetHeading = Math.atan2(center.y - this.y, center.x - this.x);
                 foundThisRadius = true;
                 break;
@@ -550,6 +568,23 @@ export class Pursuer {
           this.visitedCells,
           scentSignals
         );
+      } else if (this.state === 'lost') {
+        // lost: triedCells 초기화 후 랜덤 회피 heading으로 재탐색 유도
+        this._triedLostCells.clear();
+        const avoidAngle =
+          this.rotationAngle +
+          (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() * Math.PI) / 2);
+        avoidResult = resolveStuck(
+          this.x,
+          this.y,
+          avoidAngle,
+          this.castSide,
+          mapData,
+          this._avoidanceParams,
+          this.visitedCells,
+          scentSignals
+        );
+        this.targetHeading = avoidResult.heading;
       } else {
         avoidResult = resolveStuck(
           this.x,
@@ -581,10 +616,17 @@ export class Pursuer {
     const resultX = this.x + finalDx * speedScaled * heightFactor;
     const resultY = this.y + finalDy * speedScaled * heightFactor;
 
+    // Clamp to map world boundaries with ANIMAL_HALF_EXTENT margin
+    const halfW = (mapData.width * mapData.cellSize) / 2;
+    const halfD = (mapData.depth * mapData.cellSize) / 2;
+    const margin = ANIMAL_HALF_EXTENT;
+    const clampedX = this.clamp(resultX, -halfW + margin, halfW - margin);
+    const clampedY = this.clamp(resultY, -halfD + margin, halfD - margin);
+
     return {
-      newX: resultX,
-      newY: resultY,
-      newHeight: getHeightAt(mapData, resultX, resultY) + ANIMAL_HEIGHT_OFFSET
+      newX: clampedX,
+      newY: clampedY,
+      newHeight: getHeightAt(mapData, clampedX, clampedY) + ANIMAL_HEIGHT_OFFSET
     };
   }
 

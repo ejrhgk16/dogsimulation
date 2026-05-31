@@ -104,8 +104,8 @@ export interface ScentGrid {
   readonly worldDepth: number;
   /** 세계좌표 → cell 인덱스. 범위 밖이면 null */
   worldToCell(x: number, y: number): { cx: number; cy: number } | null;
-  /** cell 인덱스 → cell 중심 세계좌표 */
-  cellToWorld(cx: number, cy: number): { x: number; y: number };
+  /** cell 인덱스 → cell 중심 세계좌표. 범위 밖이면 null */
+  cellToWorld(cx: number, cy: number): { x: number; y: number } | null;
   /** point를 해당 셀에 삽입 */
   insert(point: ScentPoint): void;
   /** 5×tauDecay 초과 오래된 point 제거 */

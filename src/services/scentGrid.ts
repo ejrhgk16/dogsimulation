@@ -44,8 +44,9 @@ export class ScentGridImpl implements ScentGrid {
     return { cx, cy };
   }
 
-  /** cell 인덱스 → cell 중심 세계좌표 */
-  cellToWorld(cx: number, cy: number): { x: number; y: number } {
+  /** cell 인덱스 → cell 중심 세계좌표. 범위 밖이면 null */
+  cellToWorld(cx: number, cy: number): { x: number; y: number } | null {
+    if (cx < 0 || cx >= this.cols || cy < 0 || cy >= this.rows) return null;
     return {
       x: this.worldLeft + (cx + 0.5) * this.scentCellSize,
       y: this.worldTop + (cy + 0.5) * this.scentCellSize
