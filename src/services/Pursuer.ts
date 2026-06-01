@@ -81,6 +81,8 @@ export class Pursuer {
   _currentLostSearchRadius: number = 1;
   /** lost 상태에서 장애물/경계로 실패한 셀 Set (key: "gx,gy") */
   private _triedLostCells: Set<string>;
+  /** lost 상태에서 persistent하게 추적 중인 target cell key ("gx,gy"), 없으면 null */
+  private _currentLostTargetCell: string | null;
   currentSpeed: number = 0;
 
   get castBoundaryAngle(): number {
@@ -127,6 +129,7 @@ export class Pursuer {
     this._currentFlipScale = this.trackingParams.flipRampStart;
     this._stuckFrameCount = 0;
     this._triedLostCells = new Set();
+    this._currentLostTargetCell = null;
   }
 
   /** 주어진 위치로 순간이동 (텔레포트) — 위치·높이·상태·visitedCells 전면 초기화, direction은 유지 */
@@ -152,6 +155,7 @@ export class Pursuer {
     this._stuckFrameCount = 0;
     this._currentLostSearchRadius = 1;
     this._triedLostCells = new Set();
+    this._currentLostTargetCell = null;
   }
 
   /** 개별 추적 파라미터 업데이트 */
@@ -216,7 +220,10 @@ export class Pursuer {
       this.lastTrailSignal = sample.totalSignal;
       this.lostTime = 0;
       this.searchRadius = 0;
-      if (this.state === 'lost') this._triedLostCells.clear();
+      if (this.state === 'lost') {
+        this._triedLostCells.clear();
+        this._currentLostTargetCell = null;
+      }
       this.state = 'track';
 
       // Record contact in grid cell coordinates via ScentGrid API
@@ -386,15 +393,36 @@ export class Pursuer {
 
       moveSpeed = this.dynamicSpeed(sigma) * 0.5;
     } else {
-      // lost: search unvisited cells around last scent detection grid cell
-      // If no lastContacts, keep current heading
+      // lost
       const lastContact =
         this.lastContacts.length > 0 ? this.lastContacts[this.lastContacts.length - 1] : null;
-      if (lastContact) {
+
+      // persistent target 유지: 이미 target 있으면 도달 체크 후 heading 재계산
+      if (this._currentLostTargetCell && lastContact) {
+        const [tgx, tgy] = this._currentLostTargetCell.split(',').map(Number);
+        const center = grid.cellToWorld(tgx, tgy);
+        if (!center) {
+          // target 셀이 grid 범위 밖 → 무효화
+          this._triedLostCells.add(this._currentLostTargetCell);
+          this._currentLostTargetCell = null;
+        } else {
+          const dist = Math.hypot(this.x - center.x, this.y - center.y);
+          const arrivalThreshold = grid.scentCellSize * 0.5;
+          if (dist < arrivalThreshold) {
+            // 도달 → tried 처리 후 target 해제
+            this._triedLostCells.add(this._currentLostTargetCell);
+            this._currentLostTargetCell = null;
+          } else {
+            // 아직 이동 중 → 현재 위치에서 target 방향 heading 재계산
+            this.targetHeading = Math.atan2(center.y - this.y, center.x - this.x);
+          }
+        }
+      }
+
+      // target 없으면 새로 search
+      if (!this._currentLostTargetCell && lastContact) {
         const cx = lastContact.cx;
         const cy = lastContact.cy;
-
-        // Search radii 1 → maxSearchRadius around last scent cell
         const maxSearchRadius = Math.min(
           8,
           Math.max(1, Math.ceil(this.trackingParams.visionRange / grid.scentCellSize))
@@ -415,16 +443,15 @@ export class Pursuer {
               if (!this.visitedCells.includes(key)) {
                 const center = grid.cellToWorld(gx, gy);
                 if (!center) {
-                  // Out of scent grid bounds — mark as tried
                   this._triedLostCells.add(key);
                   continue;
                 }
-                // Check if cell center is on an obstacle
                 if (isObstacleInFootprint(mapData, center.x, center.y)) {
                   this._triedLostCells.add(key);
                   continue;
                 }
-                // Found unvisited, non-obstacle cell — steer toward its center
+                this._currentLostTargetCell = key;
+                this._currentLostSearchRadius = radius;
                 this.targetHeading = Math.atan2(center.y - this.y, center.x - this.x);
                 foundThisRadius = true;
                 break;
@@ -433,14 +460,9 @@ export class Pursuer {
             if (foundThisRadius) break;
           }
 
-          if (foundThisRadius) {
-            this._currentLostSearchRadius = radius;
-            break;
-          }
-          // If no unvisited cell found in this radius, continue to next radius
+          if (foundThisRadius) break;
         }
       }
-      // If no last contact, keep current heading
 
       moveSpeed = this.trackingParams.minSpeed;
     }
