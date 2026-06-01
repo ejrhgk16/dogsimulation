@@ -10,7 +10,7 @@ import { DEFAULT_TRACKING_PARAMS } from '../config/trackingConfig';
 import { DEFAULT_SCENT_PARAMS } from '../config/scentConfig';
 import { sampleScentInSector, getLastContactDistance, estimatePatchiness } from './scentSampler';
 import { getHeightAt, hasLineOfSight, isObstacleInFootprint } from './mapService';
-import { resolveStuck } from './obstacleAvoidance';
+import { resolveStuck, avoidObstacle } from './obstacleAvoidance';
 import { DEFAULT_AVOIDANCE_PARAMS } from '../config/avoidanceConfig';
 import { gwlcSigma, estimateTrailHeading } from './gwlc';
 
@@ -277,9 +277,11 @@ export class Pursuer {
       this.trackingParams.lostRadius * 2
     );
 
-    if (this.state === 'track' && !detected) {
+    const stateBefore = this.state;
+    if (stateBefore === 'track' && !detected) {
       this.state = 'surge';
-    } else if (this.state === 'surge') {
+    }
+    if (stateBefore === 'surge') {
       let rFromContact = 0;
       if (this.lastContacts.length > 0) {
         const last = this.lastContacts[this.lastContacts.length - 1];
@@ -302,13 +304,20 @@ export class Pursuer {
         this.targetHeading = this.normalizeAngle(
           this.estimatedHeading + this.castSide * this._halfSectorAngle * this._currentFlipScale
         );
-        // Fix 1: cast entry boundary check — flip castSide if heading points to boundary
+        // Fix 1: cast entry boundary check — flip castSide if heading points to obstacle or map boundary
+        const halfW = (mapData.width * mapData.cellSize) / 2;
+        const halfD = (mapData.depth * mapData.cellSize) / 2;
+        const boundaryMargin = ANIMAL_HALF_EXTENT;
         if (
           isObstacleInFootprint(
             mapData,
             this.x + Math.cos(this.targetHeading) * 0.3,
             this.y + Math.sin(this.targetHeading) * 0.3
-          )
+          ) ||
+          (this.x + boundaryMargin > halfW - boundaryMargin && Math.cos(this.targetHeading) > 0) ||
+          (this.x - boundaryMargin < -halfW + boundaryMargin && Math.cos(this.targetHeading) < 0) ||
+          (this.y + boundaryMargin > halfD - boundaryMargin && Math.sin(this.targetHeading) > 0) ||
+          (this.y - boundaryMargin < -halfD + boundaryMargin && Math.sin(this.targetHeading) < 0)
         ) {
           this.castSide *= -1;
           this.targetHeading = this.normalizeAngle(
@@ -316,7 +325,8 @@ export class Pursuer {
           );
         }
       }
-    } else if (this.state === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
+    }
+    if (stateBefore === 'cast' && this.searchRadius > this.trackingParams.lostRadius) {
       this.state = 'lost';
     }
 
@@ -413,8 +423,15 @@ export class Pursuer {
             this._triedLostCells.add(this._currentLostTargetCell);
             this._currentLostTargetCell = null;
           } else {
-            // 아직 이동 중 → 현재 위치에서 target 방향 heading 재계산
-            this.targetHeading = Math.atan2(center.y - this.y, center.x - this.x);
+            // 아직 이동 중 → 현재 위치에서 target 방향 heading 재계산 (장애물 회피 적용)
+            const targetAngle = Math.atan2(center.y - this.y, center.x - this.x);
+            this.targetHeading = avoidObstacle(
+              this.x,
+              this.y,
+              targetAngle,
+              mapData,
+              this._avoidanceParams
+            ).heading;
           }
         }
       }
@@ -452,7 +469,14 @@ export class Pursuer {
                 }
                 this._currentLostTargetCell = key;
                 this._currentLostSearchRadius = radius;
-                this.targetHeading = Math.atan2(center.y - this.y, center.x - this.x);
+                const targetAngle = Math.atan2(center.y - this.y, center.x - this.x);
+                this.targetHeading = avoidObstacle(
+                  this.x,
+                  this.y,
+                  targetAngle,
+                  mapData,
+                  this._avoidanceParams
+                ).heading;
                 foundThisRadius = true;
                 break;
               }

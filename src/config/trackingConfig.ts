@@ -26,13 +26,13 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   kSpeedSigma: 1.2,
   theta0: 4,
   kRadial: 0.01,
-  castLostScale: 0.5,
+  castLostScale: 0.2,
   castFlipMargin: 0.5,
   castFlipScaleMax: 1.7,
-  flipRampStart: 0.7,
-  flipRampStep: 0.1,
-  flipTurnRate: 8,
-  trackTurnRate: 8,
+  flipRampStart: 0.8,
+  flipRampStep: 0.2,
+  flipTurnRate: 5,
+  trackTurnRate: 5,
   visionRange: 10,
   visionConeAngle: (40 * Math.PI) / 180
 };
