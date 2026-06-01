@@ -235,7 +235,7 @@ export function getHeightAt(mapData: MapData, x: number, z: number): number {
 
 /**
  * 두 점 사이 직선 경로상에 장애물(terrain === 'obstacle')이 있는지 검사.
- * DDA grid traversal 알고리즘 사용.
+ * DDA grid traversal 알고리즘 사용. step 방향은 셀 인덱스 차이로 결정.
  */
 export function hasLineOfSight(
   mapData: MapData,
@@ -264,43 +264,41 @@ export function hasLineOfSight(
     return true;
   }
 
-  const dx = gx2 - gx1;
-  const dy = gy2 - gy1;
+  // 셀 인덱스 차이로 step 방향 결정 (정수)
+  const stepCol = Math.sign(endCol - startCol);
+  const stepRow = Math.sign(endRow - startRow);
 
-  const stepX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
-  const stepY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+  const tDeltaCol = stepCol !== 0 ? Math.abs(mapData.cellSize / (gx2 - gx1)) : Infinity;
+  const tDeltaRow = stepRow !== 0 ? Math.abs(mapData.cellSize / (gy2 - gy1)) : Infinity;
 
-  const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
-  const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
-
-  let tMaxX: number;
-  if (dx > 0) {
-    tMaxX = (Math.floor(gx1) + 1 - gx1) * tDeltaX;
-  } else if (dx < 0) {
-    tMaxX = (gx1 - Math.floor(gx1)) * tDeltaX;
+  let tMaxCol: number;
+  if (stepCol > 0) {
+    tMaxCol = (Math.floor(gx1) + 1 - gx1) * tDeltaCol;
+  } else if (stepCol < 0) {
+    tMaxCol = (gx1 - Math.floor(gx1)) * tDeltaCol;
   } else {
-    tMaxX = Infinity;
+    tMaxCol = Infinity;
   }
 
-  let tMaxY: number;
-  if (dy > 0) {
-    tMaxY = (Math.floor(gy1) + 1 - gy1) * tDeltaY;
-  } else if (dy < 0) {
-    tMaxY = (gy1 - Math.floor(gy1)) * tDeltaY;
+  let tMaxRow: number;
+  if (stepRow > 0) {
+    tMaxRow = (Math.floor(gy1) + 1 - gy1) * tDeltaRow;
+  } else if (stepRow < 0) {
+    tMaxRow = (gy1 - Math.floor(gy1)) * tDeltaRow;
   } else {
-    tMaxY = Infinity;
+    tMaxRow = Infinity;
   }
 
   let curCol = startCol;
   let curRow = startRow;
 
   while (curCol !== endCol || curRow !== endRow) {
-    if (tMaxX < tMaxY) {
-      tMaxX += tDeltaX;
-      curCol += stepX;
+    if (tMaxCol < tMaxRow) {
+      tMaxCol += tDeltaCol;
+      curCol += stepCol;
     } else {
-      tMaxY += tDeltaY;
-      curRow += stepY;
+      tMaxRow += tDeltaRow;
+      curRow += stepRow;
     }
 
     // 종료 셀에 도달했으면 검사 중단 (끝점 셀 제외)

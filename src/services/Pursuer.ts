@@ -394,8 +394,12 @@ export class Pursuer {
         const cx = lastContact.cx;
         const cy = lastContact.cy;
 
-        // Search radii 1 → 8 around last scent cell (8 × 2 = 16 unit, matching old 3 × 5 = 15 unit)
-        for (let radius = 1; radius <= 8; radius++) {
+        // Search radii 1 → maxSearchRadius around last scent cell
+        const maxSearchRadius = Math.min(
+          8,
+          Math.max(1, Math.ceil(this.trackingParams.visionRange / grid.scentCellSize))
+        );
+        for (let radius = 1; radius <= maxSearchRadius; radius++) {
           let foundThisRadius = false;
 
           for (let dx = -radius; dx <= radius; dx++) {
@@ -570,8 +574,7 @@ export class Pursuer {
           scentSignals
         );
       } else if (this.state === 'lost') {
-        // lost: triedCells 초기화 후 랜덤 회피 heading으로 재탐색 유도
-        this._triedLostCells.clear();
+        // lost: 랜덤 회피 heading으로 탈출 (triedCells 유지 — 실패 셀 재시도 방지)
         const avoidAngle =
           this.rotationAngle +
           (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() * Math.PI) / 2);
