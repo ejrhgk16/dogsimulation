@@ -49,6 +49,11 @@ controlsPanel.innerHTML = `
       <span class="slider-value" id="rotation-value">8.0</span>
     </label>
     <label>
+      <span>Turn Rate</span>
+      <input type="range" id="turn-rate-slider" min="1" max="20" step="0.5" value="8" />
+      <span class="slider-value" id="turn-rate-value">8.0</span>
+    </label>
+    <label>
       <span>TauDecay</span>
       <input type="range" id="tau-decay-slider" min="0.1" max="20.0" step="0.1" value="10" />
       <span class="slider-value" id="tau-decay-value">1.0x</span>
@@ -161,6 +166,14 @@ rotationSlider.addEventListener('input', () => {
   runtime.setRotationSpeed(ALPACA_ID, val);
 });
 
+const turnRateSlider = controlsPanel.querySelector<HTMLInputElement>('#turn-rate-slider')!;
+const turnRateValue = controlsPanel.querySelector<HTMLElement>('#turn-rate-value')!;
+turnRateSlider.addEventListener('input', () => {
+  const val = parseFloat(turnRateSlider.value);
+  turnRateValue.textContent = val.toFixed(1);
+  runtime.setTrackTurnRate(val);
+});
+
 const tauDecaySlider = controlsPanel.querySelector<HTMLInputElement>('#tau-decay-slider')!;
 const tauDecayValue = controlsPanel.querySelector<HTMLElement>('#tau-decay-value')!;
 tauDecaySlider.addEventListener('input', () => {
@@ -203,6 +216,12 @@ const rotDefault = String(ANIMAL_TYPES.dog.rotationSpeed!);
 rotationSlider.value = rotDefault;
 rotationValue.textContent = ANIMAL_TYPES.dog.rotationSpeed!.toFixed(1);
 runtime.setRotationSpeed(ALPACA_ID, ANIMAL_TYPES.dog.rotationSpeed!);
+
+// Turn Rate: DEFAULT_TRACKING_PARAMS.trackTurnRate
+const trDefault = String(DEFAULT_TRACKING_PARAMS.trackTurnRate);
+turnRateSlider.value = trDefault;
+turnRateValue.textContent = DEFAULT_TRACKING_PARAMS.trackTurnRate.toFixed(1);
+runtime.setTrackTurnRate(DEFAULT_TRACKING_PARAMS.trackTurnRate);
 
 // TauDecay: getTauDecayMultiplier()
 const tauDefault = getTauDecayMultiplier();

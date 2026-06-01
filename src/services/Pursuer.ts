@@ -443,8 +443,8 @@ export class Pursuer {
 
     this.currentSpeed = moveSpeed;
 
-    this.directionX = Math.cos(this.targetHeading);
-    this.directionY = Math.sin(this.targetHeading);
+    this.directionX = Math.cos(this.rotationAngle);
+    this.directionY = Math.sin(this.rotationAngle);
 
     const { newX, newY, newHeight } = this.applyMovement(
       this.directionX,
@@ -460,7 +460,8 @@ export class Pursuer {
     this.y = newY;
     this.height = newHeight;
     const angleDiff = this.shortestAngleDiff(this.targetHeading, this.rotationAngle);
-    const turnRate = this.state === 'cast' ? this.trackingParams.flipTurnRate : 8;
+    const turnRate =
+      this.state === 'cast' ? this.trackingParams.flipTurnRate : this.trackingParams.trackTurnRate;
     this.rotationAngle += angleDiff * Math.min(1, turnRate * dt);
   }
 

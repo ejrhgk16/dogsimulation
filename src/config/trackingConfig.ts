@@ -32,6 +32,7 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   flipRampStart: 0.7,
   flipRampStep: 0.1,
   flipTurnRate: 8,
+  trackTurnRate: 8,
   visionRange: 10,
   visionConeAngle: (40 * Math.PI) / 180
 };

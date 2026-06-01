@@ -155,6 +155,8 @@ export class SceneRuntime {
   private lastVisionRange = 0;
   private lastVisionConeAngle = 0;
 
+  private _trackTurnRate: number = DEFAULT_TRACKING_PARAMS.trackTurnRate;
+
   private castDebugGroup: Group | null = null;
   private castCenterLine: Line | null = null;
   private castLeftLine: Line | null = null;
@@ -436,6 +438,15 @@ export class SceneRuntime {
   /** 동물 회전 속도 설정 (rad/s) */
   setRotationSpeed(id: string, radPerSec: number): void {
     this.controllers.get(id)?.setRotationSpeed(radPerSec);
+  }
+  // slider
+
+  /** Turn Rate slider — 개 이동 궤적 회전 속도 */
+  setTrackTurnRate(rate: number): void {
+    this._trackTurnRate = rate;
+    for (const p of this.pursuers) {
+      p.updateTrackingParam('trackTurnRate', this._trackTurnRate);
+    }
   }
   // slider
 
@@ -774,8 +785,8 @@ export class SceneRuntime {
       }
       const others = this.pursuedList.map((p) => ({ id: p.id, x: p.x, y: p.y }));
       pursuer.updateDogState(this.trailGrid, now, dt, this.mapData, others);
-      const turnRate = pursuer.state === 'cast' ? pursuer.trackingParams.flipTurnRate : 8;
-      this.controllers.get(pursuer.id)?.setRotationSpeed(turnRate);
+      // Rotation speed controlled by UI slider (main.ts → setRotationSpeed)
+      // Cast state turnRate handled separately in Pursuer internal logic
       this.controllers.get(pursuer.id)?.update(pursuer.toState());
     }
 
