@@ -496,6 +496,36 @@ export class Pursuer {
     this.directionX = Math.cos(this.rotationAngle);
     this.directionY = Math.sin(this.rotationAngle);
 
+    // cast obstacle pre-check: rotationAngle may not have caught up to safe targetHeading
+    if (this.state === 'cast') {
+      const footDist = ANIMAL_HALF_EXTENT;
+      const checkX = this.x + this.directionX * footDist;
+      const checkY = this.y + this.directionY * footDist;
+      // Use isObstacleInFootprint but only for terrain obstacles, not map boundaries
+      // (boundary clamping in applyMovement handles the edge case)
+      const mw2 = (mapData.width * mapData.cellSize) / 2;
+      const md2 = (mapData.depth * mapData.cellSize) / 2;
+      if (
+        checkX > -mw2 + ANIMAL_HALF_EXTENT &&
+        checkX < mw2 - ANIMAL_HALF_EXTENT &&
+        checkY > -md2 + ANIMAL_HALF_EXTENT &&
+        checkY < md2 - ANIMAL_HALF_EXTENT
+      ) {
+        if (isObstacleInFootprint(mapData, checkX, checkY)) {
+          const avoidResult = avoidObstacle(
+            this.x,
+            this.y,
+            this.targetHeading,
+            mapData,
+            this._avoidanceParams
+          );
+          this.rotationAngle = avoidResult.heading;
+          this.directionX = Math.cos(this.rotationAngle);
+          this.directionY = Math.sin(this.rotationAngle);
+        }
+      }
+    }
+
     const { newX, newY, newHeight } = this.applyMovement(
       this.directionX,
       this.directionY,

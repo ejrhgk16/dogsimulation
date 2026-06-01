@@ -983,7 +983,11 @@ export class SceneRuntime {
               this.castArcLine
             ) {
               if (pursuer.state === 'cast') {
+                const justEnteredCast = !this.castDebugGroup.visible;
                 this.castDebugGroup.visible = true;
+                if (justEnteredCast) {
+                  this.lastCastSide = 0; // force geometry update on cast entry
+                }
 
                 const castAngle = pursuer.castBoundaryAngle;
                 const r = Math.hypot(
