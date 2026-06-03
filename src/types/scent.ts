@@ -64,10 +64,6 @@ export interface TrackingParams {
   minSpeed: number;
   maxSpeed: number;
   kSpeedSigma: number;
-  /** sector envelope multiplier (Θ₀ >> 1, 논문 Fig.3A). cast sweep 반각 = sigma * theta0 */
-  theta0: number;
-  /** radial distance contribution weight to sigma. sigma += kRadial * r */
-  kRadial: number;
   /** cast 상태에서 lostTime 누적 배율 (기본 1.0). 0으로 두면 cast 고정 */
   castLostScale: number;
   /** cast flip 마진 (0.3~1.0). _baseBoundary = tan(halfSectorAngle * margin). 작을수록 더 자주 flip */

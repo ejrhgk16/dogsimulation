@@ -24,8 +24,6 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   minSpeed: 1,
   maxSpeed: 5,
   kSpeedSigma: 1.2,
-  theta0: 4,
-  kRadial: 0.01,
   castLostScale: 0.2,
   castFlipMargin: 0.5,
   castFlipScaleMax: 1.7,

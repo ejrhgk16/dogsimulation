@@ -290,15 +290,11 @@ export class Pursuer {
           rFromContact = Math.hypot(this.x - worldPos.x, this.y - worldPos.y);
         }
       }
-      const effectiveSigma = this.sigma + this.trackingParams.kRadial * rFromContact;
-      if (effectiveSigma * this.trackingParams.theta0 > this.trackingParams.sensorFanAngle / 2) {
+      if (rFromContact * this.sigma > this.trackingParams.sensorRadius) {
         this.state = 'cast';
         this.castOriginX = this.x;
         this.castOriginY = this.y;
-        this._halfSectorAngle = Math.min(
-          effectiveSigma * this.trackingParams.theta0,
-          this.trackingParams.castAngleMax
-        );
+        this._halfSectorAngle = Math.min(this.sigma, this.trackingParams.castAngleMax);
         this._baseBoundary = Math.tan(this._halfSectorAngle * this.trackingParams.castFlipMargin);
         this._currentFlipScale = this.trackingParams.flipRampStart;
         this.targetHeading = this.normalizeAngle(
