@@ -276,7 +276,7 @@ trackingPanel.innerHTML = `
     <label><span>lostRadius</span><input type="range" id="tp-lostRadius" min="10" max="200" step="1" value="80" /><span class="slider-value" id="tpv-lostRadius">80</span></label>
     <label><span>lostTurnRate</span><input type="range" id="tp-lostTurnRate" min="0.1" max="3" step="0.1" value="0.8" /><span class="slider-value" id="tpv-lostTurnRate">0.8</span></label>
     <label><span>surgeDuration</span><input type="range" id="tp-surgeDuration" min="0.1" max="3" step="0.1" value="0.5" /><span class="slider-value" id="tpv-surgeDuration">0.5</span></label>
-    <label><span>maxContacts</span><input type="range" id="tp-maxContacts" min="2" max="20" step="1" value="6" /><span class="slider-value" id="tpv-maxContacts">6</span></label>
+    <label><span>maxContacts</span><input type="range" id="tp-maxContacts" min="2" max="20" step="1" value="10" /><span class="slider-value" id="tpv-maxContacts">10</span></label>
     <label><span>surgeCastScale</span><input type="range" id="tp-surgeCastThresholdScale" min="0.1" max="1.0" step="0.1" value="0.5" /><span class="slider-value" id="tpv-surgeCastThresholdScale">0.5</span></label>
     <label><span>minSpeed</span><input type="range" id="tp-minSpeed" min="0.5" max="10" step="0.5" value="1" /><span class="slider-value" id="tpv-minSpeed">1.0</span></label>
     <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
@@ -286,7 +286,7 @@ trackingPanel.innerHTML = `
     <label><span>castLostScale</span><input type="range" id="tp-castLostScale" min="0" max="5" step="0.1" value="0.5" /><span class="slider-value" id="tpv-castLostScale">0.5</span></label>
     <label><span>castFlipMargin</span><input type="range" id="tp-castFlipMargin" min="0.3" max="1.0" step="0.05" value="0.5" /><span class="slider-value" id="tpv-castFlipMargin">0.50</span></label>
     <label><span>castFlipScaleMax</span><input type="range" id="tp-castFlipScaleMax" min="0.3" max="2.0" step="0.1" value="1.7" /><span class="slider-value" id="tpv-castFlipScaleMax">1.7</span></label>
-    <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="0.7" /><span class="slider-value" id="tpv-flipRampStart">0.70</span></label>
+    <label><span>flipRampStart</span><input type="range" id="tp-flipRampStart" min="0.3" max="1.0" step="0.05" value="1.0" /><span class="slider-value" id="tpv-flipRampStart">1.00</span></label>
     <label><span>flipRampStep</span><input type="range" id="tp-flipRampStep" min="0.05" max="0.5" step="0.05" value="0.1" /><span class="slider-value" id="tpv-flipRampStep">0.10</span></label>
     <label><span>flipTurnRate</span><input type="range" id="tp-flipTurnRate" min="2" max="20" step="1" value="8" /><span class="slider-value" id="tpv-flipTurnRate">8</span></label>
     <label><span>visionRange</span><input type="range" id="tp-visionRange" min="1" max="30" step="0.5" value="10" /><span class="slider-value" id="tpv-visionRange">10</span></label>

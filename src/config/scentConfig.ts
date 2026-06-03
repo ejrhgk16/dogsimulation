@@ -59,7 +59,7 @@ export function setTauDecayMultiplier(multiplier: number): void {
   }
 }
 
-let _emitRateMultiplier = 0.6;
+let _emitRateMultiplier = 1;
 
 export function getEmitRateMultiplier(): number {
   return _emitRateMultiplier;

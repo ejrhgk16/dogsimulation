@@ -17,6 +17,19 @@ import { gwlcSigma, estimateTrailHeading } from './gwlc';
 const TWO_PI = 2 * Math.PI;
 const THREE_PI = 3 * Math.PI;
 
+/** 동심원 radius의 perimeter 셀을 Math.atan2(dy, dx) 오름차순으로 정렬 반환 */
+export function getSortedPerimeter(radius: number): Array<{ dx: number; dy: number }> {
+  const cells: Array<{ dx: number; dy: number }> = [];
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+      cells.push({ dx, dy });
+    }
+  }
+  cells.sort((a, b) => Math.atan2(a.dy, a.dx) - Math.atan2(b.dy, b.dx));
+  return cells;
+}
+
 /** 추적자(강아지) — 센서 감지·상태머신·조향·이동 담당 */
 export class Pursuer {
   id: string;
@@ -223,6 +236,7 @@ export class Pursuer {
       if (this.state === 'lost') {
         this._triedLostCells.clear();
         this._currentLostTargetCell = null;
+        this.lastContacts = [];
       }
       this.state = 'track';
 
@@ -444,43 +458,38 @@ export class Pursuer {
           Math.max(1, Math.ceil(this.trackingParams.visionRange / grid.scentCellSize))
         );
         for (let radius = 1; radius <= maxSearchRadius; radius++) {
+          const perimeter = getSortedPerimeter(radius);
           let foundThisRadius = false;
 
-          for (let dx = -radius; dx <= radius; dx++) {
-            for (let dy = -radius; dy <= radius; dy++) {
-              // Only check perimeter cells at this radius
-              if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+          for (const { dx, dy } of perimeter) {
+            const gx = cx + dx;
+            const gy = cy + dy;
+            const key = `${gx},${gy}`;
 
-              const gx = cx + dx;
-              const gy = cy + dy;
-              const key = `${gx},${gy}`;
-
-              if (this._triedLostCells.has(key)) continue;
-              if (!this.visitedCells.includes(key)) {
-                const center = grid.cellToWorld(gx, gy);
-                if (!center) {
-                  this._triedLostCells.add(key);
-                  continue;
-                }
-                if (isObstacleInFootprint(mapData, center.x, center.y)) {
-                  this._triedLostCells.add(key);
-                  continue;
-                }
-                this._currentLostTargetCell = key;
-                this._currentLostSearchRadius = radius;
-                const targetAngle = Math.atan2(center.y - this.y, center.x - this.x);
-                this.targetHeading = avoidObstacle(
-                  this.x,
-                  this.y,
-                  targetAngle,
-                  mapData,
-                  this._avoidanceParams
-                ).heading;
-                foundThisRadius = true;
-                break;
+            if (this._triedLostCells.has(key)) continue;
+            if (!this.visitedCells.includes(key)) {
+              const center = grid.cellToWorld(gx, gy);
+              if (!center) {
+                this._triedLostCells.add(key);
+                continue;
               }
+              if (isObstacleInFootprint(mapData, center.x, center.y)) {
+                this._triedLostCells.add(key);
+                continue;
+              }
+              this._currentLostTargetCell = key;
+              this._currentLostSearchRadius = radius;
+              const targetAngle = Math.atan2(center.y - this.y, center.x - this.x);
+              this.targetHeading = avoidObstacle(
+                this.x,
+                this.y,
+                targetAngle,
+                mapData,
+                this._avoidanceParams
+              ).heading;
+              foundThisRadius = true;
+              break;
             }
-            if (foundThisRadius) break;
           }
 
           if (foundThisRadius) break;
