@@ -70,36 +70,33 @@ export function estimateTrailHeading(
   }
 
   // n >= 3: ordinary least squares linear regression on all contacts
-  const m = n;
-  const window = contacts.slice(n - m);
-
   let sumX = 0;
   let sumY = 0;
-  for (const c of window) {
+  for (const c of contacts) {
     sumX += c.wx;
     sumY += c.wy;
   }
-  const meanX = sumX / m;
-  const meanY = sumY / m;
+  const meanX = sumX / n;
+  const meanY = sumY / n;
 
   let covXY = 0;
   let varX = 0;
-  for (const c of window) {
+  for (const c of contacts) {
     const dx = c.wx - meanX;
     covXY += dx * (c.wy - meanY);
     varX += dx * dx;
   }
 
   if (varX < 1e-10) {
-    return Math.atan2(window[m - 1].wy - window[0].wy, window[m - 1].wx - window[0].wx);
+    return Math.atan2(contacts[n - 1].wy - contacts[0].wy, contacts[n - 1].wx - contacts[0].wx);
   }
 
   const slope = covXY / varX;
   const intercept = meanY - slope * meanX;
 
-  const x0 = window[0].wx;
+  const x0 = contacts[0].wx;
   const y0 = intercept + slope * x0;
-  const x1 = window[m - 1].wx;
+  const x1 = contacts[n - 1].wx;
   const y1 = intercept + slope * x1;
 
   return Math.atan2(y1 - y0, x1 - x0);

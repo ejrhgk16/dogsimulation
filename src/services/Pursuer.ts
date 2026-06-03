@@ -260,14 +260,14 @@ export class Pursuer {
         }
       }
 
-      // visitedCells: scent 감지된 셀만 기록 (max 5 FIFO)
+      // visitedCells: scent 감지된 셀만 기록 (max 10 FIFO)
       const visitedCell = grid.worldToCell(this.x, this.y);
       if (visitedCell) {
         const visitedKey = `${visitedCell.cx},${visitedCell.cy}`;
         // 중복 제거 (직전 셀과 같으면 skip)
         if (this.visitedCells[this.visitedCells.length - 1] !== visitedKey) {
           this.visitedCells.push(visitedKey);
-          if (this.visitedCells.length > 5) {
+          if (this.visitedCells.length > 10) {
             this.visitedCells.shift();
           }
         }
