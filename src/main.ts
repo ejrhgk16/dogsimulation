@@ -277,6 +277,7 @@ trackingPanel.innerHTML = `
     <label><span>lostTurnRate</span><input type="range" id="tp-lostTurnRate" min="0.1" max="3" step="0.1" value="0.8" /><span class="slider-value" id="tpv-lostTurnRate">0.8</span></label>
     <label><span>surgeDuration</span><input type="range" id="tp-surgeDuration" min="0.1" max="3" step="0.1" value="0.5" /><span class="slider-value" id="tpv-surgeDuration">0.5</span></label>
     <label><span>maxContacts</span><input type="range" id="tp-maxContacts" min="2" max="20" step="1" value="6" /><span class="slider-value" id="tpv-maxContacts">6</span></label>
+    <label><span>surgeCastScale</span><input type="range" id="tp-surgeCastThresholdScale" min="0.1" max="1.0" step="0.1" value="0.5" /><span class="slider-value" id="tpv-surgeCastThresholdScale">0.5</span></label>
     <label><span>minSpeed</span><input type="range" id="tp-minSpeed" min="0.5" max="10" step="0.5" value="1" /><span class="slider-value" id="tpv-minSpeed">1.0</span></label>
     <label><span>maxSpeed</span><input type="range" id="tp-maxSpeed" min="1" max="20" step="1" value="5" /><span class="slider-value" id="tpv-maxSpeed">5</span></label>
     <label><span>kSpeedSigma</span><input type="range" id="tp-kSpeedSigma" min="0.1" max="5" step="0.1" value="1.2" /><span class="slider-value" id="tpv-kSpeedSigma">1.2</span></label>
@@ -314,6 +315,7 @@ const tpKeys = [
   'lostTurnRate',
   'surgeDuration',
   'maxContacts',
+  'surgeCastThresholdScale',
   'minSpeed',
   'maxSpeed',
   'kSpeedSigma',

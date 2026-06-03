@@ -47,10 +47,8 @@ export function gwlcCorrelation(L: number, lambda: number, _xi: number): number 
 /**
  * lastContacts로부터 trail heading φ_ML을 추정한다.
  *
- * - contacts.length < 2 → NaN (fallback은 호출자가 처리)
- * - contacts.length == 2 → 두 점 연결선 방향 (chord)
- * - contacts.length == 3 또는 4 → Catmull-Rom endpoint tangent (fallback)
- * - contacts.length >= 5 → 마지막 5개 contact에 대한 ordinary least squares 선형 회귀
+ * - contacts.length < 3 → NaN (fallback은 호출자가 처리) 또는 chord
+ * - contacts.length >= 3 → 마지막 3개 contact에 대한 ordinary least squares 선형 회귀
  *
  * @param contacts 접촉점 배열 (인덱스 0이 가장 오래됨)
  * @param lambda persistence length (λ) — 향후 GWLC 보정용
@@ -71,47 +69,38 @@ export function estimateTrailHeading(
     return Math.atan2(p1.cy - p0.cy, p1.cx - p0.cx);
   }
 
-  if (n >= 5) {
-    // 5+ contacts: ordinary least squares linear regression on last 5
-    const last5 = contacts.slice(n - 5);
-    const meanX = (last5[0].cx + last5[1].cx + last5[2].cx + last5[3].cx + last5[4].cx) / 5;
-    const meanY = (last5[0].cy + last5[1].cy + last5[2].cy + last5[3].cy + last5[4].cy) / 5;
+  // n >= 3: ordinary least squares linear regression on last 3
+  const m = Math.min(n, 3);
+  const window = contacts.slice(n - m);
 
-    let covXY = 0;
-    let varX = 0;
-    for (const c of last5) {
-      const dx = c.cx - meanX;
-      covXY += dx * (c.cy - meanY);
-      varX += dx * dx;
-    }
-    covXY /= 5;
-    varX /= 5;
+  let sumX = 0;
+  let sumY = 0;
+  for (const c of window) {
+    sumX += c.cx;
+    sumY += c.cy;
+  }
+  const meanX = sumX / m;
+  const meanY = sumY / m;
 
-    // Near-vertical: chord direction from first to last
-    if (varX < 1e-10) {
-      return Math.atan2(last5[4].cy - last5[0].cy, last5[4].cx - last5[0].cx);
-    }
-
-    const slope = covXY / varX;
-    const intercept = meanY - slope * meanX;
-
-    // Regression line direction from first to last point of the 5-point window
-    const x0 = last5[0].cx;
-    const y0 = intercept + slope * x0;
-    const x1 = last5[4].cx;
-    const y1 = intercept + slope * x1;
-
-    return Math.atan2(y1 - y0, x1 - x0);
+  let covXY = 0;
+  let varX = 0;
+  for (const c of window) {
+    const dx = c.cx - meanX;
+    covXY += dx * (c.cy - meanY);
+    varX += dx * dx;
   }
 
-  // 3 or 4 contacts: Catmull-Rom endpoint tangent using last 3 points
-  const p0 = contacts[n - 3];
-  const p1 = contacts[n - 2];
-  const p2 = contacts[n - 1];
+  if (varX < 1e-10) {
+    return Math.atan2(window[m - 1].cy - window[0].cy, window[m - 1].cx - window[0].cx);
+  }
 
-  // Catmull-Rom tangent at endpoint p2: t = 2 * (p2 - p1) - (p1 - p0)
-  const tx = 2 * (p2.cx - p1.cx) - (p1.cx - p0.cx);
-  const ty = 2 * (p2.cy - p1.cy) - (p1.cy - p0.cy);
+  const slope = covXY / varX;
+  const intercept = meanY - slope * meanX;
 
-  return Math.atan2(ty, tx);
+  const x0 = window[0].cx;
+  const y0 = intercept + slope * x0;
+  const x1 = window[m - 1].cx;
+  const y1 = intercept + slope * x1;
+
+  return Math.atan2(y1 - y0, x1 - x0);
 }

@@ -290,7 +290,10 @@ export class Pursuer {
           rFromContact = Math.hypot(this.x - worldPos.x, this.y - worldPos.y);
         }
       }
-      if (rFromContact * this.sigma > this.trackingParams.sensorRadius) {
+      if (
+        rFromContact * this.sigma >
+        this.trackingParams.sensorRadius * this.trackingParams.surgeCastThresholdScale
+      ) {
         this.state = 'cast';
         this.castOriginX = this.x;
         this.castOriginY = this.y;

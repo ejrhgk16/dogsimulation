@@ -42,6 +42,8 @@ export interface ScentVisualConfig {
 
 export interface TrackingParams {
   sensorRadius: number;
+  /** surge→cast 전환 임계값 배율 (0.1~1.0). sensorRadius * scale 이하일 때 cast 진입. 기본 0.5 */
+  surgeCastThresholdScale: number;
   /** 부채꼴 센서의 총 각도 (라디안). 기본값은 Math.PI / 2 (90°). */
   sensorFanAngle: number;
   detectThreshold: number;
