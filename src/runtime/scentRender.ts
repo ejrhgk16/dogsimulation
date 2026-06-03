@@ -108,6 +108,7 @@ export function createScentRender(
 
   const geometry = new BufferGeometry();
   const points = new Points(geometry, material);
+  points.frustumCulled = false;
   scene.add(points);
 
   /** 점 개수 변경 시에만 버퍼 재업로드 */

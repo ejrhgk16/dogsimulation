@@ -615,6 +615,7 @@ export class SceneRuntime {
     const purpleSet = getPurpleCellKeys(this.pursuers);
     for (const { line, cellKey, baseOpacity } of this.gridCellEntries) {
       const mat = line.material as LineBasicMaterial;
+      // 우선순위: orange > purple > yellow > default
       if (orangeSet.has(cellKey)) {
         mat.color.setHex(0xff8800);
         mat.opacity = 0.6;

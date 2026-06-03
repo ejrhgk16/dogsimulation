@@ -81,7 +81,7 @@ export class Pursuer {
   trackingParams: TrackingParams;
   /** 추적 활성 여부 */
   isTracking: boolean;
-  /** 지나온 grid cell 배열 (key: "ix,iy" 형식), 최근 10개 유지 */
+  /** 지나온 grid cell 배열 (key: "ix,iy" 형식), max 5 FIFO */
   visitedCells: string[];
   /** 직전 프레임 곡률 반지름 (EMA smoothing용) */
   private _prevXi: number;
@@ -236,7 +236,6 @@ export class Pursuer {
       if (this.state === 'lost') {
         this._triedLostCells.clear();
         this._currentLostTargetCell = null;
-        this.lastContacts = [];
       }
       this.state = 'track';
 
@@ -261,13 +260,14 @@ export class Pursuer {
         }
       }
 
-      // visitedCells: scent 감지된 셀만 기록
+      // visitedCells: scent 감지된 셀만 기록 (max 5 FIFO)
       const visitedCell = grid.worldToCell(this.x, this.y);
       if (visitedCell) {
         const visitedKey = `${visitedCell.cx},${visitedCell.cy}`;
-        if (!this.visitedCells.includes(visitedKey)) {
+        // 중복 제거 (직전 셀과 같으면 skip)
+        if (this.visitedCells[this.visitedCells.length - 1] !== visitedKey) {
           this.visitedCells.push(visitedKey);
-          if (this.visitedCells.length > 10) {
+          if (this.visitedCells.length > 5) {
             this.visitedCells.shift();
           }
         }
@@ -361,7 +361,14 @@ export class Pursuer {
         moveSpeed = this.trackingParams.maxSpeed;
       }
     } else if (this.state === 'track') {
-      this.targetHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
+      const scentHeading = this.rotationAngle + (Math.PI / 6) * sample.netBias;
+      this.targetHeading = avoidObstacle(
+        this.x,
+        this.y,
+        scentHeading,
+        mapData,
+        this._avoidanceParams
+      ).heading;
 
       moveSpeed = this.dynamicSpeed(sigma);
     } else if (this.state === 'surge') {
@@ -765,6 +772,7 @@ export class Pursuer {
   /** sigma 업데이트: gwlcSigma + lost·patch 반영 */
   private updateSigma(lastContactDistance: number, lostTime: number, patchiness: number): number {
     const tp = this.trackingParams;
+    const minSigma = this.lastContacts.length < 3 ? this.trackingParams.sigmaBase * 2 : tp.sigmaMin;
     const xi = this.estimateCurvatureRadius();
     const L = lastContactDistance;
 
@@ -772,7 +780,7 @@ export class Pursuer {
 
     return this.clamp(
       sigmaTrail + tp.kLost * lostTime + tp.kPatch * patchiness,
-      tp.sigmaMin,
+      minSigma,
       tp.sigmaMax
     );
   }

@@ -21,7 +21,7 @@ export const DEFAULT_TRACKING_PARAMS: TrackingParams = {
   lostRadius: 80,
   lostTurnRate: 0.8,
   surgeDuration: 0.5,
-  maxContacts: 10,
+  maxContacts: 5,
   minSpeed: 1,
   maxSpeed: 5,
   kSpeedSigma: 1.2,

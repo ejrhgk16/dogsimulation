@@ -48,7 +48,7 @@ export function gwlcCorrelation(L: number, lambda: number, _xi: number): number 
  * lastContacts로부터 trail heading φ_ML을 추정한다.
  *
  * - contacts.length < 3 → NaN (fallback은 호출자가 처리) 또는 chord
- * - contacts.length >= 3 → 마지막 3개 contact에 대한 ordinary least squares 선형 회귀
+ * - contacts.length >= 3 → 모든 contact에 대한 ordinary least squares 선형 회귀
  *
  * @param contacts 접촉점 배열 (인덱스 0이 가장 오래됨)
  * @param lambda persistence length (λ) — 향후 GWLC 보정용
@@ -66,18 +66,18 @@ export function estimateTrailHeading(
   if (n === 2) {
     const p0 = contacts[0];
     const p1 = contacts[1];
-    return Math.atan2(p1.cy - p0.cy, p1.cx - p0.cx);
+    return Math.atan2(p1.wy - p0.wy, p1.wx - p0.wx);
   }
 
-  // n >= 3: ordinary least squares linear regression on last 3
-  const m = Math.min(n, 3);
+  // n >= 3: ordinary least squares linear regression on all contacts
+  const m = n;
   const window = contacts.slice(n - m);
 
   let sumX = 0;
   let sumY = 0;
   for (const c of window) {
-    sumX += c.cx;
-    sumY += c.cy;
+    sumX += c.wx;
+    sumY += c.wy;
   }
   const meanX = sumX / m;
   const meanY = sumY / m;
@@ -85,21 +85,21 @@ export function estimateTrailHeading(
   let covXY = 0;
   let varX = 0;
   for (const c of window) {
-    const dx = c.cx - meanX;
-    covXY += dx * (c.cy - meanY);
+    const dx = c.wx - meanX;
+    covXY += dx * (c.wy - meanY);
     varX += dx * dx;
   }
 
   if (varX < 1e-10) {
-    return Math.atan2(window[m - 1].cy - window[0].cy, window[m - 1].cx - window[0].cx);
+    return Math.atan2(window[m - 1].wy - window[0].wy, window[m - 1].wx - window[0].wx);
   }
 
   const slope = covXY / varX;
   const intercept = meanY - slope * meanX;
 
-  const x0 = window[0].cx;
+  const x0 = window[0].wx;
   const y0 = intercept + slope * x0;
-  const x1 = window[m - 1].cx;
+  const x1 = window[m - 1].wx;
   const y1 = intercept + slope * x1;
 
   return Math.atan2(y1 - y0, x1 - x0);
