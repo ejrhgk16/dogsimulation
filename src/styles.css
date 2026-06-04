@@ -97,6 +97,23 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+#controls-panel button {
+  margin-top: 4px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  min-width: 80px;
+}
+
+#controls-panel button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 #tracking-panel {
   display: none;
   position: absolute;
@@ -157,17 +174,12 @@ body {
 }
 
 #debug-panel {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
   color: #fff;
   background: rgba(0, 0, 0, 0.75);
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 12px;
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-  z-index: 1000;
-  min-width: 240px;
 }
 
 #debug-panel fieldset {
@@ -204,6 +216,11 @@ body {
   color: #45cc88;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
+}
+
+#dv-pos {
+  width: auto !important;
+  min-width: 140px;
 }
 
 #visual-panel {
@@ -322,7 +339,7 @@ body {
 }
 
 #help-content ol {
-  margin: 4px 0;
+  margin: 4px 0 1.4em 0;
   padding-left: 20px;
 }
 

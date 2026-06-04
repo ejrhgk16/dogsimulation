@@ -55,7 +55,7 @@ controlsPanel.innerHTML = `
       <span class="slider-value" id="emit-rate-value">1.7x</span>
     </label>
     <button id="track-btn" type="button">추적 시작</button>
-    <button id="reset-btn" type="button">Reset</button>
+    <button id="reset-btn" type="button">초기화</button>
     <button id="help-btn" type="button">설명보기</button>
   </fieldset>
 `;
@@ -218,26 +218,10 @@ helpOverlay.innerHTML = `
       <button id="help-close" type="button">닫기</button>
     </div>
     <div id="help-content">
-      <h3>패널</h3>
-      <p><b>Set (좌측 상단)</b>: Speed(이동속도), Scale(크기), TauDecay(냄새흔적 지속시간), PtSize(냄새흔적 입자크기), EmitRate(냄새흔적 방출량), 추적시작/중지, Reset(위치+냄새흔적+카메라 초기화), 설명보기</p>
-      <p><b>Visual (좌측 상단 아래)</b>: Est.Heading(추정방향, <span style="color:#ffaa00">호박색 화살표</span>), Target Heading(목표방향, <span style="color:#ff6600">진주황 화살표</span>), Scent Sensor(냄새흔적 센서팬, 좌<span style="color:#ff4444">빨강</span>+중앙<span style="color:#ffffff;background:#333">흰색</span>+우<span style="color:#4488ff">파랑</span> 3색 부채꼴), Vision Sensor(시야센서, <span style="color:#00ff00">초록색 원뿔</span>), Cast Sector(탐색섹터, 중앙<span style="color:#ffffff;background:#333">흰색</span>선+좌우<span style="color:#00ffff">청록</span>경계+<span style="color:#ffff00">노란색</span>호), Grid Cells(방문셀), Scent Trail(냄새흔적) 시각화 ON/OFF</p>
-      <p><b>Tracking Params (숨김)</b>: 추적 알고리즘 파라미터. 필요시 CSS에서 display 해제</p>
-      <p><b>pursuer state (좌측 하단)</b>: 추적자 상태값 실시간 표시 (state, sigma, heading, speed, 좌표 등)</p>
-      <h3>3D 씬 요소</h3>
-      <p><b>지형</b>: 높낮이 있는 <span style="color:#4a6b4a">녹색</span> 지형. 마우스 드래그로 카메라 회전, 휠로 줌</p>
-      <p><b>강아지 (추적자/Pursuer)</b>: <span style="color:#ff9933">주황색</span>. 알파카를 추적. 냄새흔적 센서와 시야로 추적</p>
-      <p><b>알파카 (도망자/Pursued)</b>: <span style="color:#44aa44">초록색</span>. 키보드(WASD/QE)로 이동. 이동 시 냄새흔적(Scent)을 남김</p>
-      <p><b>냄새흔적</b>: 알파카가 지나간 자리에 남는 <span style="color:#ffffff;background:#333">흰색</span> 점들. 시간이 지나면 점점 투명해짐. 농도가 진할수록 최근에 지나간 자리</p>
-      <p><b>냄새흔적 센서 팬</b>: 강아지 앞쪽 3색 부채꼴. 좌측<span style="color:#ff4444">빨간색</span>+중앙<span style="color:#ffffff;background:#333">흰색</span>+우측<span style="color:#4488ff">파란색</span>. 좌/우 섹터에서 감지된 냄새흔적 농도 차이로 방향 결정. 중앙 섹터는 직진 방향 확인용</p>
-      <p><b>시야 센서</b>: 강아지 앞쪽 <span style="color:#00ff00">초록색 원뿔</span>. 도망자를 직접 목격할 수 있는 범위. 목격 시 곧바로 직선 추적(chase)</p>
-      <p><b>탐색 섹터 (Cast)</b>: 강아지 앞쪽. 중앙<span style="color:#ffffff;background:#333">흰색</span> 직선+좌우<span style="color:#00ffff">청록색</span> 경계선+<span style="color:#ffff00">노란색</span> 호. 냄새흔적을 찾지 못했을 때 좌우로 휘젓는 탐색 범위</p>
-      <p><b>Grid Cells (기억중인 방문셀)</b>: 강아지가 기억하고 있는 방문한 지형 셀. 최대 10개 FIFO.<br/>기본: <span style="color:#88ccff">하늘색</span>(냄새 있음) → 방문: <span style="color:#ffff00">노란색</span> → 마지막 접촉: <span style="color:#ff8800">주황색</span> → Lost 경계: <span style="color:#9944ff">보라색</span>.<br/>색 우선순위: <span style="color:#ff8800">주황</span> > <span style="color:#9944ff">보라</span> > <span style="color:#ffff00">노랑</span> > <span style="color:#88ccff">기본</span>. 강아지는 이 방문 기억으로 이미 수색한 영역과 안 간 영역을 구분.<br/><br/><b>※ 방문셀은 heading 추정에 직접 사용 안 됨</b>. 장애물 회피 backtracking 전용.<br/><br/><b>Last Contacts (heading 추정 기반)</b>: 냄새흔적 감지 시 월드좌표(wx,wy)를 lastContacts에 저장. 최대 <b>10개</b>(maxContacts) FIFO.<br/><b>Est.Heading 계산</b>: lastContacts에 <b>OLS(Ordinary Least Squares) 선형회귀</b> 적용. 접촉점 2개 미만=NaN, 2개=chord 방향, 3개 이상=전체 점 OLS 회귀 → 첫점/마지막점 회귀선 투영 → atan2.<br/><br/><b>Surge(돌진)</b>: lastContacts 접촉 누적 → "도망자 근접" 판단 → 속도 증가 직선 돌진. 탐색섹터 확장.<br/><br/><b>Cast(좌우탐색)</b>: 냄새흔적 놓침(lost) → 방문셀 기억 참고, 마지막 접촉 <span style="color:#ff8800">주황색 셀</span> 근처를 <span style="color:#00ffff">청록색 경계</span> 사이로 좌우 휘저으며 재탐색. 이미 방문한 셀은 피하고 새로운 셀 위주 탐색.</p>
-      <p><b>Est. Heading (추정방향)</b>: <span style="color:#ffaa00">호박색 화살표</span>. lastContacts 10개 이하 접촉점의 <b>OLS 선형회귀</b>로 계산한 도망자 예상 이동 방향</p>
-      <p><b>Target Heading (목표방향)</b>: <span style="color:#ff6600">진주황 화살표</span>. 실제로 강아지가 향할 목표 방향. Cast 상태에서는 좌우로 진동, Surge 상태에서는 직선 고정</p>
       <h3>동작 순서</h3>
       <ol>
         <li>Set 패널에서 Speed/Scale 등 파라미터 조정</li>
-        <li>WASD 키로 <span style="color:#44aa44">초록색 알파카</span> 이동 시작 → 지나간 자리에 <span style="color:#ffffff;background:#333">흰색 냄새흔적</span> 생성</li>
+        <li>WASD 키로 <span style="color:#996633">갈색 알파카</span> 이동 시작 → 지나간 자리에 <span style="color:#ffffff;background:#333">흰색 냄새흔적</span> 생성</li>
         <li>"추적 시작" 버튼 클릭 → <span style="color:#ff9933">주황색 강아지</span>가 냄새흔적을 따라 추적</li>
         <li>강아지 앞쪽 <span style="color:#ff4444">빨강</span>/<span style="color:#ffffff;background:#333">흰색</span>/<span style="color:#4488ff">파랑</span> 3색 센서팬이 냄새흔적 감지 → 좌/우 농도 차이로 <span style="color:#ffaa00">호박색 추정방향</span> 계산 → <span style="color:#ff6600">진주황 목표방향</span>으로 이동</li>
         <li>이동하며 냄새흔적 감지 시 접촉점(wx,wy)을 lastContacts에 저장(FIFO 최대 10개) → OLS 선형회귀로 <span style="color:#ffaa00">호박색 추정방향</span> 계산 → <span style="color:#ff6600">진주황 목표방향</span>으로 이동</li>
@@ -246,8 +230,28 @@ helpOverlay.innerHTML = `
         <li>냄새흔적 놓치면 Lost → <span style="color:#00ffff">청록색 경계</span>+<span style="color:#ffff00">노란색 호</span> Cast 섹터로 좌우탐색, <span style="color:#ff8800">주황색 방문셀</span> 중심 재수색. Lost 경계는 <span style="color:#9944ff">보라색</span> 표시</li>
         <li>pursuer state 패널에서 state(track/surge/cast/lost/chase), sigma, heading 등 실시간 확인</li>
         <li>Visual 패널로 시각화 요소 ON/OFF</li>
-        <li>Reset 버튼으로 위치+냄새흔적+카메라+방문셀 초기화</li>
+        <li>초기화 버튼으로 위치+냄새흔적+카메라+방문셀 초기화</li>
       </ol>
+
+
+      <p><b>TauDecay</b>: 냄새흔적 지속시간(소멸속도). 값이 높을수록 냄새가 오래 남아 추적이 쉬워짐. 낮출수록 냄새가 빨리 사라져 추적 난이도 증가</p>
+      <p><b>EmitRate</b>: 알파카 이동 시 방출하는 냄새흔적 입자 수. 값이 높을수록 냄새흔적이 촘촘히 남아 추적이 쉬워짐. 낮출수록 냄새흔적 간격이 넓어져 추적 난이도 증가</p>
+      <h3>패널</h3>
+      <p><b>Set (좌측 상단)</b>: Speed(이동속도), Scale(크기), TauDecay(냄새흔적 지속시간), PtSize(냄새흔적 입자크기), EmitRate(냄새흔적 방출량), 추적시작/중지, 초기화(위치+냄새흔적+카메라 초기화), 설명보기</p>
+      <p><b>Visual (좌측 상단 아래)</b>: Est.Heading(추정방향, <span style="color:#ffaa00">호박색 화살표</span>), Target Heading(목표방향, <span style="color:#ff6600">진주황 화살표</span>), Scent Sensor(냄새흔적 센서팬, 좌<span style="color:#ff4444">빨강</span>+중앙<span style="color:#ffffff;background:#333">흰색</span>+우<span style="color:#4488ff">파랑</span> 3색 부채꼴), Vision Sensor(시야센서, <span style="color:#00ff00">초록색 원뿔</span>), Cast Sector(탐색섹터, 중앙<span style="color:#ffffff;background:#333">흰색</span>선+좌우<span style="color:#00ffff">청록</span>경계+<span style="color:#ffff00">노란색</span>호), Grid Cells(방문셀), Scent Trail(냄새흔적) 시각화 ON/OFF</p>
+      <p><b>Tracking Params (숨김)</b>: 추적 알고리즘 파라미터. 필요시 CSS에서 display 해제</p>
+      <p><b>pursuer state (좌측 하단)</b>: 추적자 상태값 실시간 표시 (state, sigma, heading, speed, 좌표 등)</p>
+      <h3>3D 씬 요소</h3>
+      <p><b>지형</b>: 높낮이 있는 <span style="color:#4a6b4a">녹색</span> 지형. 마우스 드래그로 카메라 회전, 휠로 줌</p>
+      <p><b>강아지 (추적자/Pursuer)</b>: <span style="color:#ff9933">주황색</span>. 알파카를 추적. 냄새흔적 센서와 시야로 추적</p>
+      <p><b>알파카 (도망자/Pursued)</b>: <span style="color:#996633">갈색</span>. 키보드(WASD/QE)로 이동. 이동 시 냄새흔적(Scent)을 남김</p>
+      <p><b>냄새흔적</b>: 알파카가 지나간 자리에 남는 <span style="color:#ffffff;background:#333">흰색</span> 점들. 시간이 지나면 점점 투명해짐. 농도가 진할수록 최근에 지나간 자리</p>
+      <p><b>냄새흔적 센서 팬</b>: 강아지 앞쪽 3색 부채꼴. 좌측<span style="color:#ff4444">빨간색</span>+중앙<span style="color:#ffffff;background:#333">흰색</span>+우측<span style="color:#4488ff">파란색</span>. 좌/우 섹터에서 감지된 냄새흔적 농도 차이로 방향 결정. 중앙 섹터는 직진 방향 확인용</p>
+      <p><b>시야 센서</b>: 강아지 앞쪽 <span style="color:#00ff00">초록색 원뿔</span>. 도망자를 직접 목격할 수 있는 범위. 목격 시 곧바로 직선 추적(chase)</p>
+      <p><b>탐색 섹터 (Cast)</b>: 강아지 앞쪽. 중앙<span style="color:#ffffff;background:#333">흰색</span> 직선+좌우<span style="color:#00ffff">청록색</span> 경계선+<span style="color:#ffff00">노란색</span> 호. 냄새흔적을 찾지 못했을 때 좌우로 휘젓는 탐색 범위</p>
+      <p><b>Grid Cells (기억중인 방문셀)</b>: 강아지가 기억하고 있는 방문한 지형 셀. 최대 10개 FIFO.<br/>기본: <span style="color:#88ccff">하늘색</span>(냄새 있음) → 방문: <span style="color:#ffff00">노란색</span> → 마지막 접촉: <span style="color:#ff8800">주황색</span> → Lost 경계: <span style="color:#9944ff">보라색</span>.<br/>색 우선순위: <span style="color:#ff8800">주황</span> > <span style="color:#9944ff">보라</span> > <span style="color:#ffff00">노랑</span> > <span style="color:#88ccff">기본</span>. 강아지는 이 방문 기억으로 이미 수색한 영역과 안 간 영역을 구분.<br/><br/><b>※ 방문셀은 heading 추정에 직접 사용 안 됨</b>. 장애물 회피 backtracking 전용.<br/><br/><b>Last Contacts (heading 추정 기반)</b>: 냄새흔적 감지 시 월드좌표(wx,wy)를 lastContacts에 저장. 최대 <b>10개</b>(maxContacts) FIFO.<br/><b>Est.Heading 계산</b>: lastContacts에 <b>OLS(Ordinary Least Squares) 선형회귀</b> 적용. 접촉점 2개 미만=NaN, 2개=chord 방향, 3개 이상=전체 점 OLS 회귀 → 첫점/마지막점 회귀선 투영 → atan2.<br/><br/><b>Surge(돌진)</b>: lastContacts 접촉 누적 → "도망자 근접" 판단 → 속도 증가 직선 돌진. 탐색섹터 확장.<br/><br/><b>Cast(좌우탐색)</b>: 냄새흔적 놓침(lost) → 방문셀 기억 참고, 마지막 접촉 <span style="color:#ff8800">주황색 셀</span> 근처를 <span style="color:#00ffff">청록색 경계</span> 사이로 좌우 휘저으며 재탐색. 이미 방문한 셀은 피하고 새로운 셀 위주 탐색.</p>
+      <p><b>Est. Heading (추정방향)</b>: <span style="color:#ffaa00">호박색 화살표</span>. lastContacts 10개 이하 접촉점의 <b>OLS 선형회귀</b>로 계산한 도망자 예상 이동 방향</p>
+      <p><b>Target Heading (목표방향)</b>: <span style="color:#ff6600">진주황 화살표</span>. 실제로 강아지가 향할 목표 방향. Cast 상태에서는 좌우로 진동, Surge 상태에서는 직선 고정</p>
     </div>
   </div>
 `;
@@ -416,7 +420,7 @@ debugPanel.innerHTML = `
     <div class="debug-row"><span>pos</span><span id="dv-pos">-</span></div>
   </fieldset>
 `;
-app.appendChild(debugPanel);
+leftPanels.appendChild(debugPanel);
 
 const debugKeys = [
   'state',
