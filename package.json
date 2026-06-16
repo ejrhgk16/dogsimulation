@@ -20,8 +20,7 @@
     "validate:docs": "node tools/validators/check-docs.mjs",
     "validate:tests": "node tools/validators/check-test-harness.mjs",
     "verify": "npm run lint && npm run format:check && npm run typecheck && npm run validate:architecture && npm run validate:docs && npm run test:unit",
-    "finish-plan": "node tools/scripts/finish-plan.mjs",
-    "prepare": "node tools/scripts/install-hooks.mjs"
+    "finish-plan": "node tools/scripts/finish-plan.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"
