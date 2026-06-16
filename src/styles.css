@@ -2,14 +2,7 @@
   color-scheme: light;
   --bg: #f3eee6;
   --bg-2: #dce7de;
-  --panel: rgba(255, 252, 247, 0.82);
-  --panel-strong: rgba(248, 243, 235, 0.96);
   --ink: #1d2428;
-  --muted: #5a666e;
-  --line: rgba(29, 36, 40, 0.12);
-  --accent: #0d6f5c;
-  --accent-strong: #184a3f;
-  --shadow: 0 24px 80px rgba(29, 36, 40, 0.12);
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
 }
 
@@ -20,96 +13,22 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  color: var(--ink);
   background:
     radial-gradient(circle at 12% 10%, rgba(220, 174, 85, 0.18), transparent 24%),
     radial-gradient(circle at 88% 18%, rgba(82, 141, 112, 0.18), transparent 26%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
 }
 
-#site-header,
-#status-panel,
-#site-footer,
 #app {
-  width: min(1160px, calc(100vw - 32px));
-  margin-left: auto;
-  margin-right: auto;
-}
-
-#site-header {
-  padding: 24px 0 12px;
-}
-
-#site-header h1 {
-  margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2rem, 4.8vw, 4rem);
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-}
-
-#status-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
-}
-
-#status-panel p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.98rem;
-}
-
-#status-panel button {
-  appearance: none;
-  border: 0;
-  border-radius: 999px;
-  padding: 12px 18px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  box-shadow: 0 10px 24px rgba(13, 111, 92, 0.24);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 140ms ease,
-    box-shadow 140ms ease,
-    opacity 140ms ease;
-}
-
-#status-panel button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(13, 111, 92, 0.28);
-}
-
-#status-panel button:active {
-  transform: translateY(0);
-}
-
-#app {
-  min-height: min(72vh, 760px);
-  margin-top: 18px;
-  margin-bottom: 18px;
-  overflow: hidden;
-  border: 1px solid rgba(29, 36, 40, 0.14);
-  border-radius: 28px;
-  background: var(--panel-strong);
-  box-shadow: var(--shadow);
   position: relative;
+  width: 100%;
+  height: 100vh;
+  display: block;
 }
 
 #app canvas,
@@ -119,24 +38,315 @@ body {
   height: 100%;
 }
 
-#site-footer {
-  padding: 0 0 24px;
-  color: var(--muted);
-  font-size: 0.9rem;
+#left-panels {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-@media (max-width: 720px) {
-  #site-header {
-    padding-top: 18px;
-  }
+#controls-panel {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
 
-  #status-panel {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+#controls-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0;
+}
 
-  #app {
-    min-height: min(66vh, 680px);
-    border-radius: 22px;
-  }
+#controls-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#controls-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+#controls-panel input[type='checkbox'] {
+  accent-color: #ff9933;
+  cursor: pointer;
+}
+
+#controls-panel input[type='range'] {
+  width: 100px;
+  accent-color: #ff9933;
+  cursor: pointer;
+  margin: 0 4px;
+}
+
+#controls-panel .slider-value {
+  display: inline-block;
+  width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#controls-panel button {
+  margin-top: 4px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  min-width: 80px;
+}
+
+#controls-panel button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#tracking-panel {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  z-index: 1000;
+  max-height: 95vh;
+  overflow-y: auto;
+  min-width: 240px;
+}
+
+#tracking-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0;
+}
+
+#tracking-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#tracking-panel label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 1px 0;
+}
+
+#tracking-panel label > span:first-child {
+  width: 100px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+#tracking-panel input[type='range'] {
+  width: 80px;
+  accent-color: #45cc88;
+  cursor: pointer;
+  margin: 0 2px;
+}
+
+#tracking-panel .slider-value {
+  display: inline-block;
+  width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+
+#debug-panel {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+#debug-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0;
+}
+
+#debug-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#debug-panel .debug-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+#debug-panel .debug-row span:first-child {
+  width: 100px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+}
+
+#debug-panel .debug-row span:last-child {
+  display: inline-block;
+  width: 34px;
+  text-align: right;
+  color: #45cc88;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+#dv-pos {
+  width: auto !important;
+  min-width: 140px;
+}
+
+#visual-panel {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+#visual-panel fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0;
+}
+
+#visual-panel legend {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px;
+}
+
+#visual-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+#visual-panel input[type='checkbox'] {
+  accent-color: #ff9933;
+  cursor: pointer;
+}
+
+#visual-panel button {
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+#visual-panel button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#help-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#help-panel {
+  background: rgba(20, 20, 30, 0.95);
+  color: #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 20px 24px;
+  max-width: 680px;
+  max-height: 85vh;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+#help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+#help-header span {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff9933;
+}
+
+#help-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  color: #fff;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+#help-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#help-content h3 {
+  color: #ff9933;
+  font-size: 14px;
+  margin: 14px 0 6px 0;
+}
+
+#help-content p {
+  margin: 4px 0;
+}
+
+#help-content ol {
+  margin: 4px 0 1.4em 0;
+  padding-left: 20px;
+}
+
+#help-content ol li {
+  margin: 3px 0;
+}
+
+#help-content b {
+  color: #45cc88;
 }

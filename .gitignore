@@ -6,8 +6,9 @@ npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 worktrees
-docs
+docs/
 .opencode
 AGENTS.md
 tools/
 tests/
+opencode.json

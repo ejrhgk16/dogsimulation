@@ -5,7 +5,7 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '.agents/**', 'tests/**', 'tools/**']
+    ignores: ['dist/**', 'node_modules/**', '.agents/**', 'worktrees/**']
   },
   eslint.configs.recommended,
   {
@@ -34,7 +34,7 @@ export default [
     }
   },
   {
-    files: ['eslint.config.js'],
+    files: ['eslint.config.js', 'tools/**/*.mjs'],
     languageOptions: {
       globals: {
         console: 'readonly',

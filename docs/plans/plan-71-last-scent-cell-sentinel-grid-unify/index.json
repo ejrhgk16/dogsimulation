@@ -1,0 +1,43 @@
+{
+  "plan": "plan-71-last-scent-cell-sentinel-grid-unify",
+  "status": "completed",
+  "tasks": [
+    {
+      "name": "task-1-sgrid-api",
+      "status": "completed",
+      "depends_on": [],
+      "summary": "ScentGrid 인터페이스에 worldToCell/cellToWorld 추가, ScentGridImpl에 구현, 14개 테스트 추가, verify 통과",
+      "completed_at": "2026-05-26T08:06:24+0900"
+    },
+    {
+      "name": "task-2-pursuer-fix",
+      "status": "completed",
+      "depends_on": [
+        "task-1-sgrid-api"
+      ],
+      "summary": "Pursuer sentinel -1→null, cell calc switched to ScentGrid worldToCell/cellToWorld, DEFAULT_SCENT_CELL_SIZE removed, 81 tests pass, verify 통과",
+      "completed_at": "2026-05-26T08:18:39+0900"
+    },
+    {
+      "name": "task-3-runtime-sampler-align",
+      "status": "completed",
+      "depends_on": [
+        "task-1-sgrid-api"
+      ],
+      "summary": "PursuerState 타입 nullable 전환, runtime null 체크, scentSampler visited 필터 grid.worldToCell() 정렬, cellSize 파라미터 제거, npm run verify 통과",
+      "completed_at": "2026-05-26T08:18:39+0900"
+    },
+    {
+      "name": "task-4-fix-cellkey",
+      "status": "completed",
+      "depends_on": [
+        "task-1-sgrid-api",
+        "task-2-pursuer-fix",
+        "task-3-runtime-sampler-align"
+      ],
+      "summary": "rebuildGridCells cellKey를 ${entry.cx}, (ScentGrid col/row index)로 수정, centerX/centerZ 제거, verify 통과",
+      "completed_at": "2026-05-26T08:24:07+0900"
+    }
+  ],
+  "completed_at": "2026-05-26T08:24:07+0900"
+}

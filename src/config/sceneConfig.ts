@@ -1,15 +1,16 @@
-import type { DogPosition } from '../types/dog';
+import { defaultMapConfig } from './mapConfig';
+import type { MapConfig } from './mapConfig';
 
 export interface SceneConfig {
   gravity: number;
   groundSize: number;
-  initialDogPosition: DogPosition;
-  initialDogSpeed: number;
+  mapConfig: MapConfig;
 }
 
 export const defaultSceneConfig: SceneConfig = {
   gravity: -9.81,
-  groundSize: 20,
-  initialDogPosition: { x: 0, y: 0, z: 0 },
-  initialDogSpeed: 2
+  groundSize: 100,
+  mapConfig: defaultMapConfig
 };
+
+export const HEAD_DOWN_MAX_TERRAIN = 0.5;

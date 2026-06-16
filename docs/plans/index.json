@@ -1,0 +1,320 @@
+{
+  "plans": [
+    {
+      "dir": "plan-1-dom",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-2-map-only",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-3-map-generation",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-4-rect-map-camera",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-5-map-testspace",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-6-map-shape-obstacles",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-7-darker-map-colors",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-8-scent-trail",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-9-owner-keyboard-scent-spread",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-10-owner-wall-height-scent-persistence",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-11-owner-terrain-collision",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-12-bilinear-height-interpolation",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-14-position-based-scent",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-15-animal-rename-ui-controls",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-16-camera-pan-gltf-animals",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-17-animal-scale-animation-direction",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-18-controls-speed-scale",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-19-remove-scent-intensity-extend-trail-age",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-20-head-animation-controls",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-21-head-terrain-camera-angle",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-22-runtime-split",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-23-remove-head-frames-ui-default-clips",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-24-multi-animal-support",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-25-single-alpaca-keyevent-rename",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-26-dog-head-only-remove-keyevent",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-27-pursuer-pursued-split",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-28-headframes-config-remove-pickanimal",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-29-cleanup-runtime-dead-code",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-30-merge-render-game-loop",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-31-pursuer-entity-collision",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-32-domain-class-refactor",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-33-render-rename",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-34-sector-search-tracking",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-35-fix-sensor-lr-center-bias",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-36-sensor-detection-radius",
+      "status": "completed"
+    },
+    {
+      "dir": "plan-37-constant-taudecay-dynamic-scent-render",
+      "status": "completed",
+      "completed_at": "2026-05-13T11:36:50+09:00"
+    },
+    {
+      "dir": "plan-38-fan-sensor-sectors",
+      "status": "completed",
+      "completed_at": "2026-05-13T13:47:47+09:00"
+    },
+    {
+      "dir": "plan-39-curvature-sigma-speed-cleanup",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:26:56+09:00"
+    },
+    {
+      "dir": "plan-40-cast-sector-search",
+      "status": "completed",
+      "completed_at": "2026-05-14T12:30:30+09:00"
+    },
+    {
+      "dir": "plan-41-state-lock-cast-lost",
+      "status": "completed",
+      "completed_at": "2026-05-14T15:55:19+09:00"
+    },
+    {
+      "dir": "plan-42-cast-turn-losttime-params",
+      "status": "completed",
+      "completed_at": "2026-05-14T21:50:41+09:00"
+    },
+    {
+      "dir": "plan-43-cast-flip-improvements",
+      "status": "completed",
+      "completed_at": "2026-05-14T22:50:03+09:00"
+    },
+    {
+      "dir": "plan-44-cast-lateral-losttime-decouple",
+      "status": "completed",
+      "completed_at": "2026-05-15T09:03:43+09:00"
+    },
+    {
+      "dir": "plan-45-cast-origin-reset",
+      "status": "completed",
+      "completed_at": "2026-05-15T11:49:19+09:00"
+    },
+    {
+      "dir": "plan-46-tan-flip",
+      "status": "completed",
+      "completed_at": "2026-05-15T21:36:11+0900"
+    },
+    {
+      "dir": "plan-47-debug-checkbox-split-reset",
+      "status": "completed",
+      "completed_at": "2026-05-16T15:28:00+0900"
+    },
+    {
+      "dir": "plan-48-flip-ramp",
+      "status": "completed",
+      "completed_at": "2026-05-17T11:15:10+0900"
+    },
+    {
+      "dir": "plan-49-vision-sensor",
+      "status": "completed",
+      "completed_at": "2026-05-18T11:46:09+0900"
+    },
+    {
+      "dir": "plan-50-scent-stress-url",
+      "status": "completed",
+      "completed_at": "2026-05-18T12:56:33+0900"
+    },
+    {
+      "dir": "plan-51-scent-shader-decay",
+      "status": "completed",
+      "completed_at": "2026-05-19T18:16:30+0900"
+    },
+    {
+      "dir": "plan-52-scent-grid-index",
+      "status": "completed",
+      "completed_at": "2026-05-20T01:52:39+0900"
+    },
+    {
+      "dir": "plan-53-lost-retrace-search",
+      "status": "completed",
+      "completed_at": "2026-05-20T08:39:17+0900"
+    },
+    {
+      "dir": "plan-54-remove-detect-threshold",
+      "status": "completed",
+      "completed_at": "2026-05-20T10:02:26+0900"
+    },
+    {
+      "dir": "plan-55-track-direct-scent-steering",
+      "status": "completed",
+      "completed_at": "2026-05-20T10:44:31+0900"
+    },
+    {
+      "dir": "plan-56-scent-detect-shader-sync",
+      "status": "completed",
+      "completed_at": "2026-05-20T12:05:18+0900"
+    },
+    {
+      "dir": "plan-57-obstacle-boundary-avoidance",
+      "status": "completed",
+      "completed_at": "2026-05-21T15:40:51+0900"
+    },
+    {
+      "dir": "plan-58-pursuer-chase-tuning",
+      "status": "completed",
+      "completed_at": "2026-05-21T16:49:09+0900"
+    },
+    {
+      "dir": "plan-59-mouse-teleport-reverse-age",
+      "status": "completed",
+      "completed_at": "2026-05-21T17:37:40+0900"
+    },
+    {
+      "dir": "plan-60-pursuer-teleport-defaults",
+      "status": "completed",
+      "completed_at": "2026-05-22T10:41:35+0900"
+    },
+    {
+      "dir": "plan-61-circular-sensor-fan",
+      "status": "completed",
+      "completed_at": "2026-05-22T13:27:58+0900"
+    },
+    {
+      "dir": "plan-62-cleanup-tracking-params-ui",
+      "status": "completed",
+      "completed_at": "2026-05-22T14:11:44+0900"
+    },
+    {
+      "dir": "plan-63-fix-circular-sensor-steering-cast",
+      "status": "completed",
+      "completed_at": "2026-05-25T17:15:03+0900"
+    },
+    {
+      "dir": "plan-64-revert-circular-sensor",
+      "status": "completed",
+      "completed_at": "2026-05-25T18:05:00+0900",
+      "note": "Revert plan-61/62/63: circular sensor → fan sensor. Circular sensor caused deadlock when single scent point near sensor origin."
+    },
+    {
+      "dir": "plan-65-sensor-lr-micro-diff",
+      "status": "completed",
+      "completed_at": "2026-05-25T19:01:00+0900"
+    },
+    {
+      "dir": "plan-66-scent-spread-narrow-emitrate-default",
+      "status": "completed",
+      "completed_at": "2026-05-25T12:12:10.102Z"
+    },
+    {
+      "dir": "plan-67-camera-frustum-scent-clamp",
+      "status": "completed",
+      "completed_at": "2026-05-25T21:49:52+0900"
+    },
+    {
+      "dir": "plan-68-visited-cell-memory",
+      "status": "completed",
+      "completed_at": "2026-05-25T23:05:42+0900"
+    },
+    {
+      "dir": "plan-69-unify-grid-lost-search",
+      "status": "completed",
+      "completed_at": "2026-05-26T01:17:37+0900"
+    },
+    {
+      "dir": "plan-70-remove-searchring-default-visuals-fix-grid-reset",
+      "status": "completed",
+      "completed_at": "2026-05-26T07:33:16+0900"
+    },
+    {
+      "dir": "plan-71-last-scent-cell-sentinel-grid-unify",
+      "status": "completed",
+      "completed_at": "2026-05-26T08:24:07+0900"
+    }
+  ]
+}
